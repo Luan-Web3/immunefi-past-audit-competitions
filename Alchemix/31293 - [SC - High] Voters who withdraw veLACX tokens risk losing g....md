@@ -1,5 +1,4 @@
-
-# Voters who withdraw veLACX tokens risk losing gained bribes rewards
+# 31293 - \[SC - High] Voters who withdraw veLACX tokens risk losing g...
 
 Submitted on May 16th 2024 at 15:21:17 UTC by @xBentley for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,19 +11,20 @@ Report severity: High
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Permanent freezing of unclaimed yield
+
+* Permanent freezing of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 Voters who withdraw their veLACX tokens without first claiming bribe rewards will permanently lose their rewards since the withdraw function does not automatically send the rewards.
 
 ## Vulnerability Details
+
 When withdrawing veLACX tokens, token owners have to complete at least 3 steps:
 
-(i) Call src/Voter.sol::reset(uint256 _tokenId) if they've voted
-(ii) Call src/VoterEscrow.sol::startCooldown(uint256 _tokenId)
-(iii) Wait for cooldown period to end
-(iv) Call src/VoterEscrow.sol::withdraw(uint256 _tokenId)
+(i) Call src/Voter.sol::reset(uint256 \_tokenId) if they've voted (ii) Call src/VoterEscrow.sol::startCooldown(uint256 \_tokenId) (iii) Wait for cooldown period to end (iv) Call src/VoterEscrow.sol::withdraw(uint256 \_tokenId)
 
 The withdraw function burns the tokenId effectively handing over ownership to the address(0) as can be seen from this function:
 
@@ -45,7 +45,7 @@ The withdraw function burns the tokenId effectively handing over ownership to th
     }
 ```
 
-Once this is set, it becomes impossible for the owner of the token to claim any bribe rewards since  src/Voter.sol::claimBribes requires that the caller be owner or a permitted account:
+Once this is set, it becomes impossible for the owner of the token to claim any bribe rewards since src/Voter.sol::claimBribes requires that the caller be owner or a permitted account:
 
 ```solidity
 /// @inheritdoc IVoter
@@ -57,17 +57,19 @@ Once this is set, it becomes impossible for the owner of the token to claim any 
         }
     }
 ```
-Therefore, calling withdraw in order to close the token position before claiming bribe rewards will therefore permanently lock the rewards. 
+
+Therefore, calling withdraw in order to close the token position before claiming bribe rewards will therefore permanently lock the rewards.
 
 ## Impact Details
+
 veALCX token owners risk permanently locking bribe rewards.
 
 ## References
+
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L851
 
-
-
 ## Proof of Concept
+
 Add this test to src/test/VotingEscrow.t.sol:
 
 ```solidity

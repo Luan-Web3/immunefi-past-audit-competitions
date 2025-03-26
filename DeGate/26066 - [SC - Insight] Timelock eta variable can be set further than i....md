@@ -1,5 +1,4 @@
-
-# Timelock eta variable can be set further than in the future than the anticipated delay.
+# 26066 - \[SC - Insight] Timelock eta variable can be set further than i...
 
 Submitted on Nov 24th 2023 at 01:24:49 UTC by @p4rsely for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,16 +11,19 @@ Report severity: Insight
 Target: https://etherscan.io/address/0xf2991507952d9594e71a44a54fb19f3109d213a5#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Bug Description
+
 In the TimeLock contract when queueing a new transaction, the `eta` parameter is not checked to be less than the maximum delay time constant. This allows the `eta` to be set further than 365 days in the future.
 
 This is not a problem in itself, however it negates having a maximum delay constant value of 365 days as the `eta` can be any value greater than the current timestamp plus the delay value. This could cause a delay in upgrades as it may not be immediately obvious/caught that the `eta` is too far in the future. The transaction can always be cancelled but may cause lost time for the upgrade.
 
-The current code is below:
-https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/contracts/thirdparty/timelock/Timelock.sol#L63-L72
+The current code is below: https://github.com/degatedev/protocols/blob/degate\_mainnet/packages/loopring\_v3/contracts/thirdparty/timelock/Timelock.sol#L63-L72
+
 ```
     function queueTransaction(address target, uint value, string memory signature, bytes memory data, uint eta) public returns (bytes32) {
         require(msg.sender == admin, "Timelock::queueTransaction: Call must come from admin.");
@@ -36,15 +38,18 @@ https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/
 
 ```
 
-
 ## Impact
+
 Thus could lead to an unforeseen delay in the upgrade process.
+
 ## Risk Breakdown
+
 Difficulty to Exploit: Easy
 
 ## Recommendation
-It can be considered to let the contract set the ETA as the value of `block.timestamp` plus the delay.
-This approach would allow for more predictable upgrade schedules.
+
+It can be considered to let the contract set the ETA as the value of `block.timestamp` plus the delay. This approach would allow for more predictable upgrade schedules.
+
 ```
     function queueTransaction(address target, uint value, string memory signature, bytes memory data,uint) public returns (bytes32) {
         require(msg.sender == admin, "Timelock::queueTransaction: Call must come from admin.");
@@ -62,19 +67,21 @@ This approach would allow for more predictable upgrade schedules.
 ```
 
 ## References
-Contracts: 
 
-https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/contracts/thirdparty/timelock/Timelock.sol#L63-L72
+Contracts:
+
+https://github.com/degatedev/protocols/blob/degate\_mainnet/packages/loopring\_v3/contracts/thirdparty/timelock/Timelock.sol#L63-L72
 
 ## Proof of concept
+
 ## PoC
+
 Please copy/paste the code below into a file in the test directory of a foundry project called `TansactionQueueTest.t.sol`
 
-Please run the test with a fork of the mainnet
-`forge test --fork-url {YOU_RPC_PROVIDER} --match-test test_queueTransaction -vv`
+Please run the test with a fork of the mainnet `forge test --fork-url {YOU_RPC_PROVIDER} --match-test test_queueTransaction -vv`
 
-I also had to add this line below to the foundry.toml file
-`evm_version = "shanghai"`
+I also had to add this line below to the foundry.toml file `evm_version = "shanghai"`
+
 ```
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.19;

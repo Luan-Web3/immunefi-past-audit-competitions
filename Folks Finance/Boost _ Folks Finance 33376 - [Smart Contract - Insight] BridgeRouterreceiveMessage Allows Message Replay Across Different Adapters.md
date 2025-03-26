@@ -1,5 +1,4 @@
-
-# `BridgeRouter.receiveMessage()` Allows Message Replay Across Different Adapters
+# Boost \_ Folks Finance 33376 - \[Smart Contract - Insight] BridgeRouterreceiveMessage Allows Message Replay Across Different Adapters
 
 Submitted on Thu Jul 18 2024 22:03:59 GMT-0400 (Atlantic Standard Time) by @chista0x for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,13 +11,17 @@ Report severity: Insight
 Target: https://testnet.snowtrace.io/address/0xa9491a1f4f058832e5742b76eE3f1F1fD7bb6837
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 The `BridgeRouter` contract allows for message replay across different adapters, contrary to its intended design as described in the project's documentation. This vulnerability arises because the `seenMessages` mapping is keyed by both `adapterId` and `messageId`, rather than just `messageId`. As a result, a message with the same `messageId` can be successfully replayed if sent through a different adapter.
 
 ## Vulnerability Details:
+
 The `BridgeRouter` contract is designed to prevent replay attacks by tracking messages that have already been processed. According to the project's documentation, the implementation should prevent the same message from being replayed across different adapters:
 
 ```
@@ -32,6 +35,7 @@ You may ask, why don’t we don’t do the same in the individual adapters as op
 However, the current implementation only prevents replay attacks within the same adapter. The relevant code snippet from `BridgeRouter` is:
 
 contracts\bridge\BridgeRouter.sol
+
 ```solidity
 abstract contract BridgeRouter is IBridgeRouter, AccessControlDefaultAdminRules {
 
@@ -79,6 +83,7 @@ abstract contract BridgeRouter is IBridgeRouter, AccessControlDefaultAdminRules 
 Furthermore, the project's test suite includes a test that checks for replay attacks within a single adapter but does not test for replay attacks across different adapters:
 
 test\bridge\BridgeRouter.test.ts
+
 ```javascript
     it("Should fail to receive message when message already seen", async () => {
       const { unusedUsers, bridgeRouter, adapter, adapterAddress, bridgeMessengerAddress } =
@@ -105,17 +110,18 @@ test\bridge\BridgeRouter.test.ts
 ```
 
 ## Impact Details
+
 The incorrect implementation allows attackers to replay the same message across different adapters. This can lead to various attacks such as double spending or triggering unintended actions multiple times. This vulnerability poses a significant risk to the protocol's integrity and could lead to financial losses or other malicious activities.
 
 ## References
-BridgeRouter.sol:
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/bridge/BridgeRouter.sol#L94
 
-        
+BridgeRouter.sol: https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/bridge/BridgeRouter.sol#L94
+
 ## Proof of concept
-## Proof of Concept
-Add the following codes to the test file `test\bridge\BridgeRouter.test.ts` to demonstrate the vulnerability:
 
+## Proof of Concept
+
+Add the following codes to the test file `test\bridge\BridgeRouter.test.ts` to demonstrate the vulnerability:
 
 ```javascript
   async function add2AdapterFixture() {
@@ -147,6 +153,7 @@ Add the following codes to the test file `test\bridge\BridgeRouter.test.ts` to d
   }
 
 ```
+
 ```javascript
   async function deployBridgeMessenger2AdapterFixture() {
     const { admin, messager, unusedUsers, bridgeRouter, bridgeRouterAddress, adapter,adapter2, adapterId,adapterId2, adapterAddress } =
@@ -174,7 +181,6 @@ Add the following codes to the test file `test\bridge\BridgeRouter.test.ts` to d
     };
   }
 ```
-
 
 ```javascript
   describe("Chista0x-Replay Same Message to two adapter", () => {
@@ -225,6 +231,7 @@ Add the following codes to the test file `test\bridge\BridgeRouter.test.ts` to d
 Run the test with the command `npx hardhat test --grep "Chista0x-Replay"`
 
 Test output:
+
 ```
   BridgeRouter (unit tests)
     Chista0x-Replay Same Message to two adapter

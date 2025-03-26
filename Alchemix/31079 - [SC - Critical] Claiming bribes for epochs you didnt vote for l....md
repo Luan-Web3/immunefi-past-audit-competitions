@@ -1,7 +1,6 @@
+# 31079 - \[SC - Critical] Claiming bribes for epochs you didnt vote for l...
 
-# Claiming bribes for epochs you didn't vote for, leading to protocol insolvency.
-
-Submitted on May 12th 2024 at 11:10:23 UTC by @infosec_us_team for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
+Submitted on May 12th 2024 at 11:10:23 UTC by @infosec\_us\_team for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
 Report ID: #31079
 
@@ -12,12 +11,15 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 > This is a text-dense report we apologize in advance.
 
 ## Summary
+
 This report demonstrates how a user can claim rewards for an epoch he didn't vote for, causing solvency issues as the users who voted cannot receive their share of bribes.
 
 A coded proof of concept can be found in the POC section.
@@ -26,29 +28,38 @@ A coded proof of concept can be found in the POC section.
 
 To understand the root issue, let's start by breaking down with bullet points an example:
 
-- "**Alice**" votes in epoch `1`.
-- "**Bob**" votes in epoch `1`.
---------------------------------
-- The second epoch (`2`) starts.
---------------------------------
-- "**Alice**" claims bribes from epoch `1`.
-- "**Bob**" votes in epoch `2`.
-- "**Bob**" claims bribes from epoch `1`.
---------------------------------
-- A third epoch (`3`) starts.
---------------------------------
-- **Alice claims bribes from epoch `2`.** (This shouldn't happen)
-- "**Bob**" votes in epoch `2`.
-- "**Bob**" attempts to claim bribes from epoch `2` but fails with "*ERC20: transfer amount exceeds balance*" because Alice stole rewards from epoch `2` and the Bribe became insolvent.
+* "**Alice**" votes in epoch `1`.
+* "**Bob**" votes in epoch `1`.
+
+***
+
+* The second epoch (`2`) starts.
+
+***
+
+* "**Alice**" claims bribes from epoch `1`.
+* "**Bob**" votes in epoch `2`.
+* "**Bob**" claims bribes from epoch `1`.
+
+***
+
+* A third epoch (`3`) starts.
+
+***
+
+* **Alice claims bribes from epoch `2`.** (This shouldn't happen)
+* "**Bob**" votes in epoch `2`.
+* "**Bob**" attempts to claim bribes from epoch `2` but fails with "_ERC20: transfer amount exceeds balance_" because Alice stole rewards from epoch `2` and the Bribe became insolvent.
 
 ### Why is this happening?
 
 When claiming Bribe rewards the code does the following:
 
-- Reads the balance of "Alice" in the previously recorded checkpoint.
-- It doesn't check if "Alice" voted in that epoch.
-- Sends rewards to "Alice".
-- Creates a new checkpoint and stores "Alice" 's balance.
+* Reads the balance of "Alice" in the previously recorded checkpoint.
+* It doesn't check if "Alice" voted in that epoch.
+* Sends rewards to "Alice".
+* Creates a new checkpoint and stores "Alice" 's balance.
+
 ```
 function getRewardForOwner(uint256 tokenId, address[] memory tokens) external lock {
     ...
@@ -59,7 +70,7 @@ function getRewardForOwner(uint256 tokenId, address[] memory tokens) external lo
 
 Then it all repeats in the next epoch.
 
-Whether it is a `veACLX` position with "**maxLock**" enabled (*where voting power never decays*) or a position that expires within a couple of epochs, everyone can claim rewards for epochs they haven't voted for as long as they have at least 1 checkpoint.
+Whether it is a `veACLX` position with "**maxLock**" enabled (_where voting power never decays_) or a position that expires within a couple of epochs, everyone can claim rewards for epochs they haven't voted for as long as they have at least 1 checkpoint.
 
 This leads to solvency issues as the users who voted cannot receive their share of bribes.
 
@@ -68,17 +79,19 @@ This leads to solvency issues as the users who voted cannot receive their share 
 The best solution is to keep track inside the `Bribe` smart contract of every epoch that a `veACLX` lock votes for, fortunately, this is easy to implement.
 
 A new mapping must be added to the `Bribe` smart contract like this:
+
 ```
 mapping(uint256 => mapping(uint256 => bool)) public votedEpochs;
 ```
 
 We only update it when a user votes/pokes like this:
+
 ```
 // Record that `tokenId` voted in `epoch`
 votedEpochs[epoch][tokenId] = true;
 ```
 
-Then *in the `getRewardForOwner(uint256 tokenId, address[] memory tokens)` function of the `Bribe` smart contract* before sending rewards to the user, we check if the tokenId voted in the epoch that we are giving him rewards for.
+Then _in the `getRewardForOwner(uint256 tokenId, address[] memory tokens)` function of the `Bribe` smart contract_ before sending rewards to the user, we check if the tokenId voted in the epoch that we are giving him rewards for.
 
 ### Why couldn't the `testGetRewardForOwner()` test detect this bug?
 
@@ -125,20 +138,23 @@ function testGetRewardForOwner() public {
 
 Log the **block.timestamp** using `console2.log(block.timestamp);` after every time the test "moves the time to the next epoch".
 
-You will realize, that it always prints the same timestamp. Time is not moving forward at all, the test always **warp**s  to the present.
+You will realize, that it always prints the same timestamp. Time is not moving forward at all, the test always **warp**s to the present.
 
 **But why?**
 
 Because the definition of `newEpoch()` is:
+
 ```
 
 function newEpoch() public view returns (uint256) {
     return IMinter(minter).activePeriod() + IMinter(minter).DURATION() + 1 seconds;
 }
 ```
+
 If we never update the active period of the `minter`, then "`newEpoch()`" will always return the same value.
 
 To fix this test and actually move forward to the next timestamp, add `voter.distribute();` after the start of the second epoch like this:
+
 ```
 // Start second epoch i+1
 hevm.warp(newEpoch()); console2.log(block.timestamp);
@@ -151,10 +167,8 @@ The distribution mechanism updates the minter's active period.
 Try to rerun the test. It will fail indicating that rewards can be claimed for epochs that a user has not voted for.
 
 ## Impact Details
-Solvency issues as the users that voted cannot receive their
-share of bribes.
 
-
+Solvency issues as the users that voted cannot receive their share of bribes.
 
 ## Proof of Concept
 

@@ -1,5 +1,6 @@
+# Attackathon \_ Fuel Network 33239 - \[Smart Contract - Low] Incorrect Implementation of IFP Min Functi
 
-# Incorrect Implementation of IFP Min Functions
+## Incorrect Implementation of IFP Min Functions
 
 Submitted on Mon Jul 15 2024 20:07:46 GMT-0400 (Atlantic Standard Time) by @Blockian for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,17 +13,23 @@ Report severity: Low
 Target: https://github.com/FuelLabs/sway-libs/tree/0f47d33d6e5da25f782fc117d4be15b7b12d291b
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
 
-## Description
-# Fuel Network bug report
-## Incorrect Implementation of IFP Min Functions
+* Contract fails to deliver promised returns, but doesn't lose value
+
 ### Description
-The current implementation of the min function in `sway-libs` for the signed Fixed Point numbers is flawed.
-Instead of returning the smallest number, the min function returns zero.
 
-## Root Cause
+## Fuel Network bug report
+
+### Incorrect Implementation of IFP Min Functions
+
+#### Description
+
+The current implementation of the min function in `sway-libs` for the signed Fixed Point numbers is flawed. Instead of returning the smallest number, the min function returns zero.
+
+### Root Cause
+
 The `min` function from the `IFP64` implementation is as follows:
+
 ```rs
     pub fn min() -> Self {
         Self {
@@ -31,15 +38,19 @@ The `min` function from the `IFP64` implementation is as follows:
         }
     }
 ```
+
 However, this implementation returns `-0`, which is not the smallest value within the range of `-u32::max` to `u32::max`.
 
-***NOTE***: This error affects all `IFP` types.
+_**NOTE**_: This error affects all `IFP` types.
 
-## Impact
+### Impact
+
 Relying on the `min` function to return the smallest number can lead to incorrect results and potential mistakes for users.
 
-## Proposed fix
+### Proposed fix
+
 To correct this, the `min` function should use the underlying `max` function instead of `min`:
+
 ```rs
     pub fn min() -> Self {
         Self {
@@ -48,9 +59,11 @@ To correct this, the `min` function should use the underlying `max` function ins
         }
     }
 ```
-        
-## Proof of concept
-# Proof of Concept
+
+### Proof of concept
+
+## Proof of Concept
+
 Run the POC's with `forc test`
 
 ```rs

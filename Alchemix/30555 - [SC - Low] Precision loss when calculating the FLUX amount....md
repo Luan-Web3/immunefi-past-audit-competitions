@@ -1,5 +1,6 @@
+# 30555 - \[SC - Low] Precision loss when calculating the FLUX amount...
 
-# Precision loss when calculating the FLUX amount required to ragequit for a token
+## Precision loss when calculating the FLUX amount required to ragequit for a token
 
 Submitted on Apr 30th 2024 at 18:42:03 UTC by @MTNether for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,18 +13,20 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
 
 Impacts:
-- Permanent freezing of funds
-- Temporary freezing of funds for 12 hours
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
-## Description
-## Brief/Intro
+* Permanent freezing of funds
+* Temporary freezing of funds for 12 hours
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+### Description
+
+### Brief/Intro
+
 Fewer FLUX tokens than actual are calculated and burnt in the cooling down process due to the priority of division over multiplication.
 
-## Vulnerability Details
-Solidity rounds down the result of an integer division, and because of that, it is always recommended to multiply before 
-dividing to avoid that precision loss. In the case of a prior division over multiplication, the final result may face serious precision loss
-as the first answer would face truncated precision and then multiplied to another integer.
+### Vulnerability Details
+
+Solidity rounds down the result of an integer division, and because of that, it is always recommended to multiply before dividing to avoid that precision loss. In the case of a prior division over multiplication, the final result may face serious precision loss as the first answer would face truncated precision and then multiplied to another integer.
 
 The problem arises in the VotingEscrow's cooling down part. After performing the necessary checks inside the `startCooldown()` function, it checks the required FLUX amounts to ragequit:
 
@@ -48,22 +51,24 @@ It is evident that the `ragequitAmount` is calculated by the multiplication of c
     totalEpochs = fluxMultiplier * ((MAXTIME) / EPOCH);
 ```
 
-The variable `fluxMultiplier` is set to be `4`, the `MAXTIME`, and `EPOCH` are `365 days`, and `2 weeks` respectively. 
+The variable `fluxMultiplier` is set to be `4`, the `MAXTIME`, and `EPOCH` are `365 days`, and `2 weeks` respectively.
 
-The current implementation of the aforementioned definition has a hidden division before a multiplication that rounds down the whole expression. 
+The current implementation of the aforementioned definition has a hidden division before a multiplication that rounds down the whole expression.
 
 This is bad as the precision loss can be significant, which leads to the contract calculating and burning less `ragequitAmount` than the actual.
 
 At the Proof of Concept part, we can check this behavior precisely.
 
-## Impact Details
+### Impact Details
+
 Low `ragequitAmount` to ragequit inside the `amountToRagequit()` function is calculated leading to wrongly setting the minimum Flux amounts to ragequit and thus burning fewer tokens than actual.
 
-## References
+### References
 
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol?utm_source=immunefi#L345-L356
+https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol?utm\_source=immunefi#L345-L356
 
-# Recommended Mitigation Steps
+## Recommended Mitigation Steps
+
 Consider modifying the `ragequitAmount` calculation to prevent such precision loss and prioritize the multiplication over division:
 
 ```Diff
@@ -82,10 +87,7 @@ Consider modifying the `ragequitAmount` calculation to prevent such precision lo
     }
 ```
 
-
-
-
-## Proof of Concept
+### Proof of Concept
 
 You can run this code inside the Forge to see the difference between the results:
 
@@ -109,5 +111,5 @@ The result would be: (for a sample and real `claimableFlux` of `156510000000` ju
      Current Implementation  16277040000000
      Actual Implementation   16321757142857
 ```
-Thus, we can see that the actual implementation produces less ragequit amount than the precise method.
-This test shows a big difference between the two calculated ragequit amounts in the cooling down process.
+
+Thus, we can see that the actual implementation produces less ragequit amount than the precise method. This test shows a big difference between the two calculated ragequit amounts in the cooling down process.

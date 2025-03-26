@@ -1,5 +1,4 @@
-
-# fuel_gas_price_algorithm AlgorithmV1 may panic
+# Attackathon \_ Fuel Network 33450 - \[Blockchain\_DLT - Insight] fuel\_gas\_price\_algorithm AlgorithmV ma
 
 Submitted on Sat Jul 20 2024 17:22:45 GMT-0400 (Atlantic Standard Time) by @Crab for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,18 +11,18 @@ Report severity: Insight
 Target: https://github.com/FuelLabs/fuel-core/tree/v0.31.0
 
 Impacts:
-- Causing network processing nodes to process transactions from the mempool beyond set parameters (e.g. prevents processing transactions from the mempool)
+
+* Causing network processing nodes to process transactions from the mempool beyond set parameters (e.g. prevents processing transactions from the mempool)
 
 ## Description
+
 ## Brief/Intro
 
-The `fuel_gas_price_algorithm::AlgorithmV1` `calculate` function may panic if it is not initialized correctly.
-This would result in the halting of nodes on mainnet and would stop the network from working correctly.
+The `fuel_gas_price_algorithm::AlgorithmV1` `calculate` function may panic if it is not initialized correctly. This would result in the halting of nodes on mainnet and would stop the network from working correctly.
 
 ## Vulnerability Details
 
-The [`AlgorithmV1`](https://github.com/FuelLabs/fuel-core/blob/v0.31.0/crates/fuel-gas-price-algorithm/src/lib.rs#L50) is currently unused but would be used to determine the price of the current gas price on Fuel. It is featuring a PID controller (without the I component though) that takes in the block profit target and adjust the P (proportional) and D (derivative) parameters in order to tend to reach it.
-There is a bug though that gets triggered when the [`abs`](https://github.com/FuelLabs/fuel-core/blob/v0.31.0/crates/fuel-gas-price-algorithm/src/lib.rs#L119) function is called. It triggers a panic with the message "attempt to negate with overflow". This will panic whenever [`p + d == i64::MIN`](https://github.com/FuelLabs/fuel-core/blob/v0.31.0/crates/fuel-gas-price-algorithm/src/lib.rs#L113) because `-i64::MIN` is undefined on the range of the integers.
+The [`AlgorithmV1`](https://github.com/FuelLabs/fuel-core/blob/v0.31.0/crates/fuel-gas-price-algorithm/src/lib.rs#L50) is currently unused but would be used to determine the price of the current gas price on Fuel. It is featuring a PID controller (without the I component though) that takes in the block profit target and adjust the P (proportional) and D (derivative) parameters in order to tend to reach it. There is a bug though that gets triggered when the [`abs`](https://github.com/FuelLabs/fuel-core/blob/v0.31.0/crates/fuel-gas-price-algorithm/src/lib.rs#L119) function is called. It triggers a panic with the message "attempt to negate with overflow". This will panic whenever [`p + d == i64::MIN`](https://github.com/FuelLabs/fuel-core/blob/v0.31.0/crates/fuel-gas-price-algorithm/src/lib.rs#L113) because `-i64::MIN` is undefined on the range of the integers.
 
 This has been found with fuzzing, with the following input:
 
@@ -118,12 +117,13 @@ fn main() {
 ```
 
 ## Impact Details
+
 The `AlgorithmV1` does not seem to be used right now, but if it is and that the parameters are not checked correctly, it will panic on mainnet and halt all of the nodes of the network since they should agree on the same parameters.
 
 ## References
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 ```rust

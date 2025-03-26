@@ -1,5 +1,4 @@
-
-# Memory corruption caused by fully controllable 'src' and 'sz' in memcpy operations(fd_poh)
+# Boost \_ Firedancer v0.1 33717 - \[Blockchain\_DLT - Medium] Memory corruption caused by fully controll
 
 Submitted on Sat Jul 27 2024 08:48:17 GMT-0400 (Atlantic Standard Time) by @c4a4dda89 for [Boost | Firedancer v0.1](https://immunefi.com/bounty/firedancer-boost/)
 
@@ -12,10 +11,13 @@ Report severity: Medium
 Target: https://github.com/firedancer-io/firedancer/tree/e60d9a6206efaceac65a5a2c3a9e387a79d1d096
 
 Impacts:
-- Process to process RCE between sandboxed tiles
+
+* Process to process RCE between sandboxed tiles
 
 ## Description
+
 ## Brief/Intro
+
 The `fd_mux_during_frag_fn` is called after the mux has received a new frag.
 
 ```c
@@ -60,7 +62,8 @@ Specifically, the parameters `seq`, `sig`, `chunk`, and `sz` originate from the 
 
 ## Vulnerability Details
 
-In the file `fd_poh.c` located at `src/app/fdctl/run/tiles`, when the `during_frag` process receives data from fd_pack, at the code point [1], the data is directly copied `to ctx->_txns` without any checks.
+In the file `fd_poh.c` located at `src/app/fdctl/run/tiles`, when the `during_frag` process receives data from fd\_pack, at the code point \[1], the data is directly copied `to ctx->_txns` without any checks.
+
 ```c
 
 static inline void
@@ -108,7 +111,7 @@ during_frag( void * _ctx,
 }
 ```
 
-And in the subsequent call to the `after_frag` process, the `ctx->_txns` in this segment is used by the publish_microblock function. However, when the publish_microblock function uses the data in `ctx->_txns` as parameters for `fd_memcpy` , at the code point [2], there are no checks, leading to arbitrary control over the memory source and size, which in turn causes memory corruption issues. There is even a risk of code execution.
+And in the subsequent call to the `after_frag` process, the `ctx->_txns` in this segment is used by the publish\_microblock function. However, when the publish\_microblock function uses the data in `ctx->_txns` as parameters for `fd_memcpy` , at the code point \[2], there are no checks, leading to arbitrary control over the memory source and size, which in turn causes memory corruption issues. There is even a risk of code execution.
 
 ```c
 static void
@@ -156,27 +159,23 @@ publish_microblock( fd_poh_ctx_t *     ctx,
 ```
 
 ## Impact Details
+
 Process-to-process memory corruption may lead to the process-to-process RCE between sandboxed tiles.
-
-
 
 ## References
 
-1. https://github.com/firedancer-io/firedancer/blob/e60d9a6206efaceac65a5a2c3a9e387a79d1d096/src/app/fdctl/run/tiles/fd_poh.c#L1398
+1. https://github.com/firedancer-io/firedancer/blob/e60d9a6206efaceac65a5a2c3a9e387a79d1d096/src/app/fdctl/run/tiles/fd\_poh.c#L1398
+2. https://github.com/firedancer-io/firedancer/blob/e60d9a6206efaceac65a5a2c3a9e387a79d1d096/src/app/fdctl/run/tiles/fd\_poh.c#L1575
+3. https://github.com/firedancer-io/firedancer/blob/e60d9a6206efaceac65a5a2c3a9e387a79d1d096/src/app/fdctl/run/tiles/fd\_poh.c#L1448
 
-2. https://github.com/firedancer-io/firedancer/blob/e60d9a6206efaceac65a5a2c3a9e387a79d1d096/src/app/fdctl/run/tiles/fd_poh.c#L1575
-
-3. https://github.com/firedancer-io/firedancer/blob/e60d9a6206efaceac65a5a2c3a9e387a79d1d096/src/app/fdctl/run/tiles/fd_poh.c#L1448
-
-
-        
 ## Proof of concept
-The attack surface of this vulnerability is when an attacker has arbitrary code execution rights over `fd_pack`, and then launches a process to process RCE attack on `fd_poh`. 
-Therefore, we modify the relevant code of the `fd_pack` process to simulate the situation where the attacker has already obtained the ability to execute code.
+
+The attack surface of this vulnerability is when an attacker has arbitrary code execution rights over `fd_pack`, and then launches a process to process RCE attack on `fd_poh`. Therefore, we modify the relevant code of the `fd_pack` process to simulate the situation where the attacker has already obtained the ability to execute code.
 
 The project side realized that the modified content shown by the git diff needs to be synchronized to the local environment. By executing `make -j fddev` and `sudo fddev --no-sandbox`, a crash can be triggered.
 
-## Proof of Concept 
+## Proof of Concept
+
 ```c
 diff --git a/src/ballet/pack/fd_pack.c b/src/ballet/pack/fd_pack.c
 index f346ac15..e5a243ef 100644

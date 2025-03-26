@@ -1,5 +1,4 @@
-
-# Timelock is not capable of performing payable transactions like swapAndDeposit
+# 29017 - \[SC - Insight] Timelock is not capable of performing payable t...
 
 Submitted on Mar 4th 2024 at 19:46:44 UTC by @oxumarkhatab for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,28 +11,30 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x3C28B7c7Ba1A1f55c9Ce66b263B33B204f2126eA#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
-Timelock will not be able to execute payable transactions and it will always fail because it does not execute transactions with funds nor does it keep the record of msg.value per transaction when it is queued.
-This will cause protocol operation issues as well as loss of funds for users.
+
+Timelock will not be able to execute payable transactions and it will always fail because it does not execute transactions with funds nor does it keep the record of msg.value per transaction when it is queued. This will cause protocol operation issues as well as loss of funds for users.
 
 Timelock being an upgradable contract was another potential way to add new functionality to the contract but it is non-upgradable contract if we see it's declaration leaving itself prone to the issues I'll be describing in the report
 
 ## Impact Selection
+
 I've selected this impact because it was closest to this exploit's impact.
 
 The timelock intends to execute all types of transactions but due to programming oversight, it is not able to do so.
 
 That's why I've chosen a similar impact
 
-
 Additionally, users will also lose funds , let's see in detail
+
 ## Vulnerability Details
-Each transaction is time-locked including payable and non-payable transactions.
-While Timelock appears to deal greatly with non-payable transactions,
-It will never be able to execute payable transactions due to the way it executes the transaction.
+
+Each transaction is time-locked including payable and non-payable transactions. While Timelock appears to deal greatly with non-payable transactions, It will never be able to execute payable transactions due to the way it executes the transaction.
 
 See here :
 
@@ -45,8 +46,7 @@ See here :
 
 ```
 
-This function is the core part of timelock where the actual transaction happens. See closely that the function is making a static call ( which is fine )
-but it is not sending any msg.value along with the call that will cause following functions to revert
+This function is the core part of timelock where the actual transaction happens. See closely that the function is making a static call ( which is fine ) but it is not sending any msg.value along with the call that will cause following functions to revert
 
 ```solidity
     function swapAndDeposit(address tokenIn, uint256 amountIn, uint256 amountOutMin, bytes calldata routeCode)
@@ -129,38 +129,33 @@ The root of the issue is qeueTransaction function which actually registers a tra
     }
 ```
 
-This neither receives any ether ( because it is not a payable function )
-nor it record keep the amount of ether the function call expects.
+This neither receives any ether ( because it is not a payable function ) nor it record keep the amount of ether the function call expects.
 
 Additionally, the entire structure seems a bit off. Queue transaction is only callable by operations multisig then to whom should the user send the msg.value .
 
 If funds are sent to timelock , and execute Transaction fails due to lack of funds , the timelock contract does not even have any withdraw or redeem function to recover those funds of users `causing Direct theft of user funds`
 
-Another scenario might be that funds are sent to PufferDepositor contract.
-No matter how much funds PufferDepositor has , the swap calls just check msg.value and not address(this).
-
+Another scenario might be that funds are sent to PufferDepositor contract. No matter how much funds PufferDepositor has , the swap calls just check msg.value and not address(this).
 
 In each way , the logic of timelock contract is bricked which should be corrected.
 
 ## Impact Details
-- Protocol can not perform Deposits involving ethers
-- Users will lose  their funds when they send funds for payable transactions execution because payable transactions will not be successful and all users will get is a boolean of `success` which has a value of `false`
+
+* Protocol can not perform Deposits involving ethers
+* Users will lose their funds when they send funds for payable transactions execution because payable transactions will not be successful and all users will get is a boolean of `success` which has a value of `false`
 
 ## References
+
 Timelock contract : Line 263
 
-https://etherscan.io/address/0x3C28B7c7Ba1A1f55c9Ce66b263B33B204f2126eA?utm_source=immunefi#code
-
-
-
-
-
+https://etherscan.io/address/0x3C28B7c7Ba1A1f55c9Ce66b263B33B204f2126eA?utm\_source=immunefi#code
 
 ## Proof of Concept
 
 Consider following scenario :
 
-- User makes a transaction object with 
+* User makes a transaction object with
+
 ```
 target:address(PufferDepositor),
 calldata: some_call_Data_for_swap like following
@@ -175,11 +170,10 @@ calldata: some_call_Data_for_swap like following
 tokenIn:NATIVE_ETHER,
 amountIn:100 ether
 ```
-- User sends 100 ether to timelock.
-- Operations Multisig calls `queueTransaction` and adds transaction to be executed.
 
-- After some delay , the OPERATIONS_MULTISIG calls executeTransaction function.
-
-- The function returns a success value of false.
-- User sees that he has not given any shares ( because transaction was failed )
-- User tries to recover funds but timelock does not provide any ways to recover funds.
+* User sends 100 ether to timelock.
+* Operations Multisig calls `queueTransaction` and adds transaction to be executed.
+* After some delay , the OPERATIONS\_MULTISIG calls executeTransaction function.
+* The function returns a success value of false.
+* User sees that he has not given any shares ( because transaction was failed )
+* User tries to recover funds but timelock does not provide any ways to recover funds.

@@ -1,5 +1,4 @@
-
-# Lido slashing can negatively affect the whole liquidation logic.
+# 28823 - \[SC - Insight] Lido slashing can negatively affect the whole l...
 
 Submitted on Feb 28th 2024 at 01:49:05 UTC by @Stormy for [Boost | eBTC](https://immunefi.com/bounty/ebtc-boost/)
 
@@ -12,24 +11,28 @@ Report severity: Insight
 Target: https://github.com/ebtc-protocol/ebtc/blob/release-0.7/packages/contracts/contracts/LiquidationLibrary.sol
 
 Impacts:
-- Temporary freezing of funds for at least 15 minutes
+
+* Temporary freezing of funds for at least 15 minutes
 
 ## Description
+
 ## Brief/Intro
+
 Lido slashing can negatively affect the underlying value of all cdp liquidator rewards and all cdp collateral shares making liquidations less profitable or non-profitable especially for small cdp positions. The liquidations are the core concept for the system to escape unwanted state (RM), any problems there can negatively affect the whole protocol and its users.
 
 If the system enters recovery mode after slashing, the only way out would be for the protocol team to liquidate all the non-profitable small cdp positions and take the loss or increasing the TCR via opening or repaying debt otherwise withdrawing any funds from the system will not be allowed until escaping RM.
 
 ## Vulnerability Details
+
 Prior to opening a cdp in the protocol, the system allocates a fixed amount of liquidator reward with value of 0.2 stETH. This reward is given to the liquidator which liquidates the position in a case the overall ICR of the cdp drops below a certain point based on the current mode of the system. The primary goal of this amount of collateral is to compensate the liquidator from the gas he is paying to liquidate the cdp position but it can still be counted for further profit on small cdps.
+
 ```solidity
         uint256 _liquidatorRewardShares = collateral.getSharesByPooledEth(LIQUIDATOR_REWARD);
 ```
 
 On short explanation eBTC uses a rebasing token called stETH for its core collateral and tracks the shares of the token to correctly account the rebasing logic. So one share of stETH can hold bigger value of eth in the future than it holds now.
 
-Currently the system tracks the value of 1 stETH share and syncs the global accounting on every cdp operation if needed.
-Having a greater value of 1 stETH share than before indicates that a positive rebase happened and that the system needs to sync the global accounting and take its split fee. However there could be cases when the value of 1 stETH share reduces this indicates that a slashing happened in Lido and as a result the shares reduced their underlying value of eth in this case the eBTC syncs the indexes without taking any split fee.
+Currently the system tracks the value of 1 stETH share and syncs the global accounting on every cdp operation if needed. Having a greater value of 1 stETH share than before indicates that a positive rebase happened and that the system needs to sync the global accounting and take its split fee. However there could be cases when the value of 1 stETH share reduces this indicates that a slashing happened in Lido and as a result the shares reduced their underlying value of eth in this case the eBTC syncs the indexes without taking any split fee.
 
 ```solidity
     function _syncGlobalAccounting() internal {
@@ -51,14 +54,13 @@ But even tho the system correctly accounts the cases when a negative rebase occu
 
 l would say the bigger problem here with slashing lays in all cdp positions with minimum collateral of 2 stETH, so take as example that Lido slash occurs which reduces the value of the stETH share by 30%.
 
-- Depending on the TCR after this percent of slashing the system may or may not enter recovery mode.
-- Duo to the slash all cdps underlying value of collateral will also be reduced by 30%.
-- And the underlying value of all liquidator rewards will also be reduced by 30%.
+* Depending on the TCR after this percent of slashing the system may or may not enter recovery mode.
+* Duo to the slash all cdps underlying value of collateral will also be reduced by 30%.
+* And the underlying value of all liquidator rewards will also be reduced by 30%.
 
 With 30% slashing, all 2 stETH cdps with collateral ratio below 130% will become underwater with bad debt immedately, not only that but their underlying value of liquidator reward and cdp collateral shares will be reduced by 30% as well.
 
 Liquidators receive 3% discount on the debt to repay when liquidating a cdp with ICR <= LICR, but in our case considering the 3% of the reduced by 30% collateral value of 2 stETH position it will be close to nothing. In this situation for the liquidator to make profit he will be more dependant on the liquidator reward which will also be reduced after the slash.
-
 
 ```solidity
         } else {
@@ -73,20 +75,22 @@ Liquidators receive 3% discount on the debt to repay when liquidating a cdp with
             uint256 _debtToRepay = (_incentiveColl * _price) / LICR;
 ```
 
-Liquidations is the main logic with which the system escapes RM, if one severe slash leads close to non-profitable liquidations especially for small cdp positions of 2 stETH. There would not be any incentive for liquidators to liquidate this underwater positions and help the system to step back on its feet. 
+Liquidations is the main logic with which the system escapes RM, if one severe slash leads close to non-profitable liquidations especially for small cdp positions of 2 stETH. There would not be any incentive for liquidators to liquidate this underwater positions and help the system to step back on its feet.
 
 ## Impact Details
+
 While the issue with the slashing is not a big problem for bigger cdp positions, it can negatively affect the smaller cdp positions with minimum collateral as the liquidators are mainly dependant on the liquidator reward in order to make profit.
 
 It will be hard for the system to survive more severe slashing, as once the system hits RM and there are dozens of minimum underwater cdp positions with less than 2 stETH collateral value (based on the percent slashing), the only way out might be to either for the protocol team to manually liquidate them and take the loss or increasing the TCR via opening or repaying debt, otherwise unless the system escapes recovery mode there won't be a way to withdraw collateral from the cdp positions.
 
-- Just to clarify as a fact that slashing can negatively affect the underlying value of all cdp liquidator reward shares, take as example that a 35% slash happens, with 3.5% yearly APR the liquidator shares will need 10 years of rebasing to gain their original value back before the slashing. 
+* Just to clarify as a fact that slashing can negatively affect the underlying value of all cdp liquidator reward shares, take as example that a 35% slash happens, with 3.5% yearly APR the liquidator shares will need 10 years of rebasing to gain their original value back before the slashing.
 
 ```solidity
 // BorrowerOperations -> when closing cdp
 
         _requireNotInRecoveryMode(_getCachedTCR(price));
 ```
+
 ```solidity
 // BorrowerOperations -> when withdrawing coll with adjusting
 
@@ -95,10 +99,11 @@ It will be hard for the system to survive more severe slashing, as once the syst
 ```
 
 ## References
-https://github.com/ebtc-protocol/ebtc/blob/release-0.7/packages/contracts/contracts/BorrowerOperations.sol#L470
-https://github.com/ebtc-protocol/ebtc/blob/release-0.7/packages/contracts/contracts/LiquidationLibrary.sol#L592-#L601
+
+https://github.com/ebtc-protocol/ebtc/blob/release-0.7/packages/contracts/contracts/BorrowerOperations.sol#L470 https://github.com/ebtc-protocol/ebtc/blob/release-0.7/packages/contracts/contracts/LiquidationLibrary.sol#L592-#L601
 
 ## Proof of concept
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.17;

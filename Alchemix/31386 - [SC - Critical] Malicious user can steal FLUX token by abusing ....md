@@ -1,5 +1,4 @@
-
-# Malicious user can steal FLUX token by abusing `Voter.poke`
+# 31386 - \[SC - Critical] Malicious user can steal FLUX token by abusing ...
 
 Submitted on May 17th 2024 at 22:21:25 UTC by @jasonxiale for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,14 +11,19 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Theft of unclaimed yield
+
+* Theft of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 Malicious user can steal FLUX token by abusing `Voter.poke`
 
 ## Vulnerability Details
+
 In [Voter.poke](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L195-L212) funciton, there is not limitation how many time it can be called within one epoch, and at the end of the function, `Voter._vote` is called.
+
 ```solidity
 195     function poke(uint256 _tokenId) public {
 	...
@@ -27,9 +31,10 @@ In [Voter.poke](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f100743
 212     }
 ```
 
-In [Voter._vote](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L412-L455), `IFluxToken(FLUX).accrueFlux(_tokenId);` is calle to accrue Flux token in [Voter.sol#L423](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L423)
+In [Voter.\_vote](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L412-L455), `IFluxToken(FLUX).accrueFlux(_tokenId);` is calle to accrue Flux token in [Voter.sol#L423](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L423)
 
 And in [FluxToken.accrueFlux](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/FluxToken.sol#L188-L192), the function will check the amount of claimable flux and than update `FluxToken.unclaimedFlux`
+
 ```solidity
 187     /// @inheritdoc IFluxToken
 188     function accrueFlux(uint256 _tokenId) external {
@@ -40,6 +45,7 @@ And in [FluxToken.accrueFlux](https://github.com/alchemix-finance/alchemix-v2-da
 ```
 
 [VotingEscrow.claimableFlux](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L377-L385) is defined as:
+
 ```solidity
  377     function claimableFlux(uint256 _tokenId) public view returns (uint256) {
  378         // If the lock is expired, no flux is claimable at the current epoch
@@ -52,20 +58,20 @@ And in [FluxToken.accrueFlux](https://github.com/alchemix-finance/alchemix-v2-da
  385     }
 ```
 
-__As we can see above, `claimableFlux` only calcuate the tokenId's voting power, it doesn't record if the Flux has been claimed already.__
-So if a malicious user keep calling `Voter.poke`, his tokenId's unclaimedFlux will keeping increasing.
-
+**As we can see above, `claimableFlux` only calcuate the tokenId's voting power, it doesn't record if the Flux has been claimed already.** So if a malicious user keep calling `Voter.poke`, his tokenId's unclaimedFlux will keeping increasing.
 
 ## Impact Details
+
 Malicious user can steal FLUX token by abusing `Voter.poke`
 
 ## References
+
 Add any relevant links to documentation or code
 
-
-
 ## Proof of Concept
+
 Put the following code in `src/test/Voting.t.sol` and run
+
 ```bash
 FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/0TbY2mhyGA4gLPShfh-PwBlQ3PDNUdL1 --fork-block-number 17133822 --mc VotingTest --mt testAlicePoke -vv
 [⠊] Compiling...

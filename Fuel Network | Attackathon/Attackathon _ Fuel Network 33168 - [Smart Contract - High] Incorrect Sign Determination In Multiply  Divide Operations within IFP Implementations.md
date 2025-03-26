@@ -1,5 +1,4 @@
-
-# Incorrect Sign Determination In Multiply & Divide Operations within IFP Implementations
+# Attackathon \_ Fuel Network 33168 - \[Smart Contract - High] Incorrect Sign Determination In Multiply
 
 Submitted on Sat Jul 13 2024 08:16:13 GMT-0400 (Atlantic Standard Time) by @Minato7namikazi for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,27 +11,24 @@ Report severity: High
 Target: https://github.com/FuelLabs/sway-libs/tree/0f47d33d6e5da25f782fc117d4be15b7b12d291b
 
 Impacts:
-- Permanent freezing of funds
+
+* Permanent freezing of funds
 
 ## Description
+
 ## Brief/Intro
 
 During my audit of the IFP (signed fixed-point number) implementations in the sway-libs , this vulnerability were identified. This could lead to incorrect calculations in smart contracts relying on this implementation and cause massive losses.
 
-
 ## Vulnerability Details
-
-
 
 Incorrect Sign Determination in Multiply & Division Operations in IFP128
 
-The division operation incorrectly determines the sign of the result. 
-the current implementation uses a logical condition that is always false, resulting in division operations always producing a positive result, regardless of the signs of the operands.
+The division operation incorrectly determines the sign of the result. the current implementation uses a logical condition that is always false, resulting in division operations always producing a positive result, regardless of the signs of the operands.
 
 & the condition
 
- ```(self.non_negative && !self.non_negative) || (!self.non_negative && self.non_negative)```
-
+`(self.non_negative && !self.non_negative) || (!self.non_negative && self.non_negative)`
 
 in multiply & divide functions :
 
@@ -61,22 +57,18 @@ impl core::ops::Divide for IFP128 {
 
 is always false because it's checking if a number is both positive and negative at the same time, which is impossible
 
-
 ## Impact Details
 
- ### permanent freezing of funds
+### permanent freezing of funds
 
 because this vulnerability can lead to miscalculations in financial operations, and any mathematical computations relying on signed division like
 
 1. Incorrect token balances and transfers
 2. Potential exploitation in smart contracts dealing with debt, loans, or any negative value representations
 
-
-
-        
 ## Proof of concept
- ### Add those PoCs tests in the end of the ifp128.sw 
-  
+
+### Add those PoCs tests in the end of the ifp128.sw
 
 ```
 #[test]

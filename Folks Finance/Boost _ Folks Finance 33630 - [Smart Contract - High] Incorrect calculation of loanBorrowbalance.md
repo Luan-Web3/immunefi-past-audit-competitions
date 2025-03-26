@@ -1,5 +1,4 @@
-
-# Incorrect calculation of loanBorrow.balance
+# Boost \_ Folks Finance 33630 - \[Smart Contract - High] Incorrect calculation of loanBorrowbalance
 
 Submitted on Wed Jul 24 2024 21:31:16 GMT-0400 (Atlantic Standard Time) by @ethprotector for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,10 +11,13 @@ Report severity: High
 Target: https://testnet.snowtrace.io/address/0xf8E94c5Da5f5F23b39399F6679b2eAb29FE3071e
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
+
 ## Vulnerability Details
+
 `UserLoanLogic.calcStableBorrowBalance` is incorrect.
 
 ```
@@ -37,27 +39,21 @@ Impacts:
             );
     }
 ```
+
 In UserLoanLogic.calcStableBorrowBalance function, the second and third parameters were switched, when this function was called.
 
 As a result, loanBorrow.balance decreases over time instead of increasing.
 
 ## Impact Details
-UserLoanLogic.getLoanLiquidity function uses the incorrect function and this function is used to check loan is over-collaterised after the borrow.
-And it is used to check for the possibility of liquidation.
 
-#### Ultimately, users can repay less than the amount they borrowed and still withdraw all their collateral. 
+UserLoanLogic.getLoanLiquidity function uses the incorrect function and this function is used to check loan is over-collaterised after the borrow. And it is used to check for the possibility of liquidation.
+
+#### Ultimately, users can repay less than the amount they borrowed and still withdraw all their collateral.
 
 #### This also causes problems for liquidation.
 
-
-
-
-
-
-
-
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 ```

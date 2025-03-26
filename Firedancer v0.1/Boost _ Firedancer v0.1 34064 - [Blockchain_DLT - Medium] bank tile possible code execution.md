@@ -1,5 +1,4 @@
-
-# bank tile possible code execution
+# Boost \_ Firedancer v0.1 34064 - \[Blockchain\_DLT - Medium] bank tile possible code execution
 
 Submitted on Mon Aug 05 2024 02:31:39 GMT-0400 (Atlantic Standard Time) by @gln for [Boost | Firedancer v0.1](https://immunefi.com/bounty/firedancer-boost/)
 
@@ -12,24 +11,24 @@ Report severity: Medium
 Target: https://github.com/firedancer-io/firedancer/tree/e60d9a6206efaceac65a5a2c3a9e387a79d1d096
 
 Impacts:
-- Any sandbox escape
+
+* Any sandbox escape
 
 ## Description
+
 ## Brief/Intro
 
 Bank and poh tiles do not have checks for minimum fragment size.
 
 Also bank tile trusts the pointer it receives in fragment from pack tile.
 
-
 ## Vulnerability Details
-
 
 Several tiles do not have lower bound checks for size of incoming fragments.
 
 Let's look at the code:
 
-1) poh tile https://github.com/firedancer-io/firedancer/blob/main/src/app/fdctl/run/tiles/fd_poh.c#L1392
+1. poh tile https://github.com/firedancer-io/firedancer/blob/main/src/app/fdctl/run/tiles/fd\_poh.c#L1392
 
 ```
 static inline void
@@ -56,7 +55,7 @@ during_frag( void * _ctx,
 
 ```
 
-2) bank tile https://github.com/firedancer-io/firedancer/blob/main/src/app/fdctl/run/tiles/fd_bank.c#L107
+2. bank tile https://github.com/firedancer-io/firedancer/blob/main/src/app/fdctl/run/tiles/fd\_bank.c#L107
 
 ```
 static inline void
@@ -86,20 +85,16 @@ during_frag( void * _ctx,
 }
 ```
 
-1) there is an upper bound check for 'sz'
-
-2) in case 'sz' is less than sizeof(fd_microblock_bank_trailer_t) memcpy with very large length will be called on this line
-
+1. there is an upper bound check for 'sz'
+2. in case 'sz' is less than sizeof(fd\_microblock\_bank\_trailer\_t) memcpy with very large length will be called on this line
 
 This could possibly lead to code execution in poh/bank tiles and sandbox escape, because both of these tiles run in agave process as threads and basically have no sandbox.
 
-
-
-3) Another interesting issue is that fd_bank tile does not have any checks for 'bank' pointer.
+3. Another interesting issue is that fd\_bank tile does not have any checks for 'bank' pointer.
 
 It is being initialized from incoming fragment, see line #3 on the above code snippet.
 
-Later on this pointer is passed to  fd_ext__ rust calls:
+Later on this pointer is passed to fd\_ext\_\_ rust calls:
 
 ```
 pub extern "C" fn fd_ext_bank_pre_balance_info( bank: *const std::ffi::c_void, txns: *const std::ffi::c_void,
@@ -118,43 +113,31 @@ pub extern "C" fn fd_ext_bank_pre_balance_info( bank: *const std::ffi::c_void, t
 }
 ```
 
-1) what happens here is that Arc::increment_strong_count() increments refcount by using our bank pointer.
+1. what happens here is that Arc::increment\_strong\_count() increments refcount by using our bank pointer.
 
 This issue gives us an ability to increment the value at any address in memory, which is quite powerful primitive.
 
 It could lead to code execution in bank tile/agave process and escape out of sandbox.
 
-
 ## Impact Details
 
-Remote code execution in poh/bank tiles. Sandbox escape as these tiles are not  sandboxed.
+Remote code execution in poh/bank tiles. Sandbox escape as these tiles are not sandboxed.
 
-
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 How to reproduce:
 
-1) get firedancer source code
-
-2) to simplify the testing I've slightly modified the code
-
-3) src/app/fdctl/config.c on lines 546, 551, 653:
-change FD_LOG_ERR macro to FD_LOG_INFO
-
-4) disco/mux/fd_mux.c - comment out line 166
-
-5) fd_bank.c - change line 129 to something like " ctx->_bank = trailer->bank;ctx->_bank=(void*)0x4142434451525354;sleep(20);". Make sure to add "#include <unistd.h>" at the beginning as well.
-
-
-6) disco/mux/fd_mux.c - comment out line 608 (do not call 'continue')
-
-7) To test memcpy() issue: disco/mux/fd_mux.c - add code on line 643 "chunk=32841;sz=4;" 
-
-8) build firedancer with asan
-
-9) run bank tile:
+1. get firedancer source code
+2. to simplify the testing I've slightly modified the code
+3. src/app/fdctl/config.c on lines 546, 551, 653: change FD\_LOG\_ERR macro to FD\_LOG\_INFO
+4. disco/mux/fd\_mux.c - comment out line 166
+5. fd\_bank.c - change line 129 to something like " ctx->\_bank = trailer->bank;ctx->\_bank=(void\*)0x4142434451525354;sleep(20);". Make sure to add "#include \<unistd.h>" at the beginning as well.
+6. disco/mux/fd\_mux.c - comment out line 608 (do not call 'continue')
+7. To test memcpy() issue: disco/mux/fd\_mux.c - add code on line 643 "chunk=32841;sz=4;"
+8. build firedancer with asan
+9. run bank tile:
 
 ```
 
@@ -178,18 +161,16 @@ change FD_LOG_ERR macro to FD_LOG_INFO
  
 ```
 
-10) To test 'bank' pointer issue, edit fd_mux.c file on line 643 , change it to "chunk=32841;sz=20;" 
-
-11) run bank tile, it will fork and go to background:
+10. To test 'bank' pointer issue, edit fd\_mux.c file on line 643 , change it to "chunk=32841;sz=20;"
+11. run bank tile, it will fork and go to background:
 
 ```
 # ./build/linux/clang/x86_64/bin/fdctl run1 bank 0 --config config.toml
 
 ```
 
-12) get the pid of 'fdctl' process - "ps aux|grep fdctl" and attach to it by using gdb, enter "c" and press enter
-
-13) after some time bank tile will crash:
+12. get the pid of 'fdctl' process - "ps aux|grep fdctl" and attach to it by using gdb, enter "c" and press enter
+13. after some time bank tile will crash:
 
 ```
 Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".

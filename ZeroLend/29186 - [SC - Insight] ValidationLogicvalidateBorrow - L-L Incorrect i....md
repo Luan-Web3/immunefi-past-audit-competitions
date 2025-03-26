@@ -1,5 +1,6 @@
+# 29186 - \[SC - Insight] ValidationLogicvalidateBorrow - L-L Incorrect i...
 
-# `ValidationLogic::validateBorrow()` - L227-L231: Incorrect implementation of the intended (AAVE) protocol logic prevents all users with a health factor (HF) equal to `HEALTH_FACTOR_LIQUIDATION_THRESHOLD` from borrowing.
+## `ValidationLogic::validateBorrow()` - L227-L231: Incorrect implementation of the intended (AAVE) protocol logic prevents all users with a health factor (HF) equal to `HEALTH_FACTOR_LIQUIDATION_THRESHOLD` from borrowing.
 
 Submitted on Mar 10th 2024 at 00:25:30 UTC by @OxSCSamurai for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,21 +13,23 @@ Report severity: Insight
 Target: https://immunefi.com/
 
 Impacts:
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
-## Description
-## Brief/Intro
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+### Description
+
+### Brief/Intro
 
 `ValidationLogic::validateBorrow()` - L227-L231: Incorrect implementation of the intended (AAVE) protocol logic prevents all users with a health factor (HF) equal to `HEALTH_FACTOR_LIQUIDATION_THRESHOLD` from borrowing.
 
-## Vulnerability Details
+### Vulnerability Details
 
 Description:
 
-Users won't be able to borrow or borrow more whenever their health factor (HF) value is EQUAL to the `HEALTH_FACTOR_LIQUIDATION_THRESHOLD`. This is not a correct representation of intended protocol logic.
-Intended protocol logic makes it possible for users to borrow/borrow more whenever their `HF >= HEALTH_FACTOR_LIQUIDATION_THRESHOLD`.
+Users won't be able to borrow or borrow more whenever their health factor (HF) value is EQUAL to the `HEALTH_FACTOR_LIQUIDATION_THRESHOLD`. This is not a correct representation of intended protocol logic. Intended protocol logic makes it possible for users to borrow/borrow more whenever their `HF >= HEALTH_FACTOR_LIQUIDATION_THRESHOLD`.
 
 To add even more weight to my argument, see below where it's made clear that there are two different "minimum" HF liquidation thresholds, the absolute minimum allowed one, `0.95e18`, where immediate liquidation probably occurs for any HF value below it, and the other more healthy "minimum" HF liq threshold with a value of `1e18`:
+
 ```solidity
   // Minimum health factor allowed under any circumstance
   // A value of 0.95e18 results in 0.95
@@ -38,50 +41,46 @@ To add even more weight to my argument, see below where it's made clear that the
    */
   uint256 public constant HEALTH_FACTOR_LIQUIDATION_THRESHOLD = 1e18;
 ```
+
 There shouldn't exist any valid logical reason why `HEALTH_FACTOR_LIQUIDATION_THRESHOLD = 1e18` should be excluded as a valid minimum value as is incorrectly done in the below code snippet:
+
 ```solidity
     require(
       vars.healthFactor > HEALTH_FACTOR_LIQUIDATION_THRESHOLD,
       Errors.HEALTH_FACTOR_LOWER_THAN_LIQUIDATION_THRESHOLD
     );
 ```
+
 Here it's clear that the `require` check will revert whenever `vars.healthFactor <= HEALTH_FACTOR_LIQUIDATION_THRESHOLD` is true. The `<` is correct. It's the `=` in `<=` that's wrong, because the `HEALTH_FACTOR_LIQUIDATION_THRESHOLD` is a VALID minimum (healthy) HF value, and to exclude it like the current implementation does, is in fact completely wrong.
 
 Not only that, but check the error description: `Errors.HEALTH_FACTOR_LOWER_THAN_LIQUIDATION_THRESHOLD`. It's clear what it says, but the code implementation doesn't reflect this.
 
-## Impact Details
+### Impact Details
 
 POTENTIAL IMPACT IN SCOPE:
-- Griefing
-  -- no attacker or attack necessary, instead it's the bug itself causing griefing to the user/borrower, unfairly preventing them from borrowing when they should be able to borrow.
-  
-In case this contract is not in scope, it affects the results of at least the following contracts & functions in scope, therefore primacy of impact applies:
-`WrappedTokenGatewayV3::borrowETH()`
-and
-`Pool::flashLoan()`
-for both zksync and manta.
+
+* Griefing -- no attacker or attack necessary, instead it's the bug itself causing griefing to the user/borrower, unfairly preventing them from borrowing when they should be able to borrow.
+
+In case this contract is not in scope, it affects the results of at least the following contracts & functions in scope, therefore primacy of impact applies: `WrappedTokenGatewayV3::borrowETH()` and `Pool::flashLoan()` for both zksync and manta.
 
 IMPACTS:
-- Users won't be able to borrow or borrow more whenever their health factor (HF) value is EQUAL to the `HEALTH_FACTOR_LIQUIDATION_THRESHOLD`.
-- Some users who might check out your smart contracts will notice that your intended protocol logic should allow for borrowing in the case where `vars.healthFactor == HEALTH_FACTOR_LIQUIDATION_THRESHOLD`, but that the expected behaviour is different from the actual behaviour, where it doesn't allow this.
-- Specifically, the following functions will revert when called under above conditions, for both zksync and manta:
-  -- `WrappedTokenGatewayV3::borrowETH()`
-  -- `Pool::flashLoan()`
 
-## References
+* Users won't be able to borrow or borrow more whenever their health factor (HF) value is EQUAL to the `HEALTH_FACTOR_LIQUIDATION_THRESHOLD`.
+* Some users who might check out your smart contracts will notice that your intended protocol logic should allow for borrowing in the case where `vars.healthFactor == HEALTH_FACTOR_LIQUIDATION_THRESHOLD`, but that the expected behaviour is different from the actual behaviour, where it doesn't allow this.
+* Specifically, the following functions will revert when called under above conditions, for both zksync and manta: -- `WrappedTokenGatewayV3::borrowETH()` -- `Pool::flashLoan()`
 
-https://github.com/zerolend/core-contracts/blob/2448f46b6b472ba0f83a615f68aa8614866a8321/contracts/protocol/libraries/logic/ValidationLogic.sol#L227-L231
-https://github.com/zerolend/core-contracts/blob/2448f46b6b472ba0f83a615f68aa8614866a8321/contracts/protocol/libraries/logic/GenericLogic.sol#L172-L176
+### References
 
+https://github.com/zerolend/core-contracts/blob/2448f46b6b472ba0f83a615f68aa8614866a8321/contracts/protocol/libraries/logic/ValidationLogic.sol#L227-L231 https://github.com/zerolend/core-contracts/blob/2448f46b6b472ba0f83a615f68aa8614866a8321/contracts/protocol/libraries/logic/GenericLogic.sol#L172-L176
 
-
-## Proof of Concept
+### Proof of Concept
 
 PoC:
 
-For some reason I couldnt get the tests to work in your local github repos, so I decided to run the same tests in AAVE's github repo, which should suffice. 
+For some reason I couldnt get the tests to work in your local github repos, so I decided to run the same tests in AAVE's github repo, which should suffice.
 
 And just for your records, here is the test error I get when I try run `npm run test` or `yarn test` in your repo:
+
 ```solidity
 Generating typings for: 134 artifacts in dir: types for target: ethers-v5
 Successfully generated 296 typings!
@@ -120,16 +119,20 @@ error Command failed with exit code 1.
 info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.
 ```
 
-# THE AAVE TESTS:
+## THE AAVE TESTS:
+
 Command used for all tests: `npm run test`
 
-# TESTS:
-- Test 1: With bug not fixed
-- Test 2: With bug fixed
-- Test 3: Control test.
+## TESTS:
 
-# Test 1: 
-- With bug not fixed and explicitly passing in `vars.healthFactor = 1e18` via a slight modification in `GenericLogic::calculateUserAccountData()` - L172-L177:
+* Test 1: With bug not fixed
+* Test 2: With bug fixed
+* Test 3: Control test.
+
+## Test 1:
+
+* With bug not fixed and explicitly passing in `vars.healthFactor = 1e18` via a slight modification in `GenericLogic::calculateUserAccountData()` - L172-L177:
+
 ```solidity
     vars.healthFactor = 1e18; /// @audit added for PoC/testing purposes
     // vars.healthFactor = (vars.totalDebtInBaseCurrency == 0)
@@ -138,7 +141,9 @@ Command used for all tests: `npm run test`
     //     vars.totalDebtInBaseCurrency
     //   ); /// @audit NOTE: this is required for some of the protocol tests to execute successfully...
 ```
-# Test 1 results:
+
+## Test 1 results:
+
 ```solidity
   AToken: Mint and Burn Event Accounting
     ✔ User 1 supplies DAI
@@ -167,15 +172,19 @@ Command used for all tests: `npm run test`
     at EdrProviderWrapper.request (node_modules/hardhat/src/internal/hardhat-network/provider/provider.ts:415:41)
     at EthersProviderWrapper.send (node_modules/@nomiclabs/hardhat-ethers/src/internal/ethers-provider-wrapper.ts:13:20)
 ```
+
 In above test result with one failed test the reason string `35` is:
+
 ```solidity
 string public constant HEALTH_FACTOR_LOWER_THAN_LIQUIDATION_THRESHOLD = '35'; // 'Health factor is lesser than the liquidation threshold'
 ```
+
 I explicitly passed in a HF exactly equal to the constant `HEALTH_FACTOR_LIQUIDATION_THRESHOLD`, and the buggy require check saw this as an invalid HF.
 
 The next test was run with the bug fixed and still explicitly passing in `vars.healthFactor = 1e18` as the borrower's HF.
 
-# Test 2: with bug fixed
+## Test 2: with bug fixed
+
 ```solidity
     require(
       //vars.healthFactor > HEALTH_FACTOR_LIQUIDATION_THRESHOLD,
@@ -183,7 +192,9 @@ The next test was run with the bug fixed and still explicitly passing in `vars.h
       Errors.HEALTH_FACTOR_LOWER_THAN_LIQUIDATION_THRESHOLD
     );
 ```
-# Test 2 results (see my two @audit tags below):
+
+## Test 2 results (see my two @audit tags below):
+
 ```solidity
   AToken: Mint and Burn Event Accounting
     ✔ User 1 supplies DAI
@@ -224,13 +235,14 @@ The next test was run with the bug fixed and still explicitly passing in `vars.h
      AssertionError: Expected transaction to be reverted with reason '35', but it didn't revert
       at Context.<anonymous> (test-suites/atoken-transfer.spec.ts:228:5)
 ```
-Here the bugfixed worked, the user was able to borrow successfully >>> `✔ User 2 supplies ETH,and borrows DAI`.
-Ignore the failed test, it's expected because I commented out the code snippet necessary for this failed test to pass...
 
-# Test 3: Control test.
-- using test command: `npm run test`
-- Here I removed all my changes that I made to the codebase for testing purposes, but I left my bugfix in there, and ran all the tests again, to see if my bugfix causes any issues with any of your tests.
-The bugfix again:
+Here the bugfixed worked, the user was able to borrow successfully >>> `✔ User 2 supplies ETH,and borrows DAI`. Ignore the failed test, it's expected because I commented out the code snippet necessary for this failed test to pass...
+
+## Test 3: Control test.
+
+* using test command: `npm run test`
+* Here I removed all my changes that I made to the codebase for testing purposes, but I left my bugfix in there, and ran all the tests again, to see if my bugfix causes any issues with any of your tests. The bugfix again:
+
 ```solidity
     require(
       //vars.healthFactor > HEALTH_FACTOR_LIQUIDATION_THRESHOLD,
@@ -238,7 +250,9 @@ The bugfix again:
       Errors.HEALTH_FACTOR_LOWER_THAN_LIQUIDATION_THRESHOLD
     );
 ```
-# Test 3 test result:
+
+## Test 3 test result:
+
 ```solidity
 .
 .
@@ -267,11 +281,13 @@ The bugfix again:
 
   813 passing (3m)
 ```
+
 NO issues, all AAVE tests ran successfully with my bugfix implemented, as expected.
 
-# THE BUGFIX:
+## THE BUGFIX:
 
 `ValidationLogic::validateBorrow()` - L227-L231:
+
 ```diff
         require(
 -           vars.healthFactor > HEALTH_FACTOR_LIQUIDATION_THRESHOLD,

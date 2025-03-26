@@ -1,5 +1,4 @@
-
-# User can only trade 1 token when ERC1155 is used
+# IOP \_ ThunderNFT 34930 - \[Smart Contract - Critical] User can only trade token when ERC is used
 
 Submitted on Sun Sep 01 2024 11:13:08 GMT-0400 (Atlantic Standard Time) by @jasonxiale for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -12,26 +11,29 @@ Report severity: Critical
 Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/libraries
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-According to [discord chat history](https://discord.com/channels/787092485969150012/1271498128981495950/1273191123048988796), ERC1155 tokens are also in scope. 
-In current implementation, there is a issue than when the order maker tries to trade more than 1 tokens for assetId_X, he/she can only get 1 assetId_X token.
+
+According to [discord chat history](https://discord.com/channels/787092485969150012/1271498128981495950/1273191123048988796), ERC1155 tokens are also in scope. In current implementation, there is a issue than when the order maker tries to trade more than 1 tokens for assetId\_X, he/she can only get 1 assetId\_X token.
 
 Which will cause the user losses assets.
 
 ## Vulnerability Details
+
 I'll use `Side::Buy` order as an example.
 
-When a buyer calls [thunder_exchange.place_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L83-L109) to fill a `Side::Buy` order, he can set the amount of ERC1155 asset he wants to buy by [MakerOrderInput.amount](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/libraries/src/order_types.sw#L49).
+When a buyer calls [thunder\_exchange.place\_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L83-L109) to fill a `Side::Buy` order, he can set the amount of ERC1155 asset he wants to buy by [MakerOrderInput.amount](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/libraries/src/order_types.sw#L49).
 
-Then the seller see the order, and he will call [thunder_exchange.execute_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L181-L193) to fill a `Side::Sell` order, and at the same time, the tx will sent the specified ERC1155 token along with the tx.
-Then in `thunder_exchange._execute_sell_taker_order`, [strategy.execute_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L398) is called.
+Then the seller see the order, and he will call [thunder\_exchange.execute\_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L181-L193) to fill a `Side::Sell` order, and at the same time, the tx will sent the specified ERC1155 token along with the tx. Then in `thunder_exchange._execute_sell_taker_order`, [strategy.execute\_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L398) is called.
 
-In [strategy_fixed_price_sale.execute_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/execution_strategies/strategy_fixed_price_sale/src/main.sw#L128-L152), [ExecutionResult::s1](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/execution_strategies/strategy_fixed_price_sale/src/main.sw#L146) is called to generate an `execution_result`.
+In [strategy\_fixed\_price\_sale.execute\_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/execution_strategies/strategy_fixed_price_sale/src/main.sw#L128-L152), [ExecutionResult::s1](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/execution_strategies/strategy_fixed_price_sale/src/main.sw#L146) is called to generate an `execution_result`.
 
-As function [execution_result.s1](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/libraries/src/execution_result.sw#L16-L34) shows, **the amount is always set to 1, which causes the issue**
+As function [execution\_result.s1](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/libraries/src/execution_result.sw#L16-L34) shows, **the amount is always set to 1, which causes the issue**
+
 ```solidity
  16     pub fn s1(maker_order: MakerOrder, taker_order: TakerOrder) -> ExecutionResult {
  17         ExecutionResult {
@@ -54,17 +56,20 @@ As function [execution_result.s1](https://github.com/ThunderFuel/smart-contracts
  34     }
 ```
 
-Then back to [thunder_exchange._execute_sell_taker_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L395-L422), the function check if the amount of ERC1155 received equals to `execution_result.amount(which is set to 1 by execution_result::s1 function)` in [thunder_exchange#L404](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L404), and then sends `execution_result.amount(which is 1)` amount of ERC1155 to the buyer in [thunder_exchange#L407-L411](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L407-L411)
+Then back to [thunder\_exchange.\_execute\_sell\_taker\_order](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L395-L422), the function check if the amount of ERC1155 received equals to `execution_result.amount(which is set to 1 by execution_result::s1 function)` in [thunder\_exchange#L404](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L404), and then sends `execution_result.amount(which is 1)` amount of ERC1155 to the buyer in [thunder\_exchange#L407-L411](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/thunder_exchange/src/main.sw#L407-L411)
 
 ## Impact Details
-As the code flow shows, Alice(the buyer) fills an order to buy X amount of ERC1155 with Y amount payment asset. Bob(the seller) fill sell order for Alice's order, and Bob only need to pay 1 ERC1155 and will get all Alice's  Y amount payment asset.
+
+As the code flow shows, Alice(the buyer) fills an order to buy X amount of ERC1155 with Y amount payment asset. Bob(the seller) fill sell order for Alice's order, and Bob only need to pay 1 ERC1155 and will get all Alice's Y amount payment asset.
 
 ## References
+
 Add any relevant links to documentation or code
 
-        
 ## Proof of concept
+
 To mock ERC1155, I make a litter change in erc721's source code:
+
 ```diff
 diff --git a/contracts-v1/erc721/src/main.sw b/contracts-v1/erc721/src/main.sw
 index 3441054..92f56c7 100644
@@ -97,7 +102,8 @@ index 3441054..92f56c7 100644
                  .total_assets
 ```
 
-Then generate a Rust test template under thunder_exchange folder, and puts the following code in `thunder_exchange/tests/harness.rs` and run `cargo test  -- --nocapture`
+Then generate a Rust test template under thunder\_exchange folder, and puts the following code in `thunder_exchange/tests/harness.rs` and run `cargo test -- --nocapture`
+
 ```bash
 root@racknerd-7808ca6:~/smart-contracts/contracts-v1/thunder_exchange# cargo test  -- --nocapture
 
@@ -112,7 +118,7 @@ ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.77s
 ```
 
-In the testcase, wallet_3 fills a Buy tx and specify `2` amount of token to buy. And wallet_1 execution a Sell tx to fill wallet_3's order. And as the result shows, after the tx, wallet_3 only get `1` amount token
+In the testcase, wallet\_3 fills a Buy tx and specify `2` amount of token to buy. And wallet\_1 execution a Sell tx to fill wallet\_3's order. And as the result shows, after the tx, wallet\_3 only get `1` amount token
 
 ```Rust
 use fuels::{prelude::*, types::ContractId};

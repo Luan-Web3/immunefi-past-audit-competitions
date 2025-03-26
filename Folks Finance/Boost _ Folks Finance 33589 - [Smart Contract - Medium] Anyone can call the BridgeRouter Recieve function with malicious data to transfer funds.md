@@ -1,5 +1,4 @@
-
-# Anyone can call the BridgeRouter Recieve function with malicious data to transfer funds
+# Boost \_ Folks Finance 33589 - \[Smart Contract - Medium] Anyone can call the BridgeRouter Recieve function with malicious data to transfer funds
 
 Submitted on Wed Jul 24 2024 02:38:16 GMT-0400 (Atlantic Standard Time) by @gizzy for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,17 +11,19 @@ Report severity: Medium
 Target: https://testnet.snowtrace.io/address/0x0f91d914E058d0588Cc1bf35FA3736A627C3Ba81
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-Anyone can call the BridgeRouter Recieve function with malicious data to transfer funds. But this is only viable when theres an adapterID that is 0 
-which according to the test file had zero as an adapterID( https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/test/bridge/BridgeRouterSpoke.test.ts#L41C2-L44C62  ). This gives the possibility of having an adapterID with zero as id.
+
+Anyone can call the BridgeRouter Recieve function with malicious data to transfer funds. But this is only viable when theres an adapterID that is 0 which according to the test file had zero as an adapterID( https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/test/bridge/BridgeRouterSpoke.test.ts#L41C2-L44C62 ). This gives the possibility of having an adapterID with zero as id.
 
 ## Vulnerability Details
-There are two mapping updated when adding adapter which is idToAdapter and adapterToId . 
-In a case that there is an adapter whose id is 0 then idToAdapter of 0 will be mapping to an address .
-in the recieve function of bridge router 
+
+There are two mapping updated when adding adapter which is idToAdapter and adapterToId . In a case that there is an adapter whose id is 0 then idToAdapter of 0 will be mapping to an address . in the recieve function of bridge router
+
 ```solidity
     function receiveMessage(Messages.MessageReceived memory message) external payable override {
         // check if caller is valid adapter
@@ -57,20 +58,24 @@ in the recieve function of bridge router
         }
     }
 ```
+
 which anyone can call it makes sure that the msg.sender is an adapter by checking if adapterToId of the msg.sender will return a valid id. but since all invalid msg.sender will return 0 as id and 0 is already mapped to the a valid address it will pass and go on . this will lead to the attacker being the provide of malicious data . This can be critical if it really happen on mainnet as it can transfer protocol funds to the attacker. pointing it out because it is implemented on the test file so it possible on mainnet.
 
 ## Impact Details
-This could lead to loss of funds  and i would suggest 0 id should revert if one tries to add it as adapterid
+
+This could lead to loss of funds and i would suggest 0 id should revert if one tries to add it as adapterid
 
 ## References
+
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/test/bridge/BridgeRouterSpoke.test.ts#L41C2-L44C62
 
-
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/bridge/BridgeRouter.sol#L96C5-L98C77
-        
+
 ## Proof of concept
+
 ## Proof of Concept
-Run  ```npx hardhat test test/bridge/BridgeRouterSpoke.test.ts --grep "Should successfuly  call the router Recieve function"```
+
+Run `npx hardhat test test/bridge/BridgeRouterSpoke.test.ts --grep "Should successfuly call the router Recieve function"`
 
 ```javascript
 import { expect } from "chai";

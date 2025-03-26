@@ -1,5 +1,4 @@
-
-# DoS in shreds validation #2
+# Boost \_ Firedancer v0.1 34682 - \[Blockchain\_DLT - Medium] DoS in shreds validation
 
 Submitted on Tue Aug 20 2024 20:21:43 GMT-0400 (Atlantic Standard Time) by @Swift77057 for [Boost | Firedancer v0.1](https://immunefi.com/bounty/firedancer-boost/)
 
@@ -12,17 +11,21 @@ Report severity: Medium
 Target: https://github.com/firedancer-io/firedancer/tree/e60d9a6206efaceac65a5a2c3a9e387a79d1d096
 
 Impacts:
-- Liveness issues that cause Firedancer v0.1 validators to crash or be unavailable
+
+* Liveness issues that cause Firedancer v0.1 validators to crash or be unavailable
 
 ## Description
+
 ## Brief/Intro
+
 This is similar to report 34501, where a check in the shred tile is missing that causes the solana-labs tile to crash.
 
 ## Vulnerability Details
+
 Like in the previous report, I found another shred that causes a panic in `fd_ext_blockstore_insert_shreds`.
 
-Basically, the `parent_off` field of a data shred is not checked by fd at all.
-Setting this field to a value higher than the shred's slot triggers an error here:
+Basically, the `parent_off` field of a data shred is not checked by fd at all. Setting this field to a value higher than the shred's slot triggers an error here:
+
 ```
 fn parent(&self) -> Result<Slot, Error> {
         let slot = self.common_header().slot;
@@ -46,15 +49,17 @@ This error then causes a panic due to the unwrap in `fd_ext_blockstore_insert_sh
 Note that this bug works, even if the flags check in previous report is fixed.
 
 ## Impact Details
+
 DoS
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 Apply the patch and send the malicious shred.
 
 `patch2.diff`:
+
 ```
 diff --git a/src/app/fdctl/run/tiles/fd_shred.c b/src/app/fdctl/run/tiles/fd_shred.c
 index 193a4b3d9..a3a214a60 100644
@@ -337,6 +342,7 @@ index b2b9b55b8..2ffa1e1d2 100644
 ```
 
 `send_shred.py`
+
 ```
 import socket
 import os
@@ -355,6 +361,7 @@ with open('shred2.bin', mode='rb') as f:
 ```
 
 xxd `shred2.bin`
+
 ```
 00000000: 0200 0000 0000 0000 0000 0000 0000 0000  ................
 00000010: 0000 0000 0000 0000 0000 0000 0000 0000  ................

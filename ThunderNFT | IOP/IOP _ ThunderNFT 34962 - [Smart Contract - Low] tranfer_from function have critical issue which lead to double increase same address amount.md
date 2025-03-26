@@ -1,5 +1,4 @@
-
-# tranfer_from function have critical issue which lead to double increase same address amount
+# IOP \_ ThunderNFT 34962 - \[Smart Contract - Low] tranfer\_from function have critical issue which lead
 
 Submitted on Sun Sep 01 2024 21:59:24 GMT-0400 (Atlantic Standard Time) by @zeroK for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -12,15 +11,18 @@ Report severity: Low
 Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/pool
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
-## Brief/Intro
-the function transfer_from does not prevent setting the from and to to same address which lead to money printing, this issue exist only in transfer_from function because of incorrect implementation, more in ## Vulnerability Details 
 
+## Brief/Intro
+
+the function transfer\_from does not prevent setting the from and to to same address which lead to money printing, this issue exist only in transfer\_from function because of incorrect implementation, more in ## Vulnerability Details
 
 ## Vulnerability Details
-the transfer_from implemented as below:
+
+the transfer\_from implemented as below:
 
 ```sway
     #[storage(read, write)]
@@ -60,9 +62,8 @@ fn _transfer(from: Identity, to: Identity, asset: AssetId, amount: u64) {
 
 the scenario below can happen:
 
-- call transfer_from with to and from equal to alice.
-
-- since the balance returned before decreasing the update will be like this:
+* call transfer\_from with to and from equal to alice.
+* since the balance returned before decreasing the update will be like this:
 
 ```
 alice 100 token - 20 == 80 
@@ -72,18 +73,18 @@ last result = 20 profit
 
 ```
 
-this report is insight since the transfer_from called by thunder_exchange and the issue above does not exist.
-
+this report is insight since the transfer\_from called by thunder\_exchange and the issue above does not exist.
 
 ## Impact Details
-double increasing of user balance when from == to in transfer_from function.
+
+double increasing of user balance when from == to in transfer\_from function.
 
 ## References
-we recommend to add check below:
-`require(from != to, "revert double increase"); `
 
-        
+we recommend to add check below: `require(from != to, "revert double increase");`
+
 ## Proof of concept
+
 ## Proof of Concept
 
 check report id: 34567 for better experience:

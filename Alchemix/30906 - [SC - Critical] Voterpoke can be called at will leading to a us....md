@@ -1,5 +1,4 @@
-
-# Voter.poke() can be called at will, leading to a user accruing FLUX at an abnormal rate.
+# 30906 - \[SC - Critical] Voterpoke can be called at will leading to a us...
 
 Submitted on May 7th 2024 at 21:34:31 UTC by @dirtymic for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,13 +11,17 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Theft of unclaimed yield
+
+* Theft of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 After a user votes, they can call poke however many times they want. This accrues Flux each time it recasts their vote. Giving them access to either Ragequit and withdraw early or leave the unclaimed flux and max boost their future votes, as well as walk away with leftover Flux tokens.
 
 ## Vulnerability Details
+
 Once a user votes, they cannot vote again until the next epoch. However `Voter.poke()` can be called at any time. In the `poke` function `_vote` is called.
 
 In `_vote` there is a call to the flux token contract that accrues unclaimed Flux.
@@ -39,7 +42,7 @@ In `_vote` there is a call to the flux token contract that accrues unclaimed Flu
 ...
 ```
 
-This accrues the unclaimed Flux balance of the _tokenId by the amount of `claimableFlux` received from the VotingEscrow.sol contract
+This accrues the unclaimed Flux balance of the \_tokenId by the amount of `claimableFlux` received from the VotingEscrow.sol contract
 
 ```
 function claimableFlux(uint256 _tokenId) public view returns (uint256) {
@@ -61,18 +64,9 @@ A user can accrue Flux at an abnormal rate using `poke()`, this allows a user to
 
 A user also has the option to leave the unclaimed Flux and use it to max boost their future votes.
 
-
 ## References
-Poke:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L194-L212
-_vote:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L412-L455
-accrueFlux:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/FluxToken.sol#L187-L192
-claimableFlux:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L376-L385
 
-
+Poke: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L194-L212 \_vote: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L412-L455 accrueFlux: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/FluxToken.sol#L187-L192 claimableFlux: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L376-L385
 
 ## Proof of Concept
 

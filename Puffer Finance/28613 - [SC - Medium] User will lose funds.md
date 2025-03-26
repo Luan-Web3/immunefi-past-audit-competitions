@@ -1,5 +1,4 @@
-
-# User will lose funds
+# 28613 - \[SC - Medium] User will lose funds
 
 Submitted on Feb 22nd 2024 at 14:16:18 UTC by @shadowHunter for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,16 +11,18 @@ Report severity: Medium
 Target: https://etherscan.io/address/0xd9a442856c234a39a81a089c06451ebaa4306a72
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-In case of slashing, Lido `claimWithdrawal` will give discounted value which is lesser than expected ETH. This causes huge problem since `$.lidoLockedETH` does not account for discount, causing `totalAssets` to become higher than required.
-This indirectly causes share prices to become higher since share price increases with increased `totalAssets`
+
+In case of slashing, Lido `claimWithdrawal` will give discounted value which is lesser than expected ETH. This causes huge problem since `$.lidoLockedETH` does not account for discount, causing `totalAssets` to become higher than required. This indirectly causes share prices to become higher since share price increases with increased `totalAssets`
 
 ## Vulnerability Details
-1. Lets say User deposited 1000 StEth to Puffer Vault (I assume this will be normally done via PufferVaultMainnet)
 
+1. Lets say User deposited 1000 StEth to Puffer Vault (I assume this will be normally done via PufferVaultMainnet)
 2. Since this is first deposit, User gets 1000 shares (total asset and supply being 0)
 
 ```
@@ -31,7 +32,6 @@ function _convertToShares(uint256 assets, Math.Rounding rounding) internal view 
 ```
 
 3. Now Owner initiate withdrawal for all 1000 StETH using `initiateETHWithdrawalsFromLido` function, transferring all 1000 StEth to Lido
-
 4. This makes `$.lidoLockedETH=1000` and returns a request id say 1
 
 ```
@@ -42,7 +42,6 @@ for (uint256 i = 0; i < amounts.length; ++i) {
 ```
 
 5. Owner claims the request id using `claimWithdrawalsFromLido` function
-
 6. Slashing occurs and withdrawals get discounted by Lido (https://github.com/lidofinance/lido-dao/blob/master/contracts/0.8.9/WithdrawalQueueBase.sol#L472C8-L477C49)
 
 ```
@@ -55,7 +54,6 @@ for (uint256 i = 0; i < amounts.length; ++i) {
 ```
 
 6. Lets say due to slashing 10% got deducted which means 900 eth gets returned for the claim made in Step 5
-
 7. So `$.lidoLockedETH` is updated as 1000-900=100eth
 
 ```
@@ -70,7 +68,6 @@ receive() external payable virtual {
 ```
 
 8. `getPendingLidoETHAmount` still gives 100 since $.lidoLockedETH is still 100. Also, If we check `totalAssets`, it still gives 1000 amount (900 eth+100 steth pending) even though nothing is pending on Lido now
-
 9. This becomes a problem when next depositor deposit since if he deposits 1000 eth, he gets 1000 shares instead of 1111
 
 ```
@@ -79,15 +76,15 @@ Original:
 
 Expected:
 1000*1000/900= 1111
-``` 
+```
 
 ## Impact Details
-User will pay more for shares than required. 
+
+User will pay more for shares than required.
 
 ## Recommendation
+
 Track the delta slashing amount and deduct the same from `$.lidoLockedETH` for correct accounting
-
-
 
 ## Proof of Concept
 

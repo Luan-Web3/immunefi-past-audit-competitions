@@ -1,5 +1,4 @@
-
-# Archiver Join Limit Logic Error
+# 34349 - \[BC - High] Archiver Join Limit Logic Error
 
 Submitted on Aug 9th 2024 at 22:50:30 UTC by @Lastc0de for [Boost | Shardeum: Core](https://immunefi.com/bounty/shardeum-core-boost/)
 
@@ -12,20 +11,22 @@ Report severity: High
 Target: https://github.com/shardeum/shardus-core/tree/dev
 
 Impacts:
-- Network not being able to confirm new transactions (total network shutdown)
-- RPC API crash affecting projects with greater than or equal to 25% of the market capitalization on top of the respective layer
+
+* Network not being able to confirm new transactions (total network shutdown)
+* RPC API crash affecting projects with greater than or equal to 25% of the market capitalization on top of the respective layer
 
 ## Description
+
 ## Brief/Intro
+
 Archivers can join network without any staking. Network has a max limit for archivers to join, but shardus-core has a bug that allows more than MAX limit archiver to join the network.
 
-This bug can harm network in many ways, for example it disallows any other archiver from joining the network, or when a node wants to join/left the network, it finds a random archiver
-and requests some data from it, because a malicious actor can join it's archivers more than specified limit, it is possible that every time a node selects a random archiver that archiver is one of these malicious ones. So bad actor can return invalid data and break the network.
-Another example which i provided a POC for it, can completely disable archivers functionality to save Cycle data, so history of blockchain would be lost forever.
+This bug can harm network in many ways, for example it disallows any other archiver from joining the network, or when a node wants to join/left the network, it finds a random archiver and requests some data from it, because a malicious actor can join it's archivers more than specified limit, it is possible that every time a node selects a random archiver that archiver is one of these malicious ones. So bad actor can return invalid data and break the network. Another example which i provided a POC for it, can completely disable archivers functionality to save Cycle data, so history of blockchain would be lost forever.
 
 I will explain the problem here and provide a POC after.
 
 ## Vulnerability Details
+
 For an archiver to join the network, it should send a http request to a node. Node handles request here:
 
 _shardus-core/src/p2p/Archivers.ts_
@@ -333,12 +334,12 @@ so this record would be parsed by nodes and archivers in the network, and they w
 So i will provide a POC to add more archivers than expected, after that i will show one consequence of this bug which is blocking archivers from persisting new blocks
 
 ## Impact Details
+
 This bug could affect all validators and archivers, collectors that collect historical data and explorer which displays them..
 
 ## References
+
 Add any relevant links to documentation or code
-
-
 
 ## Proof of Concept
 
@@ -350,9 +351,7 @@ git clone git@github.com:shardeum/archive-server.git
 ```
 
 2. we want to have a network with at least 17 nodes, because **consensusRadius** is 16 for a small network and we want more nodes than this for next part of POC. Also change `forceBogonFilteringOn: false` in `src/config/index.ts` because we are running all nodes in one machine, or if you can run the blockchain in multiple machines so it is ok to not change any config. So start a network with 18 nodes for example. (one way is to follow README.ms file in shardeum repository and execute `shardus start 18`)
-
 3. After all nodes became _active_ run `cd archive-server` to go to this repository, then run `npm install && npm run prepare`
-
 4. create a file and name it `sign.js` and write below code to it
 
 _sign.js_
@@ -523,16 +522,15 @@ proxy_pass stream_archiver;
 }
 ```
 
-8. Now we have our fake archivers. execute `node join.js` to generate some public/private key and send join requests to network. When you see *max limit reached* in console you can press Ctrl+C to terminate remaining requests.
-
+8. Now we have our fake archivers. execute `node join.js` to generate some public/private key and send join requests to network. When you see _max limit reached_ in console you can press Ctrl+C to terminate remaining requests.
 9. now if you open `http://localhost:4000/archivers` in your browser, you can see many archivers are joined as active to the network.
 
-Untill now we showed how archiver join limit validation bug can not prevent archivers from joining the network.
-Now we are going to use this bug and make all archivers useless.
+Untill now we showed how archiver join limit validation bug can not prevent archivers from joining the network. Now we are going to use this bug and make all archivers useless.
 
 1. Open `http://localhost:4000/archivers` in your browser, copy two of our fake archiver publicKeys which have different port number, crate a file and name it `gossipdata.js` with following text. Replace `pkList` array items with those two publicKeys. Also open `http://localhost:4000/cycleinfo/1` in your browser and copy first item of `cycleInfo` array, and replace default value of `cycle` object in following file with it.
 
-*gossipdata.js*
+_gossipdata.js_
+
 ```javascript
 const fetch = require('node-fetch')
 const { readFileSync } = require('fs')
@@ -629,6 +627,4 @@ async function sendGossipData(keypair) {
 })()
 ```
 
-this script is sending a fake cycle value to archiver. we used two publicKey to sign it because archiver uses consensusRadius and number of active nodes to calculate how many
-archivers should sign a cycle data to be persisted. and because it is 16 and we have 18 nodes so we need two archiver to sign it.
-This script also changes `cycle.counter` to a big number for example 9999999, so from now in each block when nodes send actual cycles which has `counter` less than this value would be discarded.
+this script is sending a fake cycle value to archiver. we used two publicKey to sign it because archiver uses consensusRadius and number of active nodes to calculate how many archivers should sign a cycle data to be persisted. and because it is 16 and we have 18 nodes so we need two archiver to sign it. This script also changes `cycle.counter` to a big number for example 9999999, so from now in each block when nodes send actual cycles which has `counter` less than this value would be discarded.

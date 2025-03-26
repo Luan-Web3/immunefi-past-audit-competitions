@@ -1,5 +1,4 @@
-
-# Violator can deny his liquidation by front running it and changing the loan borrow type
+# Boost \_ Folks Finance 33670 - \[Smart Contract - Insight] Violator can deny his liquidation by front running it and changing the loan borrow type
 
 Submitted on Fri Jul 26 2024 03:25:51 GMT-0400 (Atlantic Standard Time) by @zarkk for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,14 +11,19 @@ Report severity: Insight
 Target: https://testnet.snowtrace.io/address/0x2cAa1315bd676FbecABFC3195000c642f503f1C9
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
+
 Any violator with under-collateralized loan can front run his liquidation and change borrow type (from stable to variable and vice versa) and prevent it from happening for as long as he wants/needs.
 
 ## Vulnerability Details
-When someone creates a loan, he has to specify whether he wants to borrow with stable or variable terms by setting the ```stableInterestRate``` accordingly (0 for variable, >0 for stable). In the same way, if this loan becomes under-collateralized and liquidatable, the liquidator has to has a loan of the same borrow type (variable/stable), so the debt of the violator to be transferred to him. We can see this check in ```prepareLiquidation()``` function of ```LiquidationLogic``` library here :
+
+When someone creates a loan, he has to specify whether he wants to borrow with stable or variable terms by setting the `stableInterestRate` accordingly (0 for variable, >0 for stable). In the same way, if this loan becomes under-collateralized and liquidatable, the liquidator has to has a loan of the same borrow type (variable/stable), so the debt of the violator to be transferred to him. We can see this check in `prepareLiquidation()` function of `LiquidationLogic` library here :
+
 ```solidity
 function prepareLiquidation(
         // ...
@@ -37,7 +41,9 @@ function prepareLiquidation(
         // ....
     }
 ```
-Also, Folks protocol provides the functionality to any borrower to change his borrow type for his loan by calling the ```switchBorrowType``` function in ```Hub``` contract and change from stable to variable borrowing and vice versa. We can this here :
+
+Also, Folks protocol provides the functionality to any borrower to change his borrow type for his loan by calling the `switchBorrowType` function in `Hub` contract and change from stable to variable borrowing and vice versa. We can this here :
+
 ```solidity
 function _receiveMessage(Messages.MessageReceived memory message) internal override {
         Messages.MessagePayload memory payload = Messages.decodeActionPayload(message.payload);
@@ -65,21 +71,25 @@ function _receiveMessage(Messages.MessageReceived memory message) internal overr
         }
     }
 ```
-The vulnerability arises from the fact that there is no check in the whole ```switchBorrowType``` flow that checks if the specific loan is under-collateralized.
 
-This opens the door for a critical vulnerability where a violator with an under-collateralized loan can "toggle" from stable to variable type calling ```switchBorrowType```, every time someone tries to liquidate him. As a result of front running his liquidation and switching borrow type, the validator can assure that he will never be liquidated, since his liquidation will revert on the ```BorrowTypeMismatch``` which was shown at the start of the report.
+The vulnerability arises from the fact that there is no check in the whole `switchBorrowType` flow that checks if the specific loan is under-collateralized.
+
+This opens the door for a critical vulnerability where a violator with an under-collateralized loan can "toggle" from stable to variable type calling `switchBorrowType`, every time someone tries to liquidate him. As a result of front running his liquidation and switching borrow type, the validator can assure that he will never be liquidated, since his liquidation will revert on the `BorrowTypeMismatch` which was shown at the start of the report.
 
 ## Impact Details
-This vulnerability poses a critical risk to the protocol's financial health by allowing the accumulation of bad debt. As under-collateralized loans remain open and potentially worsen without the possibility of liquidation, the protocol could amass significant uncollectable debt. Over time, this accumulation of bad debt could exceed the protocol's available assets, leading to insolvency. 
+
+This vulnerability poses a critical risk to the protocol's financial health by allowing the accumulation of bad debt. As under-collateralized loans remain open and potentially worsen without the possibility of liquidation, the protocol could amass significant uncollectable debt. Over time, this accumulation of bad debt could exceed the protocol's available assets, leading to insolvency.
 
 ## References
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/hub/Hub.sol#L277
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/hub/logic/LiquidationLogic.sol#L127
 
-        
+https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/hub/Hub.sol#L277 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/hub/logic/LiquidationLogic.sol#L127
+
 ## Proof of concept
+
 ## Proof of Concept
-Add this test in ```LoanManager.test.ts``` under ```Liquidate``` section and run ```npm run test``` : 
+
+Add this test in `LoanManager.test.ts` under `Liquidate` section and run `npm run test` :
+
 ```solidity
 it.only("Should fail to liquidate because borrower changed the borrow type just before the liquidation", async () => {
       const {

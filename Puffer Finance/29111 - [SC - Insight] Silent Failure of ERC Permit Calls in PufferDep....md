@@ -1,5 +1,4 @@
-
-# Silent Failure of ERC20 Permit Calls in PufferDepositor Contract
+# 29111 - \[SC - Insight] Silent Failure of ERC Permit Calls in PufferDep...
 
 Submitted on Mar 7th 2024 at 07:55:01 UTC by @cheatcode for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,40 +11,46 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x7276925e42f9c4054afa2fad80fa79520c453d6a
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
+
 The `swapAndDepositWithPermit1Inch` and `swapAndDepositWithPermit` functions in the `PufferDepositor` contract fail to handle errors that may occur during the execution of the ERC20 `permit` method. This method is used to obtain approval for token transfers by signing a message, instead of making a separate transaction to call the `approve` function.
 
 ## Vulnerability Details
+
 **Steps to Reproduce**:
+
 1. Deploy the `PufferDepositor` contract.
 2. Call either the `swapAndDepositWithPermit1Inch` or `swapAndDepositWithPermit` function with invalid `permit` data (e.g., expired deadline, signature mismatch, invalid nonce).
 3. Observe the contract execution.
 
-**Expected Behavior**:
-If the `permit` method fails to execute successfully, the contract should revert the transaction and provide an appropriate error message, preventing the swap operation from proceeding without the necessary token allowance.
+**Expected Behavior**: If the `permit` method fails to execute successfully, the contract should revert the transaction and provide an appropriate error message, preventing the swap operation from proceeding without the necessary token allowance.
 
-**Actual Behavior**:
-The `PufferDepositor` contract wraps the `permit` method call in a `try-catch` block, silently ignoring any errors that may occur during the execution of `permit`. As a result, the function execution continues even if the `permit` method fails, potentially leading to the swap function being called without the necessary token allowance being set.
+**Actual Behavior**: The `PufferDepositor` contract wraps the `permit` method call in a `try-catch` block, silently ignoring any errors that may occur during the execution of `permit`. As a result, the function execution continues even if the `permit` method fails, potentially leading to the swap function being called without the necessary token allowance being set.
 
 ## Impact Details
+
 Since the swap functions (like those calling 1Inch or SushiSwap) expect the contract to have permission to spend the user's tokens, the absence of such permission due to a failed `permit` call would likely cause the swap to fail.
 
 ## References
+
 Add any relevant links to documentation or code
 
 ## Mitigation
+
 The `PufferDepositor` contract should handle `permit` failures appropriately, preventing the continuation of the function if the `permit` operation fails. This can be achieved by either:
 
 1. **Remove `try-catch`**:
-   - Remove the `try-catch` block around the `permit` call, allowing any exceptions to propagate and revert the transaction if the `permit` is not successful.
-
+   * Remove the `try-catch` block around the `permit` call, allowing any exceptions to propagate and revert the transaction if the `permit` is not successful.
 2. **Explicit Error Handling**:
-   - Maintain the `try-catch` block but add logic in the `catch` block to handle the error appropriately, such as reverting the transaction with a custom error message that explains why the transaction failed.
+   * Maintain the `try-catch` block but add logic in the `catch` block to handle the error appropriately, such as reverting the transaction with a custom error message that explains why the transaction failed.
 
 **Recommended Code Change**:
+
 ```solidity
 // Simpler Approach: Remove try-catch
 ERC20Permit(address(tokenIn)).permit({
@@ -60,9 +65,6 @@ ERC20Permit(address(tokenIn)).permit({
 
 // Proceed with the swap...
 ```
-
-
-
 
 ## Proof of Concept
 

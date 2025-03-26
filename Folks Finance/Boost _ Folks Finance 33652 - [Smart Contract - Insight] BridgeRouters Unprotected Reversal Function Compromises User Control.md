@@ -1,5 +1,4 @@
-
-# BridgeRouter's Unprotected Reversal Function Compromises User Control
+# Boost \_ Folks Finance 33652 - \[Smart Contract - Insight] BridgeRouters Unprotected Reversal Function Compromises User Control
 
 Submitted on Thu Jul 25 2024 15:22:10 GMT-0400 (Atlantic Standard Time) by @A2Security for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,22 +11,21 @@ Report severity: Insight
 Target: https://testnet.snowtrace.io/address/0xa9491a1f4f058832e5742b76eE3f1F1fD7bb6837
 
 Impacts:
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
 ## Description
+
 ## Brief/Intro
 
 The `BridgeRouter` system allows unauthorized reversal of failed transactions, enabling attackers to disrupt operations and force users to incur unnecessary costs. This vulnerability could lead to financial losses, prevent legitimate transactions.
 
 ## Vulnerability Details
 
-- The reverse message functionality in the `BridgeRouter` system is designed to cancle failed cross-chain messages. Here's how it operates:
+* The reverse message functionality in the `BridgeRouter` system is designed to cancle failed cross-chain messages. Here's how it operates:
 
 1. When a message fails during execution on the destination chain, it's stored in the `BridgeRouter` contract as a failed message.
-
-2. The `reverseMessage` function in the `BridgeRouter` can be called with the _adapterId_ and _messageId_ of the failed message:
-   `
-
+2. The `reverseMessage` function in the `BridgeRouter` can be called with the _adapterId_ and _messageId_ of the failed message: \`
 3. This function retrieves the failed message, clears it from storage, and calls the `reverseMessage` function on the corresponding handler (typically the Hub contract).
 
 ```js
@@ -45,9 +43,7 @@ The `BridgeRouter` system allows unauthorized reversal of failed transactions, e
 ```
 
 4. In the Hub contract, the `_reverseMessage` function processes the reversal:
-
 5. The Hub verifies the token receipt from the original transaction and initiates a token return to the user on the source chain.
-
 6. To complete the reversal, the Hub calls back to the BridgeRouter to send a cross-chain message returning the tokens.
 
 ```js
@@ -103,19 +99,16 @@ The `BridgeRouter` system allows unauthorized reversal of failed transactions, e
 
 ```
 
-- The core issue lies in the lack of propore access control and the ability for **anyone** to call the `reverseMessage()` function in `bridgeRouter` contract for any failed messages (for allowed actions like deposit/repay ..ect), usurping the rightful decision-making power of the original message sender:
+* The core issue lies in the lack of propore access control and the ability for **anyone** to call the `reverseMessage()` function in `bridgeRouter` contract for any failed messages (for allowed actions like deposit/repay ..ect), usurping the rightful decision-making power of the original message sender:
 
 This vulnerability allows **malicious actors** to force the reversal of transactions against the wishes of the original sender This is problematic for various reasons:
 
 1. **User Autonomy**: The users who initiate cross-chain messages are the only ones who should have the authority to decide whether to retry or reverse a failed message. They have the context of their intended operation and are best positioned to make this decision. Moreover, they bear the financial consequences of both the initial transaction and any subsequent actions.
-
 2. **Financial Implications**: When a reversal is initiated, the fees for the return message are deducted from the user's balance in the BridgeRouter. This can lead to unexpected costs for the user, especially if the reversal is to a high-fee network like Ethereum mainnet.
-
 3. **Exploitation of Failed Transactions**: Even in cases where a transaction fails due to easily rectifiable issues (like slightly insufficient gas), an attacker can force a costly reversal instead of allowing a simple retry.
-
 4. **Smart Contract integration**: Contracts interacting with this system may not be designed to handle unexpected reversals, potentially leading to locked funds or corrupted contract states.
 
-- The lack of restrictions on who can call `reverseMessage()` and the absence of a mechanism to prioritize the original sender's intentions make this a **severe vulnerability** in the current system design.
+* The lack of restrictions on who can call `reverseMessage()` and the absence of a mechanism to prioritize the original sender's intentions make this a **severe vulnerability** in the current system design.
 
 ## Impact Details
 
@@ -130,16 +123,16 @@ The attacker only needs to pay gas fees on the hub chain (Avalanche), which are 
 
 ## References
 
-- **BridgeRouter.sol**
-- **Hub.sol**
-- **SpokeToken.sol**
-- **CCIPTokenAdapter.sol**
+* **BridgeRouter.sol**
+* **Hub.sol**
+* **SpokeToken.sol**
+* **CCIPTokenAdapter.sol**
 
-        
 ## Proof of concept
+
 ## Proof of Concept
-We have added a proof of concept, in foundry that forks avalanche fugi and interacts with the deployed version of the protocol in testnet.
-To run the proof of concept please add the following files under tests. Please also make sure foundry is initialized in the project, and declare the custom remapping @forge-std
+
+We have added a proof of concept, in foundry that forks avalanche fugi and interacts with the deployed version of the protocol in testnet. To run the proof of concept please add the following files under tests. Please also make sure foundry is initialized in the project, and declare the custom remapping @forge-std
 
 First FIle: `test/pocs/base_test.sol`
 
@@ -331,8 +324,8 @@ contract baseTest is Test {
 
 ```
 
-
 Second File (includes the poc): `test/pocs/forktest.t.sol`
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
@@ -367,7 +360,7 @@ contract Pocs is baseTest {
 
 ```
 
-This is the resul if we execute the test with `forge test --mt test_noAccessControlOnReverse  -vv`
+This is the resul if we execute the test with `forge test --mt test_noAccessControlOnReverse -vv`
 
 ```log
 Ran 1 test for test/pocs/forktest.t.sol:Pocs

@@ -1,5 +1,4 @@
-
-# `royalty_manager.register_royalty_info` might not work in some case
+# IOP \_ ThunderNFT 34973 - \[Smart Contract - Low] royalty\_managerregister\_royalty\_info might not work
 
 Submitted on Mon Sep 02 2024 03:53:58 GMT-0400 (Atlantic Standard Time) by @jasonxiale for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -9,18 +8,21 @@ Report type: Smart Contract
 
 Report severity: Low
 
-Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/royalty_manager
+Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/royalty\_manager
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
+
 `royalty_manager.register_royalty_info` is used to set `RoyaltyInfo` by the owner/admin of NFT token, however, in current implementation, there is an issue that when a NFT has both owner and admin, the `RoyaltyInfo` can only be set by the owner.
 
 ## Vulnerability Details
-According to [royalty_manager.register_royalty_info](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/royalty_manager/src/main.sw#L48-L81), the `RoyaltyInfo` can be set by NFT's owner or admin.
-But there is a flow in [royalty_manager#L55-L65](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/royalty_manager/src/main.sw#L55-L65), **if the NFT has an owner, and the `msg_sender` is not the owner, the function will revert even the `msg_sender` is the NFT's amdin**
+
+According to [royalty\_manager.register\_royalty\_info](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/royalty_manager/src/main.sw#L48-L81), the `RoyaltyInfo` can be set by NFT's owner or admin. But there is a flow in [royalty\_manager#L55-L65](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/royalty_manager/src/main.sw#L55-L65), **if the NFT has an owner, and the `msg_sender` is not the owner, the function will revert even the `msg_sender` is the NFT's amdin**
 
 ```solidity
  48     fn register_royalty_info(
@@ -60,16 +62,21 @@ But there is a flow in [royalty_manager#L55-L65](https://github.com/ThunderFuel/
 ```
 
 ## Impact Details
+
 If a NFT has both owner and admin, the admin can't call `royalty_manager.register_royalty_info`.
 
 ## References
+
 Add any relevant links to documentation or code
 
-        
 ## Proof of concept
+
 ## Proof of Concept
+
 ## POC
+
 1. please use the follow code as NFT contract
+
 ```Rust
 contract;
 
@@ -110,6 +117,7 @@ impl ERCOwnerAndAdmin for Contract {
 ```
 
 2. Please generate a Rust test template under `thunder_exchange` folder, and puts the following code in `thunder_exchange/tests/harness.rs` and run `cargo test -- --nocapture`
+
 ```bash
 cargo test
 
@@ -130,8 +138,7 @@ test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; 
 error: test failed, to rerun pass `--test integration_tests`
 ```
 
-As shown above, tx will revert when the `royalty_manager.register_royalty_info` is called by `wallet_3`, which is set as admin for ERCOwnerAndAdmin.
-And if the `royalty_manager.register_royalty_info` is called by `wallet_1` (which is set as owner of ERCOwnerAndAdmin), the function will not revert.
+As shown above, tx will revert when the `royalty_manager.register_royalty_info` is called by `wallet_3`, which is set as admin for ERCOwnerAndAdmin. And if the `royalty_manager.register_royalty_info` is called by `wallet_1` (which is set as owner of ERCOwnerAndAdmin), the function will not revert.
 
 ```Rust
 use fuels::{prelude::*, types::ContractId};

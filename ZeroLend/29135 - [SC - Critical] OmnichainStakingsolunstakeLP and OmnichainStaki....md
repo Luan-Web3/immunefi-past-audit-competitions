@@ -1,5 +1,4 @@
-
-# OmnichainStaking.sol:unstakeLP and OmnichainStaking.sol:unstakeToken allows anyone to unstake any token provided they own enough ZEROvp
+# 29135 - \[SC - Critical] OmnichainStakingsolunstakeLP and OmnichainStaki...
 
 Submitted on Mar 8th 2024 at 07:52:20 UTC by @jovi for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,16 +11,20 @@ Report severity: Critical
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
-- Temporary freezing of funds for at least 1 hour
-- Permanent freezing of funds
+
+* Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
+* Temporary freezing of funds for at least 1 hour
+* Permanent freezing of funds
 
 ## Description
+
 ## Brief/Intro
+
 The unstakeLP and the unstakeToken functions at the OmnichainStaking contracts allow a user to burn ZEROvp tokens in order to get back user-defined tokenIds. This enables malicious parties to unstake tokens they don't rightfully own.
 
 ## Vulnerability Details
-If we take a look at both unstaking functions, there are no checks to ensure the transaction caller has any right to that token id, rather the functions check if the caller owns enough ZEROvp token to be burnt. 
+
+If we take a look at both unstaking functions, there are no checks to ensure the transaction caller has any right to that token id, rather the functions check if the caller owns enough ZEROvp token to be burnt.
 
 ```solidity
 function unstakeLP(uint256 tokenId) external {
@@ -34,21 +37,23 @@ function unstakeLP(uint256 tokenId) external {
         tokenLocker.safeTransferFrom(address(this), msg.sender, tokenId);
     }
 ```
-This is not necessarily an issue if taken only at the OmnichainStaking contract context.
-However, considering different NFTs have different lock expiries at both the LockerToken and the LockerLP contracts, malicious parties can unstake token ids to benefit in different forms, as shown at the impact section.
+
+This is not necessarily an issue if taken only at the OmnichainStaking contract context. However, considering different NFTs have different lock expiries at both the LockerToken and the LockerLP contracts, malicious parties can unstake token ids to benefit in different forms, as shown at the impact section.
 
 ## Impact Details
+
 Users can receive tokens before their lock expiry ends by unstaking ERC-721 tokens that have earlier expiry without the authorization of their rightful owners. This leads to the freezing of user funds that can be never-ending as other people can claim before the rightful owner.
+
 ## References
+
 unstakeLP and unstakeToken functions at OmnichainStaking.sol: https://github.com/zerolend/governance/blob/main/contracts/locker/OmnichainStaking.sol#L76C5-L84C6
 
-votingPowerOf and calculatePower functions at BaseLocker.sol:
-https://github.com/zerolend/governance/blob/main/contracts/locker/BaseLocker.sol#L103C5-L116C6
-
-
+votingPowerOf and calculatePower functions at BaseLocker.sol: https://github.com/zerolend/governance/blob/main/contracts/locker/BaseLocker.sol#L103C5-L116C6
 
 ## Proof of concept
+
 Paste the following code snippet inside the test folder:
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
@@ -190,6 +195,7 @@ contract ZeroLendTest is StdInvariant, Test {
 ```
 
 Run the test with the following command:
+
 ```shell
 forge test --match-test test_poc1 -vvv
 ```

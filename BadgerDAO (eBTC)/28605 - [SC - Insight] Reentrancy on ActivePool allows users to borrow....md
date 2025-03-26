@@ -1,5 +1,4 @@
-
-# Reentrancy on ActivePool allows users to borrow greater than Max Flash Loan
+# 28605 - \[SC - Insight] Reentrancy on ActivePool allows users to borrow...
 
 Submitted on Feb 22nd 2024 at 12:24:10 UTC by @shanb1605 for [Boost | eBTC](https://immunefi.com/bounty/ebtc-boost/)
 
@@ -12,16 +11,21 @@ Report severity: Insight
 Target: https://github.com/ebtc-protocol/ebtc/blob/release-0.7/packages/contracts/contracts/ActivePool.sol
 
 Impacts:
-- Smart contract unable to operate due to lack of token funds
-- Temporary freezing of funds for at least 15 minutes
-- Bypassing Max Limit of Flash Loan amount
+
+* Smart contract unable to operate due to lack of token funds
+* Temporary freezing of funds for at least 15 minutes
+* Bypassing Max Limit of Flash Loan amount
 
 ## Description
+
 ## Brief/Intro
-The `flashLoan()` allows users to borrow collateral on Active Pool. The amount that can be borrowed is limited to `maxFlashLoan(token)` means one can borrow within the maximum limit of the amount. This limit can be bypassed with a reentrant call on the `flashLoan()` function. 
+
+The `flashLoan()` allows users to borrow collateral on Active Pool. The amount that can be borrowed is limited to `maxFlashLoan(token)` means one can borrow within the maximum limit of the amount. This limit can be bypassed with a reentrant call on the `flashLoan()` function.
 
 ## Vulnerability Details
+
 The ActivePool contract misses reentrancy protection on `flashLoan()` which leads to borrowing over the max borrow limit of the token.
+
 ```solidity
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -67,17 +71,17 @@ The ActivePool contract misses reentrancy protection on `flashLoan()` which lead
 ```
 
 ## Impact Details
+
 Bypass the max borrow amount and borrow until the Pool rans out of collateral.
 
 ## References
-MakerDao has Reentrancy Protection on the FlashLoan module:
-https://github.com/makerdao/dss-flash/blob/9d492aa6148c35f568400a1ab85cd6df43b2ccc8/src/flash.sol#L74
+
+MakerDao has Reentrancy Protection on the FlashLoan module: https://github.com/makerdao/dss-flash/blob/9d492aa6148c35f568400a1ab85cd6df43b2ccc8/src/flash.sol#L74
 
 https://github.com/makerdao/dss-flash/blob/9d492aa6148c35f568400a1ab85cd6df43b2ccc8/src/flash.sol#L137
 
-
-
 ## Proof of Concept
+
 ```solidity
 pragma solidity ^0.8.0;
 
@@ -110,5 +114,5 @@ contract FlashLoan_Receiver {
 
 * First `call_Flashloan()` is executed to borrow max amount of tokens.
 * Inside `onFlashLoan` `some_actions()` will executed to borrow again the collateral from ActivePool.
-* It sets `attack_done = true` to prevent an unbounded loop. 
+* It sets `attack_done = true` to prevent an unbounded loop.
 * Further actions will be carried out with the Flash Loan amount.

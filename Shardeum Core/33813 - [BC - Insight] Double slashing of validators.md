@@ -1,5 +1,4 @@
-
-# Double slashing of validators
+# 33813 - \[BC - Insight] Double slashing of validators
 
 Submitted on Jul 30th 2024 at 03:08:19 UTC by @Lastc0de for [Boost | Shardeum: Core](https://immunefi.com/bounty/shardeum-core-boost/)
 
@@ -12,24 +11,25 @@ Report severity: Insight
 Target: https://github.com/shardeum/shardus-core/tree/dev
 
 Impacts:
-- Direct loss of funds
+
+* Direct loss of funds
 
 ## Description
+
 ## Brief/Intro
+
 Slashing mechanism for POS blockchains is a critical feature. Its implementation must have a strong test suite.
 
-Shardeum has the concept of a penalty, to slash nodes if they have malicious behaviour. For example if a node goes offline
-while it is in active mode, and stops processing transactions, then other nodes confirm it is a lost node and apply a
-configurable penalty to that nodes staked tokens. But there is a bug in the shardeum repository which causes the network to apply a penalty 2x of configured value. So when penalty of leaving network early is
-configured to be 20% of staked value, if a validator leaves it loses 40% of its stake.
+Shardeum has the concept of a penalty, to slash nodes if they have malicious behaviour. For example if a node goes offline while it is in active mode, and stops processing transactions, then other nodes confirm it is a lost node and apply a configurable penalty to that nodes staked tokens. But there is a bug in the shardeum repository which causes the network to apply a penalty 2x of configured value. So when penalty of leaving network early is configured to be 20% of staked value, if a validator leaves it loses 40% of its stake.
 
 I will explain the cause of the bug here and provide a POC after.
 
-
 ## Vulnerability Details
+
 One way of getting a penalty is to leave network early, in the `shardeum/shardus-core` repository if a node removed because it lefts network early, a `node-left-early` event would be triggered
 
-*src/p2p/NodeList.ts*
+_src/p2p/NodeList.ts_
+
 ```typescript
 if (isNodeLeftNetworkEarly(node)) {
     const emitParams: Omit<ShardusEvent, 'type'> = {
@@ -45,7 +45,8 @@ if (isNodeLeftNetworkEarly(node)) {
 
 this event is handled in `src/shardus/index.ts` file of same repository
 
-*src/shardus/index.ts*
+_src/shardus/index.ts_
+
 ```typescript
 Self.emitter.on('node-left-early', ({ ...params }) => {
     try {
@@ -65,7 +66,8 @@ Self.emitter.on('node-left-early', ({ ...params }) => {
 
 and it calls `eventNotify` function of app which is a method that defined in another repository `shardeum/shardeum`
 
-*src/index.ts*
+_src/index.ts_
+
 ```typescript
 else if (
 eventType === 'node-left-early' &&
@@ -99,10 +101,10 @@ ShardeumFlags.enableLeftNetworkEarlySlashing
 }
 ```
 
-which calls the `injectPenaltyTX` function. `injectPenaltyTX` function creates an *internal penalty
-transactions* and puts into shardus by calling `shardus.put` function
+which calls the `injectPenaltyTX` function. `injectPenaltyTX` function creates an _internal penalty transactions_ and puts into shardus by calling `shardus.put` function
 
-*src/tx/penalty/transaction.ts*
+_src/tx/penalty/transaction.ts_
+
 ```typescript
 export async function injectPenaltyTX(
   shardus: Shardus,
@@ -190,11 +192,10 @@ export async function injectPenaltyTX(
 }
 ```
 
-`shardus.put` is defined in the `shardeum/shardus-core` repository and it validates and sends transactions to
-queue for execution. After the queue, transactions are passed to the `apply` function in the `shardeum/shardeum` repository for execution. `apply` function would pass the created *internal* transaction to the `applyInternalTx` function.
+`shardus.put` is defined in the `shardeum/shardus-core` repository and it validates and sends transactions to queue for execution. After the queue, transactions are passed to the `apply` function in the `shardeum/shardeum` repository for execution. `apply` function would pass the created _internal_ transaction to the `applyInternalTx` function.
 
+_src/index.ts_
 
-*src/index.ts*
 ```typescript
 async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates, originalAppData) {
       //@ts-ignore
@@ -215,7 +216,8 @@ async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates, origin
 
 and `applyInternalTx` function would pass it to `applyPenaltyTx` function
 
-*src/index.ts*
+_src/index.ts_
+
 ```typescript
 async function applyInternalTx(
   tx: InternalTx,
@@ -231,9 +233,10 @@ async function applyInternalTx(
 }
 ```
 
-this `applyPenaltyTx` function calculated amount of penalty, and calls `applyPenalty` function to apply *penaltyAmount* to validator account.
+this `applyPenaltyTx` function calculated amount of penalty, and calls `applyPenalty` function to apply _penaltyAmount_ to validator account.
 
-*src/tx/penalty/transaction.ts*
+_src/tx/penalty/transaction.ts_
+
 ```typescript
 export async function applyPenaltyTX(
   shardus,
@@ -257,7 +260,8 @@ export async function applyPenaltyTX(
 
 `applyPenalty` function does some calculations and some modifications
 
-*src/tx/penalty/penaltyFunctions.ts*
+_src/tx/penalty/penaltyFunctions.ts_
+
 ```typescript
 export function applyPenalty(
   nodeAccount: NodeAccount2,
@@ -289,7 +293,7 @@ export function applyPenalty(
 }
 ```
 
-root cause of this bug is because *penalty* is reduced from stake of validator account here
+root cause of this bug is because _penalty_ is reduced from stake of validator account here
 
 ```typescript
 operatorEOA.operatorAccountInfo.stake -= penalty
@@ -297,13 +301,12 @@ operatorEOA.operatorAccountInfo.stake -= penalty
 nodeAccount.stakeLock -= penalty
 ```
 
-so if other parts of application wants to do some calculation based on original stake,
-it is so easy to mistake this *stake* field by original stake of validator, **which is happened in unstake transaction**.
+so if other parts of application wants to do some calculation based on original stake, it is so easy to mistake this _stake_ field by original stake of validator, **which is happened in unstake transaction**.
 
-Again in `apply` function of `shardeum/shardeum` repository, we have below implementation for
-unstake transaction
+Again in `apply` function of `shardeum/shardeum` repository, we have below implementation for unstake transaction
 
-*src/index.ts*
+_src/index.ts_
+
 ```typescript
 async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates, originalAppData) {
 ...
@@ -373,20 +376,22 @@ async apply(timestampedTx: ShardusTypes.OpaqueTransaction, wrappedStates, origin
 }
 ```
 
-It sets *stake* variable to current stake value, *penalty* variable to current penalty value, and when it calculates *newBalance* it reduces penalty from stake, **AGAIN**.
+It sets _stake_ variable to current stake value, _penalty_ variable to current penalty value, and when it calculates _newBalance_ it reduces penalty from stake, **AGAIN**.
 
 ## Impact Details
+
 This bug could affect direct loss for any validator
 
 ## References
+
 Add any relevant links to documentation or code
 
-
-
 ## Proof of Concept
-To see how the validator penalty applies twice  we have to run a network. Almost all of what we do below is from README of different repositories of shardeum. If you have a running network just make sure step 3 and 4 is configured and skip to step 16.
+
+To see how the validator penalty applies twice we have to run a network. Almost all of what we do below is from README of different repositories of shardeum. If you have a running network just make sure step 3 and 4 is configured and skip to step 16.
 
 1. clone repositories
+
 ```bash
 git clone --depth=1 git@github.com:shardeum/shardeum.git
 git clone --depth=1 git@github.com:shardeum/json-rpc-server.git rpc
@@ -394,10 +399,9 @@ git clone --depth=1 https://github.com/shardeum/validator-dashboard.git validato
 git clone --depth=1 https://github.com/shardeum/validator-dashboard.git validator02
 ```
 
-2. install metamask on your browser and create two accounts validator01, validator02.
-Copy their address and open `shardeum/src/config/genesis.json` and append them to the list of genesis accounts.
-
+2. install metamask on your browser and create two accounts validator01, validator02. Copy their address and open `shardeum/src/config/genesis.json` and append them to the list of genesis accounts.
 3. open `shardeum/src/config/index.ts` and change below values
+
 ```js
     cycleDuration: 30,
     baselineNodes: 10, // this is to allow network to process transactions with 10 not 300 node, thanks to Schnilch at discord
@@ -407,6 +411,7 @@ Copy their address and open `shardeum/src/config/genesis.json` and append them t
 ```
 
 4. open `shardeum/src/shardeum/shardeumFlags.ts` and change below values
+
 ```js
     penaltyPercent: 0.2, // it means 20% penalty to stake
     blockProductionRate: 3,
@@ -416,8 +421,9 @@ Copy their address and open `shardeum/src/config/genesis.json` and append them t
 
 5. go to the `shardeum` folder and execute `npm install && npm prepare`
 6. install shardus command line tool with `npm install -g shardus && npm update @shardus/archiver`
-7. start a local network by `shardus start 10`. it spins up a network with 10 nodes and an archiver. run `shardus pm2 logs` and wait until all 10 nodes are in *active* mode.
-8. Now we have to run our validator and stake some SHM. go to `validator01` folder and change *docker-compose.yaml* to
+7. start a local network by `shardus start 10`. it spins up a network with 10 nodes and an archiver. run `shardus pm2 logs` and wait until all 10 nodes are in _active_ mode.
+8. Now we have to run our validator and stake some SHM. go to `validator01` folder and change _docker-compose.yaml_ to
+
 ```yaml
 version: '3.4'
 
@@ -436,8 +442,8 @@ services:
 ```
 
 9. create a hashed password with `echo password | openssl dgst -sha256 -r` (which is what installer.sh does)
-
 10. add a `.env` file with below content (replace 192.168.1.100 with your computer ip, and replace DASHPASS value with previous step output)
+
 ```env
 EXT_IP=auto
 INT_IP=auto
@@ -570,6 +576,7 @@ tail -f /dev/null
 ```
 
 12. replace Dockerfile content with below text
+
 ```
 FROM ghcr.io/shardeum/server:latest
 
@@ -586,36 +593,30 @@ COPY --chown=node:node . .
 CMD ["./entrypoint.sh"]
 ```
 
-13. apply step 8 to 12 in `validator02` folder, only in `docker-compose.yml` file instead of *validator01* use *validator02*
-
-14. Now we have to run a json-rpc-server. To do so go to the `rpc` folder and open `archiverConfig.json` and change *ip* to `192.168.1.100` (or your computer ip address) and run `docker compose up`. It should run and connect to the archive node without problem.
-
-15. Now go to the `validator01` folder and start validator by `docker compose up`. After a while you would see *done* output and can open the dashboard in your browser at `https://localhost:9030`. Then login with your password and go to the Maintenance tab.
-
-16. In the validator01 dashboard, click on Start button to start validator node. After a few seconds in the terminal that you executed `shardus pm2 logs` there must be a *standby* node which is this *validator01* that we started.
-
+13. apply step 8 to 12 in `validator02` folder, only in `docker-compose.yml` file instead of _validator01_ use _validator02_
+14. Now we have to run a json-rpc-server. To do so go to the `rpc` folder and open `archiverConfig.json` and change _ip_ to `192.168.1.100` (or your computer ip address) and run `docker compose up`. It should run and connect to the archive node without problem.
+15. Now go to the `validator01` folder and start validator by `docker compose up`. After a while you would see _done_ output and can open the dashboard in your browser at `https://localhost:9030`. Then login with your password and go to the Maintenance tab.
+16. In the validator01 dashboard, click on Start button to start validator node. After a few seconds in the terminal that you executed `shardus pm2 logs` there must be a _standby_ node which is this _validator01_ that we started.
 17. Open Metamask and add a new network
 
-| Field | Details |
-| ---      | ---      |
-| Network Name   | Shardeum Atomium |
-| New RPC URL | <http://localhost:8080> |
-| Chain ID   | 8082 |
-| Currency Symbol | SHM |
-| Block Explorer URL (optional) | none or <http://localhost:6001/> |
+| Field                         | Details                                                  |
+| ----------------------------- | -------------------------------------------------------- |
+| Network Name                  | Shardeum Atomium                                         |
+| New RPC URL                   | [http://localhost:8080](http://localhost:8080)           |
+| Chain ID                      | 8082                                                     |
+| Currency Symbol               | SHM                                                      |
+| Block Explorer URL (optional) | none or [http://localhost:6001/](http://localhost:6001/) |
 
-18. Now change your metamask network to *Shardeum Atomium* and you must be able to see values that we set for *validator01* and *validator02* accounts in the `genesis.json` as balances of these accounts.
-
-19. In the Maintenance tab of validator01 dashboard, click add stake. It opens Metamask, connects *validator01* account then set for example 100 as stake value, click on add stake again and confirm transaction in Metamask, when the transaction confirmed node goes to *sync* mode and after a while, it goes to *active*!. You can see in Metamask that the account now has a send transaction of 100 and its balance is reduced by ~101 tokens, that 1 is because of the fee. In `shardus pm2 logs` we can see after a few seconds, the network kicks an old node and resizes its active size to be 10 which is cool. And the removed node would go to *standby* mode.
-
+18. Now change your metamask network to _Shardeum Atomium_ and you must be able to see values that we set for _validator01_ and _validator02_ accounts in the `genesis.json` as balances of these accounts.
+19. In the Maintenance tab of validator01 dashboard, click add stake. It opens Metamask, connects _validator01_ account then set for example 100 as stake value, click on add stake again and confirm transaction in Metamask, when the transaction confirmed node goes to _sync_ mode and after a while, it goes to _active_!. You can see in Metamask that the account now has a send transaction of 100 and its balance is reduced by \~101 tokens, that 1 is because of the fee. In `shardus pm2 logs` we can see after a few seconds, the network kicks an old node and resizes its active size to be 10 which is cool. And the removed node would go to _standby_ mode.
 20. stop validator01 docker container to simulate an early left node. After a few seconds in `shardus pm2 logs` you should see active nodes become 9 again.
-
-21. Now go to the `validator02` folder and start it like validator01, go to its dashboard, stake some token and wait for the node to go to *active* mode. We add this seconds validator so network can process our unstake transaction. network size must be at least 10 to process application transactions. Although there is a standby node which started by `shardus start 10` but it does not go to *active* mode again, i think because it does not stake anything. Anyway, now that we have 10 active node again, we can send an unstake transaction to the network.
-
+21. Now go to the `validator02` folder and start it like validator01, go to its dashboard, stake some token and wait for the node to go to _active_ mode. We add this seconds validator so network can process our unstake transaction. network size must be at least 10 to process application transactions. Although there is a standby node which started by `shardus start 10` but it does not go to _active_ mode again, i think because it does not stake anything. Anyway, now that we have 10 active node again, we can send an unstake transaction to the network.
 22. go to `validator01` folder and execute this command
+
 ```bash
 RPC_SERVER_URL=http://localhost:8080 node ./cli/build/src/index.js unstake
 ```
+
 it asks for a private key, go to Metamask and open validator01 account and copy it's private key, and paste it here.
 
 23. After transaction confirmed you can see in Metamask that instead of 80, 60 tokens are returned to your account. Which is 40% penalty.

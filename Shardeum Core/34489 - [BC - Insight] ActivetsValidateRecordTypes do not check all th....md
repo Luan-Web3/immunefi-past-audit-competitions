@@ -1,5 +1,4 @@
-
-# `Active.ts::ValidateRecordTypes` do not check all the types
+# 34489 - \[BC - Insight] ActivetsValidateRecordTypes do not check all th...
 
 Submitted on Aug 14th 2024 at 00:37:23 UTC by @gladiator111 for [Boost | Shardeum: Core](https://immunefi.com/bounty/shardeum-core-boost/)
 
@@ -12,16 +11,21 @@ Report severity: Insight
 Target: https://github.com/shardeum/shardus-core/tree/dev
 
 Impacts:
-- Shutdown of greater than 10% or equal to but less than 30% of network processing nodes without brute force actions, but does not shut down the network
+
+* Shutdown of greater than 10% or equal to but less than 30% of network processing nodes without brute force actions, but does not shut down the network
 
 ## Description
+
 ## Brief/Intro
-` Note - This is an insight report, since there is no option to submit an insight, I am submitting it under low impact, kindly downgrade to insight from low.`                                                      
+
+`Note - This is an insight report, since there is no option to submit an insight, I am submitting it under low impact, kindly downgrade to insight from low.`
 
 `Active.ts::ValidateRecordTypes` miss out on checking some of the types
 
 ## Vulnerability Details
+
 In the function `Active.ts::ValidateRecordTypes`
+
 ```typescript
 export function validateRecordTypes(rec: P2P.ActiveTypes.Record): string {
   let err = validateTypes(rec, {
@@ -39,8 +43,9 @@ export function validateRecordTypes(rec: P2P.ActiveTypes.Record): string {
   return ''
 }
 ```
-The above function checks only for `active`, `activated` and `activatedPublicKeys` and their subelements (in case of arrays).
-The `rec: P2P.ActiveTypes.Record` type consists of 5 elements. These types are as follows
+
+The above function checks only for `active`, `activated` and `activatedPublicKeys` and their subelements (in case of arrays). The `rec: P2P.ActiveTypes.Record` type consists of 5 elements. These types are as follows
+
 ```typescript
 export interface Record {
     active: number;
@@ -50,10 +55,13 @@ export interface Record {
     maxSyncTime: number;
 }
 ```
-  `standby` and `maxSyncTime` types are never checked. This can cause problems of type mismatch. The recommendation for correcting it is as follows.
+
+`standby` and `maxSyncTime` types are never checked. This can cause problems of type mismatch. The recommendation for correcting it is as follows.
 
 ## Recommendation
+
 Modify the function as follows
+
 ```typescript
 export function validateRecordTypes(rec: P2P.ActiveTypes.Record): string {
   let err = validateTypes(rec, {
@@ -75,15 +83,17 @@ export function validateRecordTypes(rec: P2P.ActiveTypes.Record): string {
 ```
 
 ## Impact Details
+
 It comes under `security best practices` of insight report
 
 ## References
+
 https://github.com/shardeum/shardus-core/blob/72fba67d3a551f21368c8b0fe94f951c8f5cc4f8/src/p2p/Active.ts#L137
 
-
-
 ## Proof of Concept
+
 The issue is fairly simple and is `insight`, so I am providing only the necessary info for proof of concept.
+
 ```typescript
 export function validateRecordTypes(rec: P2P.ActiveTypes.Record): string {
 @>let err = validateTypes(rec, {                     // no checking for standby and maxSyncTime
@@ -101,7 +111,9 @@ export function validateRecordTypes(rec: P2P.ActiveTypes.Record): string {
   return ''
 }
 ```
+
 The above function is used by various other functions such as `CycleCreator.ts::validateCertsRecordTypes`, so it is fairly crucial
+
 ```typescript
 function validateCertsRecordTypes(inp, caller) {
   let err = utils.validateTypes(inp, { certs: 'a', record: 'o' })

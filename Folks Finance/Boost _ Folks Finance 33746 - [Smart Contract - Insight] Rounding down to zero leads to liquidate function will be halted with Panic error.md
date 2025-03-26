@@ -1,5 +1,4 @@
-
-# Rounding down to zero leads to liquidate function will be halted with Panic error.
+# Boost \_ Folks Finance 33746 - \[Smart Contract - Insight] Rounding down to zero leads to liquidate function will be halted with Panic error
 
 Submitted on Sun Jul 28 2024 06:45:59 GMT-0400 (Atlantic Standard Time) by @ICP for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,13 +11,17 @@ Report severity: Insight
 Target: https://testnet.snowtrace.io/address/0xc1FBF54B25816B60ADF322d8A1eaCA37D9A50317
 
 Impacts:
-- Permanent freezing of funds
+
+* Permanent freezing of funds
 
 ## Description
+
 ## Brief/Intro
-Rounding down to zero leads to panic error in Virutal Machine and halts the liquidate functionality there is no check to whether the collateralAdjustFactor is higher than borrowAdjustFactor before operation in `calcMaxRepayBorrowValue()` 
+
+Rounding down to zero leads to panic error in Virutal Machine and halts the liquidate functionality there is no check to whether the collateralAdjustFactor is higher than borrowAdjustFactor before operation in `calcMaxRepayBorrowValue()`
 
 ## Vulnerability Details
+
 Function `executeLiquidate()` will be called to initiate the liquidation process and calls the `getMaxRepayBorrowValue()`.In order to get the maximum Repay borrow value from the user loans and types.
 
 ```solidity
@@ -35,7 +38,7 @@ Function `executeLiquidate()` will be called to initiate the liquidation process
         }
 ```
 
-In `getMaxRepayBorrowValue()`  calls `calcMaxRepayBorrowValue()` function to determine max repay value by factor of Adjusted collateral Factor and Adjusted Borrow Factor in below we can see the code :-
+In `getMaxRepayBorrowValue()` calls `calcMaxRepayBorrowValue()` function to determine max repay value by factor of Adjusted collateral Factor and Adjusted Borrow Factor in below we can see the code :-
 
 ```solidity
     function calcMaxRepayBorrowValue(
@@ -62,31 +65,24 @@ In `getMaxRepayBorrowValue()`  calls `calcMaxRepayBorrowValue()` function to det
 
 In above code we can confirm how the adjusted factor determined and leads to division by zero value.
 
+Scenario :- If loan pool is created by the following valid values Scenario
 
+1. liquidationBonus = 5000 (50% 0.5e4) 2.BorrowFactor = 10000 (100% 1e4) 3.CollateralFactor = 8000 (80 % 0.8 ) 4.LoanTargetHealth = 10000 (100 % 1e4)
 
-Scenario :-
-If loan pool is created by the following valid values 
-Scenario 
- 1. liquidationBonus = 5000 (50% 0.5e4)
- 2.BorrowFactor = 10000 (100% 1e4)
- 3.CollateralFactor = 8000 (80 %  0.8 )
- 4.LoanTargetHealth = 10000 (100 % 1e4)
-
-The pool which is created as liquidationBonus value will 50% to incentive the liquidators to acquire the default loans and others values(BF, CF and LoanTargetHealth) are default.
-(Note : LiquidationBonus can be <1e4).
-
+The pool which is created as liquidationBonus value will 50% to incentive the liquidators to acquire the default loans and others values(BF, CF and LoanTargetHealth) are default. (Note : LiquidationBonus can be <1e4).
 
 Evalution :-
 
 1. (borrowAdjustFactor - collateralAdjustFactor) = 0.66666 (Rounds to Zero)
 
-2 . maxRepayBorrowValue =((effectiveBorrowValueTarget - violatorLiquidity.effectiveCollateralValue) * MathUtils.ONE_4_DP) /
-         (borrowAdjustFactor - collateralAdjustFactor)// Division by zero halted
+2 . maxRepayBorrowValue =((effectiveBorrowValueTarget - violatorLiquidity.effectiveCollateralValue) \* MathUtils.ONE\_4\_DP) / (borrowAdjustFactor - collateralAdjustFactor)// Division by zero halted
 
 ## Impact Details
-The pool will be created in the above values will leads to prevent the liquidators to acquire the default loans and funds will permanently stuck in the on-chain only , the above values will make Adjusted collateral value is greater than Adjusted Borrow value and 
+
+The pool will be created in the above values will leads to prevent the liquidators to acquire the default loans and funds will permanently stuck in the on-chain only , the above values will make Adjusted collateral value is greater than Adjusted Borrow value and
 
 ## Recommendation
+
 Add The check whether the collateralAdjustFactor is higher than borrowAdjustFactorbefore division in `calcMaxRepayBorrowValue()` function and add default value to division instead of Zero.
 
 ```solidity
@@ -95,15 +91,17 @@ Add The check whether the collateralAdjustFactor is higher than borrowAdjustFact
         DefaultFactor; // @audit check here.
   }
 ```
+
 We hope this error will cause loss of funds if any query please ping me.
 
 ## Code snippet
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LoanManagerLogic.sol#L457
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LiquidationLogic.sol#L168C9-L168C28
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LiquidationLogic.sol#L284C1-L290C59
-        
+
+https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LoanManagerLogic.sol#L457 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LiquidationLogic.sol#L168C9-L168C28 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LiquidationLogic.sol#L284C1-L290C59
+
 ## Proof of concept
+
 ## Proof of Concept
+
 We would recommend That paste the below code in test/hub/foo.test.ts
 
 And run this command `npx hardhat test test/hub/foo.test.ts`.
@@ -478,6 +476,7 @@ library LiquidationLogic {
 ```
 
 OutPut :-
+
 ```
   1) Liquidate Fails if the Collateral Factor is greater than Borrow Factor
        Should successfully liquidate stable borrow when seizing new borrow and collateral:
@@ -494,6 +493,6 @@ OutPut :-
 
 ```
 
-In Above output we can confirm that Liquidation functionality will be halted because of the Division by Zero because of calculation of the `maxRepayBorrowValue`  will rounded down to Zero. Both StableBorrow and VariableBorrow will cause the panic Error.
+In Above output we can confirm that Liquidation functionality will be halted because of the Division by Zero because of calculation of the `maxRepayBorrowValue` will rounded down to Zero. Both StableBorrow and VariableBorrow will cause the panic Error.
 
 We recommend to search the key `@audit` in poc to see the changes.

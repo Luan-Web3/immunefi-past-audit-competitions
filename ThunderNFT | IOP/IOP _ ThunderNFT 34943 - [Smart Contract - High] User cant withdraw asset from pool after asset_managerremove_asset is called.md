@@ -1,5 +1,4 @@
-
-# User can't withdraw asset from pool after `asset_manager.remove_asset` is called
+# IOP \_ ThunderNFT 34943 - \[Smart Contract - High] User cant withdraw asset from pool after asset\_mana
 
 Submitted on Sun Sep 01 2024 16:12:44 GMT-0400 (Atlantic Standard Time) by @jasonxiale for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -12,17 +11,21 @@ Report severity: High
 Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/pool
 
 Impacts:
-- Permanent freezing of funds
+
+* Permanent freezing of funds
 
 ## Description
-## Brief/Intro
-`asset_manager.add_asset` and `asset_manager.remove_asset` are used to control which asset are allowed in the pool. 
-And when `pool.deposit` and `pool.withdraw` are called, the functions checks if the assetId is supported by `asset_manager.is_asset_supported`.
 
-However there is an issue that after `asset_manager.remove_asset` is called, the  corresponding asset in the pool can't be withdrawn.
+## Brief/Intro
+
+`asset_manager.add_asset` and `asset_manager.remove_asset` are used to control which asset are allowed in the pool. And when `pool.deposit` and `pool.withdraw` are called, the functions checks if the assetId is supported by `asset_manager.is_asset_supported`.
+
+However there is an issue that after `asset_manager.remove_asset` is called, the corresponding asset in the pool can't be withdrawn.
 
 ## Vulnerability Details
+
 As shown in [pool.withdraw](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/pool/src/main.sw#L105-L124), when a user calls the function to withdraw asset, the function will check if the asset is supported in [pool#L112](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/pool/src/main.sw#L112), and if not, the function will revert.
+
 ```Rust
 105     fn withdraw(asset: AssetId, amount: u64) {
 106         let sender = msg_sender().unwrap();
@@ -47,18 +50,22 @@ As shown in [pool.withdraw](https://github.com/ThunderFuel/smart-contracts/blob/
 ```
 
 ## Impact Details
+
 Please consider a case that:
-1. the asset_manager's owner calls `asset_manager.add_asset` to add assetId_x
+
+1. the asset\_manager's owner calls `asset_manager.add_asset` to add assetId\_x
 2. Alice deposit some `assetId_x` by calling `pool.deposit`
-3. after a while, the asset_manager's owner calls `asset_manager.remove_asset` to remove the assetId_x
-4. When Alice calls `pool.withdraw` to withdraw her assetId_x, the function will revert in [pool#L112](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/pool/src/main.sw#L112)
+3. after a while, the asset\_manager's owner calls `asset_manager.remove_asset` to remove the assetId\_x
+4. When Alice calls `pool.withdraw` to withdraw her assetId\_x, the function will revert in [pool#L112](https://github.com/ThunderFuel/smart-contracts/blob/260c9859e2cd28c188e8f6283469bcf57c9347de/contracts-v1/pool/src/main.sw#L112)
 
 ## References
+
 Add any relevant links to documentation or code
 
-        
 ## Proof of concept
+
 ## Proof of Concept
+
 Please generate a Rust test template under `thunder_exchange` folder, and puts the following code in `thunder_exchange/tests/harness.rs` and run `cargo test -- --nocapture`
 
 ```bash

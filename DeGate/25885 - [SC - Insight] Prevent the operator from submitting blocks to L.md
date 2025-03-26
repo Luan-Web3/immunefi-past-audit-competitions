@@ -1,7 +1,6 @@
+# 25885 - \[SC - Insight] Prevent the operator from submitting blocks to L
 
-# Prevent the operator from submitting blocks to L1.
-
-Submitted on Nov 20th 2023 at 22:28:23 UTC by @infosec_us_team for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
+Submitted on Nov 20th 2023 at 22:28:23 UTC by @infosec\_us\_team for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
 Report ID: #25885
 
@@ -12,8 +11,9 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x9C07A72177c5A05410cA338823e790876E79D73B#code
 
 Impacts:
-- Permanent freezing of funds in the Default Deposit Contract that is less than 2,500,000 USD.
-- Force DeGate into Exodus Mode
+
+* Permanent freezing of funds in the Default Deposit Contract that is less than 2,500,000 USD.
+* Force DeGate into Exodus Mode
 
 ## Description
 
@@ -31,24 +31,26 @@ The attack vector causes the following impact:
 
 The severity is `High` under the following impacts:
 
-- Force DeGate into Exodus Mode
-- Permanent freezing of funds in the Default Deposit Contract that is less than 2,500,000 USD
+* Force DeGate into Exodus Mode
+* Permanent freezing of funds in the Default Deposit Contract that is less than 2,500,000 USD
 
 ## Background
 
 DeGate supports External Owned Accounts (EOA) and Contract Accounts (CA). The only requirement is that the EVM account must have at least one transfer-in or transfer-out record.
-> As a reference: https://docs.degate.com/v/product_en/main-features/account-registration#account-registration-criteria
 
-There are two forms of signatures in DeGate:
-type == 0: EDDSA signature, verified in circuit 
-type == 1: ECDSA signature, verified within the ExchangeV3 smart contract
+> As a reference: https://docs.degate.com/v/product\_en/main-features/account-registration#account-registration-criteria
+
+There are two forms of signatures in DeGate: type == 0: EDDSA signature, verified in circuit type == 1: ECDSA signature, verified within the ExchangeV3 smart contract
+
 > Reference: `/loopring_v3/circuit/Circuits/AccountUpdateCircuit.h` line #48
 
 The DeGate protocol supports 3 types of ECDSA signature and verification methods:
-1. Open signature (ETH_Sign)
+
+1. Open signature (ETH\_Sign)
 2. Structured signature (EIP-712)
 3. Smart contract support (EIP-1271)
-> Reference: https://docs.degate.com/v/product_en/concepts/secret-key-and-signatures#ecdsa-signature-types
+
+> Reference: https://docs.degate.com/v/product\_en/concepts/secret-key-and-signatures#ecdsa-signature-types
 
 The node verifies off-chain both the ECDSA signature and the EdDSA signature simultaneously. The circuit verifies only the EdDSA signature, while the smart contract only verifies the ECDSA signature.
 
@@ -75,7 +77,9 @@ function requireAuthorizedTx(
     }
 }
 ```
+
 In `txHash.verifySignature(...)` if the signer is a smart contract, the `verifyERC1271Signature(...)` function will be used to check the signature.
+
 ```javascript
 function verifySignature(
     bytes32        signHash,
@@ -110,13 +114,12 @@ Below, we'll share how to fully prevent this and other attack vectors we may hav
 
 To safely support contract accounts, we have to modify the `requireAuthorizedTx(...)` function as follows:
 
-**Step 1-** Verify if the `signer` param is a smart contract.
-**Step 2-** If it is a smart contract, skip signature verification and require for the transaction to be approved instead, using `require(S.approvedTx[signer][txHash], "TX_NOT_APPROVED");`
-**Step 3-** If is not a smart contract, proceed with the signature verification as usual.
+**Step 1-** Verify if the `signer` param is a smart contract. **Step 2-** If it is a smart contract, skip signature verification and require for the transaction to be approved instead, using `require(S.approvedTx[signer][txHash], "TX_NOT_APPROVED");` **Step 3-** If is not a smart contract, proceed with the signature verification as usual.
 
-This is safe, because once a smart contract has approved a tx in the `approvedTx[signer][txHash]`, he can't remove this approval until the transaction is executed by the node operator. 
+This is safe, because once a smart contract has approved a tx in the `approvedTx[signer][txHash]`, he can't remove this approval until the transaction is executed by the node operator.
 
 Permanently fixed function:
+
 ```javascript
 // 0- Import AddressUtil lib
 using AddressUtil for address;
@@ -150,8 +153,6 @@ function requireAuthorizedTx(
 }
 ```
 
-
-
 ## Proof of concept
 
 As a proof of concept here's the code for an oversimplified evil EIP-1271 Contract Account that makes the same signature succeed or revert on convenience.
@@ -177,4 +178,5 @@ contract Evil {
     }
 }
 ```
+
 By default, all signatures will succeed. But you can front-run any specific transaction from the mempool of mainnet (like an operator's attempt to submit a block) and call `setActive(false)` to make the check for the signature conveniently fail.

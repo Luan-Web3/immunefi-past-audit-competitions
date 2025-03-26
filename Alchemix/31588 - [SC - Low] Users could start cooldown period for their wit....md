@@ -1,5 +1,4 @@
-
-# Users could start cooldown period for their withdrawal without paying any FLUX tokens
+# 31588 - \[SC - Low] Users could start cooldown period for their wit...
 
 Submitted on May 21st 2024 at 15:18:40 UTC by @savi0ur for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,12 +11,15 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Bug Description
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L379
+
 ```solidity
 function claimableFlux(uint256 _tokenId) public view returns (uint256) {
     // If the lock is expired, no flux is claimable at the current epoch
@@ -32,8 +34,8 @@ function claimableFlux(uint256 _tokenId) public view returns (uint256) {
 
 In `claimableFlux` function, `block.timestamp > locked[_tokenId].end` is used to check if lock is expired. According to this condition, lock is not expired till `block.timestamp == locked[_tokenId].end`.
 
-But in other places of the code, same check is not there. As shown below.
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L1156
+But in other places of the code, same check is not there. As shown below. https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L1156
+
 ```solidity
 function _calculatePoint(LockedBalance memory _locked, uint256 _time) internal pure returns (Point memory point) {
     if (_locked.end > _time && _locked.amount > 0) { //@audit
@@ -44,10 +46,11 @@ function _calculatePoint(LockedBalance memory _locked, uint256 _time) internal p
     }
 }
 ```
+
 While calculating `point` and `bias`, its first checking if lock has not expired `_locked.end > _time` and `_locked.amount > 0`, then calculate `Point`. According to above check from `claimableFlux` function, it should be `_locked.end >= _time`.
 
-Similarly, 
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L727
+Similarly, https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L727
+
 ```solidity
 function updateUnlockTime(uint256 _tokenId, uint256 _lockDuration, bool _maxLockEnabled) external nonreentrant {
     // ..SNIP..
@@ -57,9 +60,11 @@ function updateUnlockTime(uint256 _tokenId, uint256 _lockDuration, bool _maxLock
     // ..SNIP..
 }
 ```
+
 It should be `if (!_locked.maxLockEnabled) require(_locked.end >= block.timestamp, "Lock expired");`
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L672
+
 ```solidity
 function depositFor(uint256 _tokenId, uint256 _value) external nonreentrant {
     // ..SNIP..
@@ -67,9 +72,11 @@ function depositFor(uint256 _tokenId, uint256 _value) external nonreentrant {
     // ..SNIP..
 }
 ```
+
 It should be `require(_locked.end >= block.timestamp, "Cannot add to expired lock. Withdraw");`
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L748
+
 ```solidity
 function withdraw(uint256 _tokenId) public nonreentrant {
     // ..SNIP..
@@ -77,18 +84,22 @@ function withdraw(uint256 _tokenId) public nonreentrant {
     // ..SNIP..
 }
 ```
+
 For cooldown period check, it should not allow to withdraw when `block.timestamp == _locked.cooldown`, as cooldown has not expired yet when its equal. It should be `require(block.timestamp > _locked.cooldown, "Cooldown period in progress");`
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L630-L631
+
 ```solidity
 function merge(uint256 _from, uint256 _to) external {
     // ..SNIP..
     require(_locked0.end > block.timestamp, "Cannot merge when lock expired");
     require(_locked1.end > block.timestamp, "Cannot merge when lock expired");
 ```
+
 It should be `require(_lockedX.end >= block.timestamp, "Cannot merge when lock expired");`.
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L196
+
 ```solidity
 function getPriorVotingIndex(uint256 timestamp) public view returns (uint256) {
     // ..SNIP..
@@ -97,9 +108,11 @@ function getPriorVotingIndex(uint256 timestamp) public view returns (uint256) {
         return (nCheckpoints - 1);
     }
 ```
+
 It should be `if (votingCheckpoints[nCheckpoints - 1].timestamp <= timestamp) {`. See [`getPriorBalanceIndex`](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L164) function.
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L229
+
 ```solidity
 function earned(address token, uint256 tokenId) public view returns (uint256) {
     if (numCheckpoints[tokenId] == 0) {
@@ -113,9 +126,11 @@ function earned(address token, uint256 tokenId) public view returns (uint256) {
         return 0;
     }
 ```
+
 It should be `if (block.timestamp - _bribeStart(_startTimestamp) <= DURATION) {`.
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L792
+
 ```solidity
 function startCooldown(uint256 _tokenId) external {
     // ..SNIP..
@@ -127,29 +142,33 @@ function startCooldown(uint256 _tokenId) external {
     emit CooldownStarted(msg.sender, _tokenId, _locked.cooldown);
 }
 ```
+
 It should be `if (block.timestamp <= _locked.end) {`.
 
 Due to the above incorrect checks, user's could start cooldown period for their withdrawal without paying any FLUX tokens.
+
 ## Impact
 
 User's could start cooldown period for their withdrawal without paying any FLUX tokens. User will have both FLUX tokens and their BPT tokens at the end of EPOCH. Its not align with what the project requirement is, i.e, to charge rage quit fee in terms of FLUX tokens for withdrawing before lock ends.
 
 This free FLUX tokens later can be use to boost their votes.
+
 ## Recommendation
 
 Implement correct checks as described above.
+
 ## References
 
-- https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
-- https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
-- https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
-
+* https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
+* https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
+* https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 ## Proof Of Concept
 
 **Steps to Run using Foundry:**
-- Paste following foundry code in `src/test/VotingEscrow.t.sol`
-- Run using `FOUNDRY_PROFILE=default forge test --fork-url $FORK_URL --fork-block-number 17133822 --match-contract VotingEscrowTest --match-test testCooldownWithoutPayingFlux -vv`
+
+* Paste following foundry code in `src/test/VotingEscrow.t.sol`
+* Run using `FOUNDRY_PROFILE=default forge test --fork-url $FORK_URL --fork-block-number 17133822 --match-contract VotingEscrowTest --match-test testCooldownWithoutPayingFlux -vv`
 
 ```solidity
 // Start cool down period without paying any flux tokens

@@ -1,5 +1,4 @@
-
-# Rounding down in getClaimableFlux leads to less reward minting in nftClaim
+# 31524 - \[SC - High] Rounding down in getClaimableFlux leads to less...
 
 Submitted on May 21st 2024 at 01:08:34 UTC by @SAAJ for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,26 +11,31 @@ Report severity: High
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/FluxToken.sol
 
 Impacts:
-- Permanent freezing of unclaimed yield
+
+* Permanent freezing of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-```getClaimableFlux``` carried out multiplication on result of division leads to less amount minting  in ``` nftClaim``` function of ```FluxToken``` contract.
+
+`getClaimableFlux` carried out multiplication on result of division leads to less amount minting in `nftClaim` function of `FluxToken` contract.
 
 ## Vulnerability Details
-```getClaimableFlux``` function is called in ```nftClaim``` function to have the minting amount cached before ```mint``` is called.
-```claimableFlux``` variable in ```getClaimableFlux``` function have mathematics operation which violates safe practice of carrying out multiplication before division that can lead to issue of rounding down.
+
+`getClaimableFlux` function is called in `nftClaim` function to have the minting amount cached before `mint` is called. `claimableFlux` variable in `getClaimableFlux` function have mathematics operation which violates safe practice of carrying out multiplication before division that can lead to issue of rounding down.
 
 ## Impact Details
-The rounding down issue in ```getClaimableFlux``` function will lead to minting less amount of ```FLUX``` tokens to be claimed against the ```eth``` deposited.
-The minting of less token due to rounding down will cause depositor to have less reward for claiming causing direct loss.
+
+The rounding down issue in `getClaimableFlux` function will lead to minting less amount of `FLUX` tokens to be claimed against the `eth` deposited. The minting of less token due to rounding down will cause depositor to have less reward for claiming causing direct loss.
 
 ## References
+
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/FluxToken.sol#L224
 
 ## Recommendation
-The recommendation is made to carry out all division and multiplication separately to avoid loss of precision due to rounding down.
-The recommended code will mint exact value that the depositor is eligible for claiming against the amount they deposited.
+
+The recommendation is made to carry out all division and multiplication separately to avoid loss of precision due to rounding down. The recommended code will mint exact value that the depositor is eligible for claiming against the amount they deposited.
+
 ```diff
     function getClaimableFlux(uint256 _amount, address _nft) public view returns (uint256 claimableFlux) {
         uint256 bpt = calculateBPT(_amount);
@@ -53,14 +57,13 @@ The recommended code will mint exact value that the depositor is eligible for cl
     }
 ```
 
-
-
 ## Proof of Concept
+
 This simple test clearly demonstrates loss of rewards for user against amount deposited due to rounding down issue.
 
-All the values are considered in default context as used in the ``` VotingEscrow``` contract that were passed in the calculation of ```claimableFlux``` variable in ```getClaimableFlux``` function.
+All the values are considered in default context as used in the `VotingEscrow` contract that were passed in the calculation of `claimableFlux` variable in `getClaimableFlux` function.
 
-The test have also modified code for ```claimableFlux``` variable named ```claimableFlux_modified``` to show the difference in result of mathematical operation carried out in normal code and modified code context.
+The test have also modified code for `claimableFlux` variable named `claimableFlux_modified` to show the difference in result of mathematical operation carried out in normal code and modified code context.
 
 Normal code as used by protocol carried out multiplication on result of division, while modified code group together multiplication and division to have more precise value.
 
@@ -93,12 +96,7 @@ Normal code as used by protocol carried out multiplication on result of division
     }
 ```
 
-
-
-The result clearly shows difference in amount claimed by user for normal code against the modified code.
-The difference is due to loss of precision arising from rounding down causing direct loss.
-
-
+The result clearly shows difference in amount claimed by user for normal code against the modified code. The difference is due to loss of precision arising from rounding down causing direct loss.
 
 ```
  [PASS] test_rewardFlux() (gas: 7126)
@@ -112,4 +110,3 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.75ms (278.70µs C
 
 Ran 1 test suite in 147.11ms (1.75ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
-

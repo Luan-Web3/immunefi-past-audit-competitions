@@ -1,5 +1,4 @@
-
-# Queued data will be lost if Tx is unsuccessful or intended Tx operation / effect not exerted.
+# 29033 - \[SC - High] Queued data will be lost if Tx is unsuccessful ...
 
 Submitted on Mar 5th 2024 at 06:07:31 UTC by @Obin for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,42 +11,40 @@ Report severity: High
 Target: https://etherscan.io/address/0x3C28B7c7Ba1A1f55c9Ce66b263B33B204f2126eA#code
 
 Impacts:
-- Queued data will be lost if Tx is unsuccessful or unaffected as intended
+
+* Queued data will be lost if Tx is unsuccessful or unaffected as intended
 
 ## Description
+
 ## Brief/Intro
+
 Timelock::executeTransaction() implementation is too optimistic given that it doesnt handle situations of:
+
 1. Unsuccessful Call
-2. Successful call but unaffected operations / returnValue (false)
-In these scenarios the queued Tx data is lost and may require requeue and undesirable delay.
+2. Successful call but unaffected operations / returnValue (false) In these scenarios the queued Tx data is lost and may require requeue and undesirable delay.
 
 ## Vulnerability Details
-Depth 1:
-In a situation where Timelock::executeTransaction() is unsuccessful, the transaction does not revert. instead it overwrites the queued tx. This is obviously an undesirable bug in implementation as OPERATOR at best will need to re-queue and be delayed.
+
+Depth 1: In a situation where Timelock::executeTransaction() is unsuccessful, the transaction does not revert. instead it overwrites the queued tx. This is obviously an undesirable bug in implementation as OPERATOR at best will need to re-queue and be delayed.
 
 NOTE: If this is the desired implementation, then contract is wrong to not emit call status as an argument as the emission makes the public wrongly assume it was a successful Tx. I doubt it is though.
 
 First, its should be noted that the depth in impact of this bug does not end in appending `require(success, "Timelock: TX failed")` as data can still be lost even at that. Hence I'll explain the 2 depths and of course deeper Impact illustrated in POC.
 
-Depth 2:
-From a hacker perspective, the bool return value in a call is just a dummy and does not guarantee the desired effect on target contract. Lets not be fooled by that.
-The problem here is akin to what Openzeppelin tries to solve by implementing SafeERC20 which provides a logic that unites various ERC20 of arbitrary addresses and return signatures.
-A Tx or call can be successful (return the dummy true value) yet intended operation remains undesirable / unaffected at target contract. In this situation, will return `bool success == true;` and queued data `queue[txHash]` will still be lost.
+Depth 2: From a hacker perspective, the bool return value in a call is just a dummy and does not guarantee the desired effect on target contract. Lets not be fooled by that. The problem here is akin to what Openzeppelin tries to solve by implementing SafeERC20 which provides a logic that unites various ERC20 of arbitrary addresses and return signatures. A Tx or call can be successful (return the dummy true value) yet intended operation remains undesirable / unaffected at target contract. In this situation, will return `bool success == true;` and queued data `queue[txHash]` will still be lost.
 
-This scenario is actually very realistic and possible given that these calls are to arbitrary addresses whose implementations and return signatures are of arbitrary patterns. 
+This scenario is actually very realistic and possible given that these calls are to arbitrary addresses whose implementations and return signatures are of arbitrary patterns.
 
 ## Impact Details
-Contract will lose queued data permanently. Forcing operator to requeue and delay before transacting.
-Given that this is of high chance occurrence, its a High severity.
-Note that the re-queued Tx will still be susceptible. 
 
+Contract will lose queued data permanently. Forcing operator to requeue and delay before transacting. Given that this is of high chance occurrence, its a High severity. Note that the re-queued Tx will still be susceptible.
 
-## References 
+## References
+
 Add any relevant links to documentation or code
 
-
-
 ## Proof of Concept
+
 ```
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0 <0.9.0;

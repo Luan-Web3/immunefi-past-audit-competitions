@@ -1,5 +1,4 @@
-
-# VestedZeroNFT tokens can be directly stolen through the split() function
+# 29031 - \[SC - Critical] VestedZeroNFT tokens can be directly stolen thr...
 
 Submitted on Mar 5th 2024 at 03:07:39 UTC by @Trust for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,25 +11,26 @@ Report severity: Critical
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
-## Brief/Intro
-The split() function of VestedZeroNFT allows a user to split a tokenId to two tokens, using the desired ratio. 
-VestedZeroNFT is a vesting solution, allowing anyone to mint a vesting token who will eventually emit the entire locked funds.
 
+## Brief/Intro
+
+The split() function of VestedZeroNFT allows a user to split a tokenId to two tokens, using the desired ratio. VestedZeroNFT is a vesting solution, allowing anyone to mint a vesting token who will eventually emit the entire locked funds.
 
 ## Vulnerability Details
-The `split()` function lacks access-control check - essentially that the msg.sender is the owner of `tokenID`. The `msg.sender` is the one receiving the newly minted token with an arbitrary ratio.
-`_mint(msg.sender, ++lastTokenId);`
-This means anyone can pass an existing tokenID and `fraction=1` to still 99.99% of the value of a token.
+
+The `split()` function lacks access-control check - essentially that the msg.sender is the owner of `tokenID`. The `msg.sender` is the one receiving the newly minted token with an arbitrary ratio. `_mint(msg.sender, ++lastTokenId);` This means anyone can pass an existing tokenID and `fraction=1` to still 99.99% of the value of a token.
 
 ## Impact Details
+
 Anyone can steal the underlying value of vestedZeroNFTs
 
-
 ## Proof of concept
+
 Since the project's test suite does not run, as indicated in chat, I've prepped a POC as a standalone contract which directly copies the `split()` function from VestedZeroNFT.
 
 Simply deploy the SplitStealPOC contract and run `attack()` which proves anyone can steal another person's holdings.

@@ -1,5 +1,4 @@
-
-# Hub missing check for available liquidity, could lead to locked fund and utilization ratio exceeding 100%
+# Boost \_ Folks Finance 34074 - \[Smart Contract - Critical] Hub missing check for available liquidity could lead to locked fund and utilization ratio exceeding
 
 Submitted on Mon Aug 05 2024 08:09:42 GMT-0400 (Atlantic Standard Time) by @A2Security for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,24 +11,29 @@ Report severity: Critical
 Target: https://testnet.snowtrace.io/address/0x2cAa1315bd676FbecABFC3195000c642f503f1C9
 
 Impacts:
-- Temporary freezing of funds of at least 24h
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
-- Smart contract unable to operate due to lack of token funds
-- Permanent freezing of funds
+
+* Temporary freezing of funds of at least 24h
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+* Smart contract unable to operate due to lack of token funds
+* Permanent freezing of funds
 
 ## Description
+
 ## Impact
-The Hub doesn't check for available liquidity, leading to borrow/withdraw operation on the hub succeeding eventhough the spokeToken doesn't have enough liquidity.
-In the case of race conditions, e.g user A borrows 5000 ETH, and Whale B borrows/withdraws remaining liquidity from  the ethHubPool. The borrow operation for user A will succeed, but the second part of the operation will revert. => This will lead to:
-- Utilization ratio surpassing 100% -> interest Rates becomes unbelievable high
-- User A wouldn't be able to withdraw his borrowed funds (locked) and will be forced to pay really high interest
-- User A wouldn't be able to reverse the action from spoke, because all operations from Hub -> spoke Chain can't be reversed 
 
-The higher the borrow amount, the bigger the chance that the user funds  will be stuck (**possibly forever**, if the liquidity in the spoketoken, never reaches the wanted amount to borrow)    
+The Hub doesn't check for available liquidity, leading to borrow/withdraw operation on the hub succeeding eventhough the spokeToken doesn't have enough liquidity. In the case of race conditions, e.g user A borrows 5000 ETH, and Whale B borrows/withdraws remaining liquidity from the ethHubPool. The borrow operation for user A will succeed, but the second part of the operation will revert. => This will lead to:
+
+* Utilization ratio surpassing 100% -> interest Rates becomes unbelievable high
+* User A wouldn't be able to withdraw his borrowed funds (locked) and will be forced to pay really high interest
+* User A wouldn't be able to reverse the action from spoke, because all operations from Hub -> spoke Chain can't be reversed
+
+The higher the borrow amount, the bigger the chance that the user funds will be stuck (**possibly forever**, if the liquidity in the spoketoken, never reaches the wanted amount to borrow)\
 Please note that, such a scenario is highly likeable considering that Folks Finance is cross chain by design, and operations like borrow/withdraw from spoke chains != Avalanche , will require 2 cross-chain actions that requires bridging through wormhole/ccip (**which will take considerable time to be executed, and make predicting available liquidity not an easy task for protocol users**)
+
 ## Description
 
-In `HubPool.getSendTokenMessage()` which is used to build the message to send through  the bridgeRouter to the spoke contracts (mostly cross-chains)
+In `HubPool.getSendTokenMessage()` which is used to build the message to send through the bridgeRouter to the spoke contracts (mostly cross-chains)
+
 ```solidity
     function getSendTokenMessage(IBridgeRouter bridgeRouter, uint16 adapterId, uint256 gasLimit, bytes32 accountId, uint16 chainId, uint256 amount, bytes32 recipient)
         external
@@ -48,20 +52,23 @@ In `HubPool.getSendTokenMessage()` which is used to build the message to send th
 As we can see in the message returnAdapterId is set to 0 meaning messages can't be reversed
 
 ## Recomendation
+
 An easy fix for this is to add a check for available liquidity to each a user actions that removes liquidity from a hubpool
+
 ```solidity
 if (pool.depositData.totalAmout < pool.variableData.totalAmount + pool.stableData.totalAmount + amount_to_remove){
     revert NotEnoughLiquidityAvailable;
 }
 ```
+
 (a side note we know that totaldebt here only includes principal and can in certain condition not be accurate, so we would also recommend adding a margin of safety (e.g 5%))
 
-
-        
 ## Proof of concept
 
 ## Proof Of Concept
+
 **Test Result:**
+
 ```log
 Ran 1 test for test/pocs/test_poc.sol:Pocs
 [PASS] test_poc06() (gas: 1632608)
@@ -81,7 +88,6 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 684.53ms (9.27ms CP
 
 Ran 1 test suite in 687.47ms (684.53ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
-
 
 To run the test please add `test/pocs/base_test.sol`
 
@@ -300,6 +306,7 @@ contract baseTest is Test {
 }
 
 ```
+
 please add the poc to `test/pocs/test_poc.sol`
 
 ```solidity

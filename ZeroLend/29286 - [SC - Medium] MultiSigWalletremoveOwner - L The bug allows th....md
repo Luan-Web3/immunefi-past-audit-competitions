@@ -1,5 +1,6 @@
+# 29286 - \[SC - Medium] MultiSigWalletremoveOwner - L The bug allows th...
 
-# `MultiSigWallet::removeOwner()` - L127: The bug allows the last owner in the `owners` array to remain in the array even after being marked as not an owner if they are the one intended for removal.
+## `MultiSigWallet::removeOwner()` - L127: The bug allows the last owner in the `owners` array to remain in the array even after being marked as not an owner if they are the one intended for removal.
 
 Submitted on Mar 13th 2024 at 09:20:08 UTC by @OxSCSamurai for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,22 +13,25 @@ Report severity: Medium
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
-## Description
-## Brief/Intro
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+### Description
+
+### Brief/Intro
 
 `MultiSigWallet::removeOwner()` - L127: The bug allows the last owner in the `owners` array to remain in the array even after being marked as not an owner if they are the one intended for removal.
 
-- Although this is a serious bug, it's not obvious to me which impact in scope fits best here. Again, I believe the available impacts in scope are limiting and could compromise protocol security. This bug report is one example of a very serious bug which doesn't seem to have an obvious impact in scope match. This is something for Immunefi team to look at and try improve, because I could have easily decided submitting this bug report isn't worth my time and effort. But I know better and helping secure web3 is top priority, therefore I've pulled all the strings in an effort to make at least one impact in scope fit well enough.
+* Although this is a serious bug, it's not obvious to me which impact in scope fits best here. Again, I believe the available impacts in scope are limiting and could compromise protocol security. This bug report is one example of a very serious bug which doesn't seem to have an obvious impact in scope match. This is something for Immunefi team to look at and try improve, because I could have easily decided submitting this bug report isn't worth my time and effort. But I know better and helping secure web3 is top priority, therefore I've pulled all the strings in an effort to make at least one impact in scope fit well enough.
 
 > But alas, heed my advice, take this bug report seriously, as the bug has a tendency to mutate into a critical level monster over time...
 
-## Vulnerability Details
+### Vulnerability Details
 
-# SUMMARY:
+## SUMMARY:
 
 The buggy function, slightly modified so that I didnt need to deal with `onlyWallet` access control during tests:
+
 ```solidity
     /// @dev Allows to remove an owner. Transaction has to be sent by wallet.
     /// @param owner Address of owner.
@@ -48,62 +52,60 @@ The buggy function, slightly modified so that I didnt need to deal with `onlyWal
 The bug in the `removeOwner()` function of the ZeroLend protocol's multisignature wallet contract allows the last owner in the `owners` array to remain in the array even after being marked as not an owner, if they are the one intended for removal. This occurs because the loop condition in the function stops iterating before reaching the last owner, resulting in their continued & permanent presence in the array.
 
 The bug in this function lies within the loop condition:
+
 ```solidity
 for (uint256 i = 0; i < owners.length - 1; i++)
 ```
+
 This loop will iterate over all owners except the last one due to the combo of `i <` and `owners.length - 1`. If the owner to be removed happens to be the last one in the `owners` array, this loop will not process it, resulting in the owner not being removed from the array.
 
-# NOTE:
-- Regardless of whether this bug poses an immediate threat/risk to the protocol or not, it is almost certainly guaranteed to pose a critical level risk eventually if the bug is not fixed, simply because each time an owner is removed who happened to be in the last position in the `owners` array, the problem compounds. 
-- In other words, the longer the bug is left unfixed the worse the problem will get over time until it becomes a critical level problem where the `owners` array usage is DoS'ed along with ability to confirm transactions, which is one of the core functionalities of the multisig. The ability to confirm transactions will be permanently DoS'ed...
+## NOTE:
+
+* Regardless of whether this bug poses an immediate threat/risk to the protocol or not, it is almost certainly guaranteed to pose a critical level risk eventually if the bug is not fixed, simply because each time an owner is removed who happened to be in the last position in the `owners` array, the problem compounds.
+* In other words, the longer the bug is left unfixed the worse the problem will get over time until it becomes a critical level problem where the `owners` array usage is DoS'ed along with ability to confirm transactions, which is one of the core functionalities of the multisig. The ability to confirm transactions will be permanently DoS'ed...
 
 > That's it, PoC done, critical bug proven, can I have my pizza now please? 👀
 
 > Not so fast Samurai! ⚔️
 
-## Impact Details
+### Impact Details
 
-# POTENTIAL IMPACTS IN SCOPE:
+## POTENTIAL IMPACTS IN SCOPE:
 
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
-- Temporary freezing of funds for at least 1 hour
-- ?
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+* Temporary freezing of funds for at least 1 hour
+* ?
 
-# IMPACTS:
+## IMPACTS:
 
-- the immediate and obvious impact is that any owner to be removed that's in the last position of the `owners` array will be permanently stuck in the array, even when it's `isOwner` mapping will be set to `false` successfully, so he wont be able to take any governance/signer actions at least, but can NEVER remove this owner from the array.
-- will be able to add incompletely removed owner back to the `owners` array but as a separate & duplicate array entry only
-- can affect accuracy of results coming from `getConfirmationCount()`
-- over time it's possible(almost guaranteed) for `required` to become greater than the available usable owners in the `owners` array
+* the immediate and obvious impact is that any owner to be removed that's in the last position of the `owners` array will be permanently stuck in the array, even when it's `isOwner` mapping will be set to `false` successfully, so he wont be able to take any governance/signer actions at least, but can NEVER remove this owner from the array.
+* will be able to add incompletely removed owner back to the `owners` array but as a separate & duplicate array entry only
+* can affect accuracy of results coming from `getConfirmationCount()`
+* over time it's possible(almost guaranteed) for `required` to become greater than the available usable owners in the `owners` array
 
 Some possible worst case scenario impacts:
 
-- it's possible for same owner/signer to double vote/confirm, and is enabled by: unsuccessful removal + add same owner back again, resulting in both entries in `owners` array linked to the same `isOwner` mapping, so to speak. So whenever there's a for loop looping through the `owners` array, this owner's contribution(vote/confirmation) will be double-counted/double-processed, which could be tantamount to unintentional governance vote result manipulation.    
-- DoS of owners array usability and therefore DoS of ability to vote/confirm transactions: what makes this possible is when all owners have been removed when each of them were the last entry in the `owners` array, and this continued until the `owners` array reached a point where the max limit of 50 owners/confirmations(I need to confirm this?) were reached, then its impossible to add new owners or replace existing owners, while all existing owners are unusable and not replaceable, resulting in permanent DoS of critical multisig functionality. 
+* it's possible for same owner/signer to double vote/confirm, and is enabled by: unsuccessful removal + add same owner back again, resulting in both entries in `owners` array linked to the same `isOwner` mapping, so to speak. So whenever there's a for loop looping through the `owners` array, this owner's contribution(vote/confirmation) will be double-counted/double-processed, which could be tantamount to unintentional governance vote result manipulation.
+* DoS of owners array usability and therefore DoS of ability to vote/confirm transactions: what makes this possible is when all owners have been removed when each of them were the last entry in the `owners` array, and this continued until the `owners` array reached a point where the max limit of 50 owners/confirmations(I need to confirm this?) were reached, then its impossible to add new owners or replace existing owners, while all existing owners are unusable and not replaceable, resulting in permanent DoS of critical multisig functionality.
 
-## References
+### References
 
 https://github.com/zerolend/governance/blob/84d48522cdb14f4a5a4aefc4059c0ea1e2e97afa/contracts/governance/MultiSigWallet.sol#L127
 
+### Proof of Concept
 
+## PROOF OF CONCEPT (PoC):
 
-## Proof of Concept
+TEST 1: Proving that the bug exists, and that my bugfix works TEST 2: Proving that the unsuccessfully removed owner can never be fully removed ever again, nor replaced TEST 3: Proving it's possible for same owner to get duplicated in `owners` array, enabling double voting/confirmation counts TEST 4: Proving that the accuracy of results from `isConfirmed()` and `getConfirmationCount()` can be affected
 
-# PROOF OF CONCEPT (PoC):
-
-TEST 1: Proving that the bug exists, and that my bugfix works
-TEST 2: Proving that the unsuccessfully removed owner can never be fully removed ever again, nor replaced
-TEST 3: Proving it's possible for same owner to get duplicated in `owners` array, enabling double voting/confirmation counts
-TEST 4: Proving that the accuracy of results from `isConfirmed()` and `getConfirmationCount()` can be affected
-
-These two tests I will do PoC for later, will add to this bug report once ready:
-TEST 5: Proving it's possible to permanently DoS `owners` array and ability to vote/confirm transactions
-TEST 6: Proving it's possible for `required` to become greater than the number of usable owners/signers
+These two tests I will do PoC for later, will add to this bug report once ready: TEST 5: Proving it's possible to permanently DoS `owners` array and ability to vote/confirm transactions TEST 6: Proving it's possible for `required` to become greater than the number of usable owners/signers
 
 TESTS:
 
-# TEST 1: Proving that the bug exists, and that my bugfix works
+## TEST 1: Proving that the bug exists, and that my bugfix works
+
 Foundry based test contract used for this test:
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.23 <0.9.0;
@@ -142,10 +144,13 @@ contract TestMultisigRemoveOwner is Test {
     }
 }
 ```
+
 Note: obviously alternate between commenting out the relevant assert statements above when running the tests for the bug unfixed and bug fixed.
 
-# Test results: bug not fixed: `for (uint256 i = 0; i < owners.length - 1; i++)`
+## Test results: bug not fixed: `for (uint256 i = 0; i < owners.length - 1; i++)`
+
 Using test function:
+
 ```solidity
     function test_removeOwner() external {
 
@@ -159,7 +164,9 @@ Using test function:
         //assert(multiSigWallet.getOwners().length == 2); // if this passes, then owner in last position of `owners` array, was successfully removed.
     }
 ```
+
 Test result:
+
 ```solidity
 $ forge test --contracts test/TestMultisigRemoveOwner.t.sol --mt test_removeOwner -vvvvv
 [⠒] Compiling...
@@ -189,10 +196,13 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.45ms (533.74µs C
 
 Ran 1 test suite in 1.12s (2.45ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 It's clear from the result that the removal was unsuccessful, but the function was still successfully executed as can be seen by the emitted event `OwnerRemoval()`, which also indicates that `isOwner` was successfully updated to `false`, making it impossible to try remove this same owner again, effectively leaving this owner permanently stuck in the `owners` array.
 
-# Test results: bug fixed: `for (uint256 i = 0; i < owners.length; i++)`
+## Test results: bug fixed: `for (uint256 i = 0; i < owners.length; i++)`
+
 Using test function:
+
 ```solidity
     function test_removeOwner() external {
 
@@ -206,7 +216,9 @@ Using test function:
         assert(multiSigWallet.getOwners().length == 2); // if this passes, then owner in last position of `owners` array, was successfully removed.
     }
 ```
+
 Test result:
+
 ```solidity
 $ forge test --contracts test/TestMultisigRemoveOwner.t.sol --mt test_removeOwner -vvvvv
 [⠒] Compiling...
@@ -236,12 +248,15 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 881.56µs (179.17µ
 
 Ran 1 test suite in 1.49s (881.56µs CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 It's clear from the test result that my bugfix worked and now the same owner is removed successfully from the `owners` array.
 
-# TEST 2: Proving that the unsuccessfully removed owner can never be fully removed ever again, nor replaced
+## TEST 2: Proving that the unsuccessfully removed owner can never be fully removed ever again, nor replaced
+
 Since both the successful and unsuccessful(due to bug) removal of an owner from the `owners` array sets the `isOwner` mapping of the owner to `false`, there is no way of successfully calling the `removeOwner()` function again for same owner, as the `ownerExists(owner)` modifier will trigger a revert.
 
-# Modified test function used to try remove same owner again:
+## Modified test function used to try remove same owner again:
+
 ```solidity
     function test_removeOwner() external {
 
@@ -260,7 +275,9 @@ Since both the successful and unsuccessful(due to bug) removal of an owner from 
         multiSigWallet.removeOwner(_owners[_owners.length - 1]);
     }
 ```
-# Test result:
+
+## Test result:
+
 ```solidity
 Traces:
   [1499074] TestMultisigRemoveOwner::setUp()
@@ -288,10 +305,13 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.18ms (260.14µs C
 
 Ran 1 test suite in 1.29s (1.18ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 As expected the function reverted via the modifier's check. Not possible to call the remove function again for same owner after owner was successfully or unsuccessfully removed.
 
-# Now lets check if this same unsuccessfully removed owner can be replaced instead via the `replaceOwner()` function:
+## Now lets check if this same unsuccessfully removed owner can be replaced instead via the `replaceOwner()` function:
+
 Using the following modified test functions:
+
 ```solidity
     function test_removeOwner() external {
 
@@ -320,7 +340,9 @@ Using the following modified test functions:
         assert(multiSigWallet.getOwners()[_owners.length - 1] == address(0x9999999999999999999999999999999999999999));
     }
 ```
-# Test result:
+
+## Test result:
+
 ```solidity
   [39349] TestMultisigRemoveOwner::test_removeOwner()
     ├─ [9566] MultiSigWallet::getOwners() [staticcall]
@@ -350,15 +372,17 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.32ms (519.20µs C
 
 Ran 1 test suite in 1.04s (1.32ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 `replaceOwner()` reverted as expected.
 
-# TEST 3: Proving it's possible for same owner to get duplicated in `owners` array, enabling double voting/confirmation counts
-- There's a way to double vote, and thats by removing an owner/signer who's at the end of the owners array, and then adding them back again. This will cause two separate entries for same owner address into the owners array, both linked/mapped to the isOwner mapping, thereby making it totally possible for this owner to double vote when the for loop loops through the owners list.
-STEPS:
-- remove owner in last array position
-- add owner back
+## TEST 3: Proving it's possible for same owner to get duplicated in `owners` array, enabling double voting/confirmation counts
+
+* There's a way to double vote, and thats by removing an owner/signer who's at the end of the owners array, and then adding them back again. This will cause two separate entries for same owner address into the owners array, both linked/mapped to the isOwner mapping, thereby making it totally possible for this owner to double vote when the for loop loops through the owners list. STEPS:
+* remove owner in last array position
+* add owner back
 
 Modified test function used:
+
 ```solidity
     function test_removeOwner() external {
 
@@ -381,7 +405,9 @@ Modified test function used:
 
     }
 ```
-# Test result:
+
+## Test result:
+
 ```solidity
   [65104] TestMultisigRemoveOwner::test_removeOwner()
     ├─ [9566] MultiSigWallet::getOwners() [staticcall]
@@ -406,12 +432,15 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.76ms (681.45µs C
 
 Ran 1 test suite in 1.26s (2.76ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 Above test result proves it's possible to add an owner twice to the `owners` array, as can be seen by the last two entries of the array. During for loops when the `owners` array is looped through, this owner will be counted twice, which could potentially lead to double voting/double confirmations.
 
-# TEST 4: Proving that the accuracy of results from `isConfirmed()` and `getConfirmationCount()` can be affected
-- when an owner is unsuccessfully removed and then added again afterwards, his single transaction confirmation will be counted twice instead of just once, which is equivalent to voting twice instead of just once, or signing a tx twice...
+## TEST 4: Proving that the accuracy of results from `isConfirmed()` and `getConfirmationCount()` can be affected
+
+* when an owner is unsuccessfully removed and then added again afterwards, his single transaction confirmation will be counted twice instead of just once, which is equivalent to voting twice instead of just once, or signing a tx twice...
 
 Test contract was modified for this one, as per below, with `requiredConfirmations = 1`:
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.23 <0.9.0;
@@ -455,7 +484,9 @@ contract TestMultisigRemoveOwner is Test {
     }
 }
 ```
-# Control test: the owner has NOT been removed yet, so all is good and NORMAL:
+
+## Control test: the owner has NOT been removed yet, so all is good and NORMAL:
+
 ```solidity
   [212687] TestMultisigRemoveOwner::test_removeOwner()
     ├─ [9566] MultiSigWallet::getOwners() [staticcall]
@@ -481,10 +512,11 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.25ms (344.73µs C
 
 Ran 1 test suite in 1.10s (1.25ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 For the above control test result, its clear that only one confirmation count was produced, which is correct because only one owner confirmed transaction and this owner has not been removed from the `owners` array yet.
 
-Next is the actual test to prove that it's possible for this same owner to provide TWO confirmations instead of just one, via a single confirmation function call for the same transaction, AFTER this owner was unsuccessfully removed and added back to the `owners` array again. 
-For this next test I will change the `requiredConfirmations = 2`, and I've again modified the test contract for this next test:
+Next is the actual test to prove that it's possible for this same owner to provide TWO confirmations instead of just one, via a single confirmation function call for the same transaction, AFTER this owner was unsuccessfully removed and added back to the `owners` array again. For this next test I will change the `requiredConfirmations = 2`, and I've again modified the test contract for this next test:
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.23 <0.9.0;
@@ -533,7 +565,9 @@ contract TestMultisigRemoveOwner is Test {
     }
 }
 ```
+
 Test result:
+
 ```solidity
   [251044] TestMultisigRemoveOwner::test_removeOwner()
     ├─ [9566] MultiSigWallet::getOwners() [staticcall]
@@ -567,9 +601,11 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.36ms (399.42µs C
 
 Ran 1 test suite in 1.34s (1.36ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 It's clear from the above test result that this owner was able to unintentionally double confirm the same transaction, effectively double voting or double signing, which would obviously adversely affect governance voting outcomes.
 
-# Bonus test: activate my bugfix for exactly the same test conditions as above test, lets see if owner can still double confirm!
+## Bonus test: activate my bugfix for exactly the same test conditions as above test, lets see if owner can still double confirm!
+
 ```solidity
   [164875] TestMultisigRemoveOwner::test_removeOwner()
     ├─ [9566] MultiSigWallet::getOwners() [staticcall]
@@ -604,8 +640,9 @@ Encountered 1 failing test in test/TestMultisigRemoveOwner.t.sol:TestMultisigRem
 
 Encountered a total of 1 failing tests, 0 tests succeeded
 ```
-The `requiredConfirmations = 2` in above bonus test, but due to my bugfix the owner could not double confirm, could only confirm once, that's why the assertion failed. 
-And if I change it to `requiredConfirmations = 1` and rerun with my bugfix, we get the following successful result:
+
+The `requiredConfirmations = 2` in above bonus test, but due to my bugfix the owner could not double confirm, could only confirm once, that's why the assertion failed. And if I change it to `requiredConfirmations = 1` and rerun with my bugfix, we get the following successful result:
+
 ```solidity
   [224838] TestMultisigRemoveOwner::test_removeOwner()
     ├─ [9566] MultiSigWallet::getOwners() [staticcall]
@@ -639,15 +676,18 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.54ms (485.38µs C
 
 Ran 1 test suite in 1.60s (1.54ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 With my bugfix the owner was removed successfully, added back to `owners` array again, confirmed a transaction successfully only once, and all good as it should be.
 
-# TEST 5: Proving it's possible to permanently DoS `owners` array and ability to vote/confirm transactions
-- Will add this test later if I manage to do it and it's successful.
+## TEST 5: Proving it's possible to permanently DoS `owners` array and ability to vote/confirm transactions
 
-# TEST 6: Proving it's possible for `required` to become greater than the number of usable owners/signers
-- Will add this test later if I manage to do it and it's successful.
+* Will add this test later if I manage to do it and it's successful.
 
-# BUGFIX:
+## TEST 6: Proving it's possible for `required` to become greater than the number of usable owners/signers
+
+* Will add this test later if I manage to do it and it's successful.
+
+## BUGFIX:
 
 To fix this, you should use `owners.length` instead of `owners.length - 1` as the loop condition:
 

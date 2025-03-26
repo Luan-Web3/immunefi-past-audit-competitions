@@ -1,7 +1,6 @@
+# Boost \_ Folks Finance 34179 - \[Smart Contract - High] Incorrect Updates to pooldepositDatatotalAmount and loancollateralUsed During Repayment with Collateral
 
-# Incorrect Updates to `pool.depositData.totalAmount` and `loan.collateralUsed` During Repayment with Collateral
-
-Submitted on Tue Aug 06 2024 06:41:08 GMT-0400 (Atlantic Standard Time) by @alix_40 for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
+Submitted on Tue Aug 06 2024 06:41:08 GMT-0400 (Atlantic Standard Time) by @alix\_40 for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
 Report ID: #34179
 
@@ -12,19 +11,19 @@ Report severity: High
 Target: https://testnet.snowtrace.io/address/0x2cAa1315bd676FbecABFC3195000c642f503f1C9
 
 Impacts:
-- Theft of unclaimed yield
-- Smart contract unable to operate due to lack of token funds
+
+* Theft of unclaimed yield
+* Smart contract unable to operate due to lack of token funds
 
 ## Description
+
 > This report is intended to be submitted under my team account "A2Security" but I reached the report submission rate limit on the last day. Please count this report as though it were from "A2Security".
 
 ## Description
 
-- The protocol's repayment with collateral mechanism contains a mathematical flaw in its accounting logic, specifically affecting the updates of `pool.depositData.totalAmount` during repayment operations.
-
-- In a properly functioning system, `depositData.totalAmount` should never exceed the sum of the **pool's actual balance** plus **the total borrowed amount**. This invariant ensures accurate representation of the pool's financial state and is crucial for various protocol operations.
-
-- The repayment with collateral process involves users repaying their loans using their deposited collateral instead of external funds.However, the current implementation in `LoanManagerLogic.sol` incorrectly updates the `totalAmount`
+* The protocol's repayment with collateral mechanism contains a mathematical flaw in its accounting logic, specifically affecting the updates of `pool.depositData.totalAmount` during repayment operations.
+* In a properly functioning system, `depositData.totalAmount` should never exceed the sum of the **pool's actual balance** plus **the total borrowed amount**. This invariant ensures accurate representation of the pool's financial state and is crucial for various protocol operations.
+* The repayment with collateral process involves users repaying their loans using their deposited collateral instead of external funds.However, the current implementation in `LoanManagerLogic.sol` incorrectly updates the `totalAmount`
 
 ```solidity
 function updateWithRepayWithCollateral(HubPoolState.PoolData storage pool, uint256 principalPaid, uint256 interestPaid, uint256 loanStableRate)
@@ -37,9 +36,8 @@ function updateWithRepayWithCollateral(HubPoolState.PoolData storage pool, uint2
 }
 ```
 
-- It subtracts `principalPaid - interestPaid` from `totalAmount`, which effectively reduces the total amount by the principal and increases it by the interest. This is incorrect because the interest should not be added to `totalAmount`.
-
-- The issue arises because when a user repays with collateral, the interest they're paying is already accounted in `pool.depositData.totalAmount`. This amount was included when the user initially deposited their collateral. By adding the interest again during repayment, we're double-counting this value, leading to an artificial inflation of `totalAmount`.
+* It subtracts `principalPaid - interestPaid` from `totalAmount`, which effectively reduces the total amount by the principal and increases it by the interest. This is incorrect because the interest should not be added to `totalAmount`.
+* The issue arises because when a user repays with collateral, the interest they're paying is already accounted in `pool.depositData.totalAmount`. This amount was included when the user initially deposited their collateral. By adding the interest again during repayment, we're double-counting this value, leading to an artificial inflation of `totalAmount`.
 
 This mishandling leads to several issues:
 
@@ -47,18 +45,18 @@ This mishandling leads to several issues:
 2. The discrepancy between `totalAmount` and the actual pool balance grows over time, compounding with each repayment using collateral.
 3. The inflated `totalAmount` affects critical calculations such as utilization ratios, interest rates, and liquidity assessments.
 
-- As an example lets take the following scenario:
+* As an example lets take the following scenario:
 
 1. A user deposits 1000 USDC into the pool.
-   - `loan.collateralUsed` = 1000 USDC(in terms of FUSDC)
-   - `pool.depositData.totalAmount` = 1000 USDC
-   - `loan.borrowUsed` = 0
-   - `actual poolHub balance` = 1000 USDC
+   * `loan.collateralUsed` = 1000 USDC(in terms of FUSDC)
+   * `pool.depositData.totalAmount` = 1000 USDC
+   * `loan.borrowUsed` = 0
+   * `actual poolHub balance` = 1000 USDC
 2. The user borrows 900 USDC against this deposit. A after some time the user repays the loan with his collateral with interest of 60 USDC, the state after the repayment will be :
-   - `loan.collateralUsed` = 40
-   - `pool.depositData.totalAmount` = 160 (incorrectly updated)
-   - `loan.borrowUsed` = 0
-   - `actual poolHub balance` = 100 USDC
+   * `loan.collateralUsed` = 40
+   * `pool.depositData.totalAmount` = 160 (incorrectly updated)
+   * `loan.borrowUsed` = 0
+   * `actual poolHub balance` = 100 USDC
 
 This shows a mismatch where `pool.depositData.totalAmount` is higher than the actual pool balance, which should not happen.
 
@@ -66,16 +64,12 @@ This shows a mismatch where `pool.depositData.totalAmount` is higher than the ac
 
 The inflated `totalDepositAmount` in the protocol leads to several significant effects:
 
-- **Utilization Ratio**: The utilization ratio calculated in `HubPoolLogic.sol` is artificially lowered, as it uses `totalDeposits` in the denominator. This makes it appear that a smaller portion of available funds is being utilized.
-
-- **Interest Rates**: Both **borrowing** and **lending** interest rates, derived from the utilization ratio, are affected. The lower perceived utilization results in the protocol setting lower interest rates than it should, potentially **underpricing risk**.
-
-- **Deposit Indexes**: Deposit interest index calculations are impacted, leading to an **underestimation** of depositors' share growth over time. T
-  Due to the undervalued deposits index resulting from the false utilization ratio (lower UT means lower `Ftoken` value ), a portion of user funds become **locked** in the protocol, as the calculated value of their `Ftoken` would be less than the actual value.
-- **Caps and Limits**: Functions like `isDepositCapReached` or `isBorrowCapReached` operate with incorrect values.
+* **Utilization Ratio**: The utilization ratio calculated in `HubPoolLogic.sol` is artificially lowered, as it uses `totalDeposits` in the denominator. This makes it appear that a smaller portion of available funds is being utilized.
+* **Interest Rates**: Both **borrowing** and **lending** interest rates, derived from the utilization ratio, are affected. The lower perceived utilization results in the protocol setting lower interest rates than it should, potentially **underpricing risk**.
+* **Deposit Indexes**: Deposit interest index calculations are impacted, leading to an **underestimation** of depositors' share growth over time. T Due to the undervalued deposits index resulting from the false utilization ratio (lower UT means lower `Ftoken` value ), a portion of user funds become **locked** in the protocol, as the calculated value of their `Ftoken` would be less than the actual value.
+* **Caps and Limits**: Functions like `isDepositCapReached` or `isBorrowCapReached` operate with incorrect values.
 
 These effects compound over time, leading to increasing discrepancies between the protocol's perceived state and its actual financial position. which will result in significant **financial inaccuracies** .
-
 
 ## Tools Used
 
@@ -83,7 +77,7 @@ Manual Review
 
 ## Recomandation :
 
-- In the `updateWithRepayWithCollateral` function in `LoanManagerLogic.sol` we should only subtract the `principal` from `totalAmount`:
+* In the `updateWithRepayWithCollateral` function in `LoanManagerLogic.sol` we should only subtract the `principal` from `totalAmount`:
 
 ```Diff
 function updateWithRepayWithCollateral(HubPoolState.PoolData storage pool, uint256 principalPaid, uint256 interestPaid, uint256 loanStableRate)
@@ -98,14 +92,12 @@ function updateWithRepayWithCollateral(HubPoolState.PoolData storage pool, uint2
 }
 ```
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
-- here a coded poc shows how repaying with collateral will lead to an inflated `totalDepositAmount` that is more than the `actual pool balance + total borrowed amount` ,
-
-
-- please run test with : `forge test --mt test_poc_01 -vvv --via-ir`
+* here a coded poc shows how repaying with collateral will lead to an inflated `totalDepositAmount` that is more than the `actual pool balance + total borrowed amount` ,
+* please run test with : `forge test --mt test_poc_01 -vvv --via-ir`
 
 ```log
 [PASS] test_poc_01() (gas: 1454096)
@@ -117,7 +109,7 @@ Logs:
   totalDeposited minus borrowed after  :  3199626813
 ```
 
-  to run test please first add the following file to `test/pocs/base_test.sol`
+to run test please first add the following file to `test/pocs/base_test.sol`
 
 ```solidity
    // SPDX-License-Identifier: UNLICENSED
@@ -335,7 +327,7 @@ Logs:
 
 ```
 
-- then please add the poc test to `test/pocs/forktest.t.sol`
+* then please add the poc test to `test/pocs/forktest.t.sol`
 
 ```solidity
 
@@ -400,5 +392,3 @@ Logs:
       }
    }
 ```
-
-

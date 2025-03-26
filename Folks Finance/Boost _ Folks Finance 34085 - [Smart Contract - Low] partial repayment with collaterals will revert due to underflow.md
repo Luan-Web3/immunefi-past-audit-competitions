@@ -1,5 +1,4 @@
-
-# partial repayment with collaterals will revert due to underflow
+# Boost \_ Folks Finance 34085 - \[Smart Contract - Low] partial repayment with collaterals will revert due to underflow
 
 Submitted on Mon Aug 05 2024 11:59:32 GMT-0400 (Atlantic Standard Time) by @A2Security for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,15 +11,19 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0x2cAa1315bd676FbecABFC3195000c642f503f1C9
 
 Impacts:
-- partial repayment reverts
+
+* partial repayment reverts
 
 ## Description
-## Title:  repayWithCollateral will revert because of underflow
+
+## Title: repayWithCollateral will revert because of underflow
 
 ## Impact
+
 Repayments are always a healthy action on the protocol, and shouldn't revert. Due to this bug, repayment with collateral will revert, preventing users from repaying their debt in certain conditions and improving their loan health.
 
 ## Description
+
 `contracts/hub/logic/HubPoolLogic.sol`
 
 ```solidity
@@ -43,28 +46,30 @@ Repayments are always a healthy action on the protocol, and shouldn't revert. Du
     }
 ```
 
-The bugs simply concerns the line mentioned above, if principalPaid is less than  interestPaid the transaction will revert due to underflow. Please also notice when reducing loan balance of a userLoan, it is the intended design to repay the interest off first before reducing the collateral
+The bugs simply concerns the line mentioned above, if principalPaid is less than interestPaid the transaction will revert due to underflow. Please also notice when reducing loan balance of a userLoan, it is the intended design to repay the interest off first before reducing the collateral
 
 ## Recomendation
+
 To fix this, and avoid the underflow, a possible fix would be like this
+
 ```diff
 --    pool.depositData.totalAmount -= principalPaid - interestPaid; 
 ++    pool.depositData.totalAmount += interestPaid; 
 ++    pool.depositData.totalAmount -= principalPaid; 
 
 ```
-        
+
 ## Proof of concept
+
 ## Proof of Concept
 
-To showcase the problem we simply made a simple reimplementation of the vulenrable code to showcase the underflow:
-In this example:
-- initial depositData.totalAmount = 1000
-- interestPaid = 150
-- principalPaid = 100
+To showcase the problem we simply made a simple reimplementation of the vulenrable code to showcase the underflow: In this example:
 
-=> this will revert with an underflow
-**Result**:
+* initial depositData.totalAmount = 1000
+* interestPaid = 150
+* principalPaid = 100
+
+\=> this will revert with an underflow **Result**:
 
 ```log
 └─$ forge test --mt test_poc_03 -vv

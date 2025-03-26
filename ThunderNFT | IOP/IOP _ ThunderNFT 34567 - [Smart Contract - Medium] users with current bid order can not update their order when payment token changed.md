@@ -1,5 +1,4 @@
-
-# users with current bid order can not update their order when payment token changed
+# IOP \_ ThunderNFT 34567 - \[Smart Contract - Medium] users with current bid order can not update their
 
 Submitted on Thu Aug 15 2024 23:17:52 GMT-0400 (Atlantic Standard Time) by @zeroK for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -9,30 +8,30 @@ Report type: Smart Contract
 
 Report severity: Medium
 
-Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/thunder_exchange
+Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/thunder\_exchange
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
-- Block stuffing
+
+* Contract fails to deliver promised returns, but doesn't lose value
+* Block stuffing
 
 ## Description
+
 ## Brief/Intro
-the function `update_order` meant to allow users with current active bid to update their order important input, however there is critical check that prevent users to update their bid and they all forced to cancel their bid, this will lead to lose of gas only for buy order users. this happens because the update_order calls the update_order in the fixed strategy which in return it calls the _update_buy_order which checks if the payment asset in unchanged, the payment asset is same asset that set in whitelist when assetManger call add asset or remove it by calling remove asset.
+
+the function `update_order` meant to allow users with current active bid to update their order important input, however there is critical check that prevent users to update their bid and they all forced to cancel their bid, this will lead to lose of gas only for buy order users. this happens because the update\_order calls the update\_order in the fixed strategy which in return it calls the \_update\_buy\_order which checks if the payment asset in unchanged, the payment asset is same asset that set in whitelist when assetManger call add asset or remove it by calling remove asset.
 
 same thing can be applied to sell order users which is more critical situation compared to buy order users, we can take the steps below that can happen when the paymentAsset removed and new asset added:
 
-- Alice create sell order(listing NFT) by calling place_order with paymentAsset == USDT.
-
-- 10 users create buy order to bid on alice NFT, and their payment asset == USDT.
-
-- for some reason, USDT removed from whitelisted address by calling the `assetManger.sw#remove_asset` and ETH added as paymentAsset by calling `add_asset` function.
-
-- because of the check`(order.unwrap().payment_asset == updated_order.payment_asset)` which check the payment asset of old order and updated one in `_validate_updated_order` which invoked by _update_buy and _update_sell alice and all other 10 users with bid order can not update their bid order payment asset to eth, same true for alice.
-
-- this way alice and other users are forced to remove their orders(cancle it) and re create same order again and add new bid on the alice NFT which lead to lose of gas too.
+* Alice create sell order(listing NFT) by calling place\_order with paymentAsset == USDT.
+* 10 users create buy order to bid on alice NFT, and their payment asset == USDT.
+* for some reason, USDT removed from whitelisted address by calling the `assetManger.sw#remove_asset` and ETH added as paymentAsset by calling `add_asset` function.
+* because of the check`(order.unwrap().payment_asset == updated_order.payment_asset)` which check the payment asset of old order and updated one in `_validate_updated_order` which invoked by \_update\_buy and \_update\_sell alice and all other 10 users with bid order can not update their bid order payment asset to eth, same true for alice.
+* this way alice and other users are forced to remove their orders(cancle it) and re create same order again and add new bid on the alice NFT which lead to lose of gas too.
 
 ## Vulnerability Details
-the function update_order implemented as below:
+
+the function update\_order implemented as below:
 
 ```sway
     #[storage(read), payable]
@@ -60,7 +59,7 @@ the function update_order implemented as below:
 
 ```
 
-which invoke the update_order function for both buy and sell order:
+which invoke the update\_order function for both buy and sell order:
 
 ```sway
     /// Updates the existing MakerOrder of the user
@@ -81,7 +80,7 @@ which invoke the update_order function for both buy and sell order:
 
 ```
 
-both _update_buy_order  and _update_sell_order invoke the _validate_updated_order function as shown below
+both \_update\_buy\_order and \_update\_sell\_order invoke the \_validate\_updated\_order function as shown below
 
 ```sway
 /// Updates buy MakerOrder if the nonce is in the right range
@@ -128,27 +127,30 @@ fn _validate_updated_order(order: Option<MakerOrder>, updated_order: MakerOrder)
 }
 
 ```
+
 this way its impossible to update the current bids and listing NFT in this situation and lead to cancel all orders and re execute it again.
 
-
 ## Impact Details
+
 users can't update their orders when paymentAsset removed and another one added.
 
 ## Recommend
+
 there is no reason to check for updated order payment if its same as old one since in the flow we check the updated order if its payment asset is whitelisted or not.
-        
+
 ## Proof of concept
+
 ## Proof of Concept
 
 run this poc in contract-v1/tests/src/main.sw with following these details below:
 
-## details should follow to execute the test in sway 
+## details should follow to execute the test in sway
 
-- for anyone want to create POC using sway itself, i created a simple template do so, all thanks to @theschnilch who helped a lot to make this test file valid.
+* for anyone want to create POC using sway itself, i created a simple template do so, all thanks to @theschnilch who helped a lot to make this test file valid.
 
 to create POC or doing some tests in sway do the follow:
 
-- create forc.toml in contracts-v1 and add the below in the forc.toml:
+* create forc.toml in contracts-v1 and add the below in the forc.toml:
 
 ```
 [workspace]
@@ -156,9 +158,7 @@ members = ["asset_manager", "erc721", "execution_manager", "execution_strategies
 
 ```
 
-- and then create new folder called tests and add your file, the path will be something like this :
-`contracts-v1/tests/src/main.sw`
-
+* and then create new folder called tests and add your file, the path will be something like this : `contracts-v1/tests/src/main.sw`
 
 then in your forc.toml in tests folder add the below:
 
@@ -189,9 +189,9 @@ royalty_manager = { path = "../royalty_manager" }
 strategy_fixed_price_sale = {path = "../execution_strategies/strategy_fixed_price_sale"}
 ```
 
-run forc test  in `smart-contracts/contracts-v1`
+run forc test in `smart-contracts/contracts-v1`
 
-- and after that you can add the code below in your main.sw:
+* and after that you can add the code below in your main.sw:
 
 ```sway
 contract;
@@ -351,14 +351,12 @@ fn initialize_functions() {
 
 thunderNFT does not support sway test so we create one, and while sway is under development, there is some change we made to the in scope contracts to execute the POC:
 
-- first we set the EXTRAPARAMS to public by adding `pub` keyword to it: this because sway test files does not allow using internal function or struct.
+* first we set the EXTRAPARAMS to public by adding `pub` keyword to it: this because sway test files does not allow using internal function or struct.
+* in \_validate\_maker\_order\_input we commented the line below, because sway itself does not allow using msg.sender or control it so its possible to execute call to place\_order with maker equal to msg.sender.
 
-- in _validate_maker_order_input we commented the line below, because sway itself does not allow using msg.sender or control it so its possible to execute call to place_order with maker equal to msg.sender.
+`// require(input.maker == get_msg_sender_address_or_panic(), ThunderExchangeErrors::CallerMustBeMaker); // maker of order should be the caller`
 
-`    // require(input.maker == get_msg_sender_address_or_panic(), ThunderExchangeErrors::CallerMustBeMaker); // maker of order should be the caller
-`
-
-- we added a simple function to update the user balance in the pool:
+* we added a simple function to update the user balance in the pool:
 
 this is because sway test files does not allow calling payable function with asset id and coins at all, so we need to find way to update the user pool balance to simulate user depositing tokens:
 
@@ -370,10 +368,9 @@ this is because sway test files does not allow calling payable function with ass
     }
 ```
 
-
 ## POC:
 
-```sway 
+```sway
 contract;
 
  use interfaces::{

@@ -1,5 +1,4 @@
-
-# malicious user can back-run `Voter.distribute` to steal reards
+# 31249 - \[SC - Critical] malicious user can back-run Voterdistribute to ...
 
 Submitted on May 15th 2024 at 19:58:42 UTC by @jasonxiale for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,16 +11,19 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Theft of unclaimed yield
+
+* Theft of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 In current implementation, `Voter.distribute` is used to distribute ALCX among gauges, during the call there is an issue that a malicious user can back-run `Voter.distribute` to steal reards.
 
-
 ## Vulnerability Details
-During the `Voter.distribute` function, [Voter._distribute](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L359C14-L379) is called, and at the end  of `Voter._distribute`, `IBribe.resetVoting` is called at [https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L377]
-[IBribe.resetVoting](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L332-L335) is defined as:
+
+During the `Voter.distribute` function, [Voter.\_distribute](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L359C14-L379) is called, and at the end of `Voter._distribute`, `IBribe.resetVoting` is called at \[https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L377] [IBribe.resetVoting](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L332-L335) is defined as:
+
 ```solidity
 345     /// @inheritdoc IBribe
 346     function resetVoting() external {
@@ -30,38 +32,40 @@ During the `Voter.distribute` function, [Voter._distribute](https://github.com/a
 349     }
 ```
 
-__So it means that after calling `Voter.distribute`, `Bribe.totalVoting` will be set to 0.__
+**So it means that after calling `Voter.distribute`, `Bribe.totalVoting` will be set to 0.**
 
-Then in `Bribe.earned`, `Bribe.totalVoting` is used in [Bribe.sol#L257-L261](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L255-L261) and [Bribe.sol#L268-L277](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L268-L277).
-One thing to note is that:
+Then in `Bribe.earned`, `Bribe.totalVoting` is used in [Bribe.sol#L257-L261](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L255-L261) and [Bribe.sol#L268-L277](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L268-L277). One thing to note is that:
+
 ```solidity
 270         // Prevent divide by zero
 271         if (_priorSupply == 0) {
 272             _priorSupply = 1;
 273         }
 ```
-So it means that if **_priorSupply** will be set to **1** if it's 0.
-And `reward` depends on `_priorSupply` as:
+
+So it means that if **\_priorSupply** will be set to **1** if it's 0. And `reward` depends on `_priorSupply` as:
+
 ```solidity
 reward += (cp.balanceOf * tokenRewardsPerEpoch[token][_lastEpochStart]) / _priorSupply;
 ```
 
 To sum up:
+
 1. During `Voter.distribute`, `Bribe.totalVoting` will be set to **0**
 2. `Bribe.earned` depends of `Bribe.totalVoting` to calculate the amount of rewards. And if we can force `_priorSupply` to 1 while calculating the rewards, we will make more profilt. We can use `Voter.poke` to update the `checkpoint` after `Voter.distribute`.
 
-
 ## Impact Details
+
 In current implementation, `Voter.distribute` is used to distribute ALCX among gauges, during the call there is an issue that a malicious user can back-run `Voter.distribute` to steal reards.
 
-
 ## References
+
 Add any relevant links to documentation or code
 
-
-
 ## Proof of Concept
-put the follow code in `src/test/Voting.t.sol` and run 
+
+put the follow code in `src/test/Voting.t.sol` and run
+
 ```bash
 FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/$API_KEY --fork-block-number 17133822 --mc VotingTest --mt testAliceEpochRewards -vv
 [⠊] Compiling...
@@ -84,6 +88,7 @@ Logs:
 
 Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 86.68ms (116.98ms CPU time)
 ```
+
 As we can from above, if Alice doesn't call `Voter.poke` after `Voter.distribute`, Alice will receive 33333333333333333333333 bal rewards.
 
 And if Alice calls `Voter.poke` after `Voter.distribute`, Alice will receive 100000000000000000000000 bal rewards.

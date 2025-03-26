@@ -1,5 +1,4 @@
-
-# Consider introducing the ability to change `required` while adding owners
+# 26519 - \[SC - Insight] Consider introducing the ability to change requ...
 
 Submitted on Dec 4th 2023 at 12:21:59 UTC by @Another for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,10 +11,13 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x2028834B2c0A36A918c10937EeA71BE4f932da52#code
 
 Impacts:
-- Consider introducing the ability to change `required` while adding owners
+
+* Consider introducing the ability to change `required` while adding owners
 
 ## Description
+
 ## Bug Description
+
 Take a look at [MultiSigWallet#L125-156](https://www.contractreader.io/contract/mainnet/0x2028834B2c0A36A918c10937EeA71BE4f932da52)
 
 ```solidity
@@ -54,17 +56,16 @@ Take a look at [MultiSigWallet#L125-156](https://www.contractreader.io/contract/
 
 At present implementation even if wallet adds ten more owners `required` would be stuck with the value it was initialized with, where as it would be good to note that while removing the owners the requirement could be reduced, this still seems like a downside to protocol logic.
 
-
 ## Impact
 
-Borderline low/info, since if addressews are only ever added, i.e the logic still being the same that previous owners are still owners but new owners need to be added, therre is obviously a need to rearrrange the ration between the amount of owners and the valid signers that are needed to pass a decision, but this is not available. 
+Borderline low/info, since if addressews are only ever added, i.e the logic still being the same that previous owners are still owners but new owners need to be added, therre is obviously a need to rearrrange the ration between the amount of owners and the valid signers that are needed to pass a decision, but this is not available.
 
 ## Risk Breakdown
-Difficulty to Exploit: Easy
-Weakness:
-CVSS2 Score:
+
+Difficulty to Exploit: Easy Weakness: CVSS2 Score:
 
 ## Recommendation
+
 Currently the value for `required` only changes if the owner array decreases, which means that if 10 people get added as new owners the ratio of the requirement and the amount of owners would be massively deflated.
 
 ## References

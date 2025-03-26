@@ -1,5 +1,4 @@
-
-# Processing of voting results is not implemented in the next epoch.
+# 30910 - \[SC - High] Processing of voting results is not implemented...
 
 Submitted on May 7th 2024 at 23:52:40 UTC by @cryptoticky for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,28 +11,32 @@ Report severity: High
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+* Contract fails to deliver promised returns, but doesn't lose value
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
 ## Description
+
 ## Brief/Intro
+
 Processing of voting results is not implemented in the next epoch.
 
 ## Vulnerability Details
-When `Voting.distribute` function is calling, the` Voting.notifyRewardAmount` is called at the end.
-It is also inconsistent in calls of the `_updateFor` function.
 
-`_updateFor` function is called before other variables are updated in `Voter.vote` and `Voter.reset` functions.
-But in `Voter._distribute` function, the voter sends `alcx` token with old `claimable` value.
-So in the code, `Voter._updateFor` function is called before sending the `alcx` token but this produces the same result that this call is made at the end of the function.
+When `Voting.distribute` function is calling, the `Voting.notifyRewardAmount` is called at the end. It is also inconsistent in calls of the `_updateFor` function.
+
+`_updateFor` function is called before other variables are updated in `Voter.vote` and `Voter.reset` functions. But in `Voter._distribute` function, the voter sends `alcx` token with old `claimable` value. So in the code, `Voter._updateFor` function is called before sending the `alcx` token but this produces the same result that this call is made at the end of the function.
 
 ## Impact Details
+
 As a result, the voting result goes against what was expected, and the processing of each voting result has an epoch-sized delay.
 
 However, I registered this report as medium because there is no actual loss of funds.
 
 ## Recommendation
+
 1. Move `IMinter(minter).updatePeriod();` at the start of distribute function
+
 ```
 /// @inheritdoc IVoter
     function distribute() external {
@@ -50,7 +53,9 @@ However, I registered this report as medium because there is no actual loss of f
         }
     }
 ```
+
 2. Update the `_distribute` function like this
+
 ```
 function _distribute(address _gauge) internal {
         // Distribute once after epoch has ended
@@ -76,15 +81,11 @@ function _distribute(address _gauge) internal {
     }
 ```
 
-3. Don't call `_updateFor` function in other functions.
-`claimable` variable is only used in `_distribute` function and `distribute` function is called only one time in an epoch period.
-So don't need to update that variable in vote and reset function.
+3. Don't call `_updateFor` function in other functions. `claimable` variable is only used in `_distribute` function and `distribute` function is called only one time in an epoch period. So don't need to update that variable in vote and reset function.
 
 ***
-This is just a recommendation.
-You can find a better solution.
 
-
+This is just a recommendation. You can find a better solution.
 
 ## Proof of Concept
 

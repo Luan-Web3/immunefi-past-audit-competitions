@@ -1,5 +1,4 @@
-
-# `RevenueHandler.checkpoint` isn't correctly
+# 31253 - \[SC - Critical] RevenueHandlercheckpoint isnt correctly
 
 Submitted on May 15th 2024 at 20:16:14 UTC by @jasonxiale for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,17 +11,22 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardsDistributor.sol
 
 Impacts:
-- Theft of unclaimed yield
+
+* Theft of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-`RevenueHandler.checkpoint` isn't correctly when `tokenConfig.poolAdapter` is __0__, which cause `epochRevenues` record wrong number, so some users will claim more token than expected, and other user can't claim the tokens
+
+`RevenueHandler.checkpoint` isn't correctly when `tokenConfig.poolAdapter` is **0**, which cause `epochRevenues` record wrong number, so some users will claim more token than expected, and other user can't claim the tokens
 
 ## Vulnerability Details
-`RevenueHandler.checkpoint` isn't correctly when `tokenConfig.poolAdapter` is __0__, which cause `epochRevenues` record wrong number, so some users will claim more token than expected, and other user can't claim the tokens
+
+`RevenueHandler.checkpoint` isn't correctly when `tokenConfig.poolAdapter` is **0**, which cause `epochRevenues` record wrong number, so some users will claim more token than expected, and other user can't claim the tokens
+
 ## Vulnerability Details
-In [RevenueHandler.checkpoint](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/RevenueHandler.sol#L228-L268), if `tokenConfig.poolAdapter` is zero, `epochRevenues[currentEpoch][token] += amountReceived;` is used to update value, and `thisBalance` is equal to `IERC20(token).balanceOf(address(this))`
-__The issue is that `IERC20(token).balanceOf(address(this))` may contains the token that hasn't been claimed. In such case, it means that the amount will be added twice.__
+
+In [RevenueHandler.checkpoint](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/RevenueHandler.sol#L228-L268), if `tokenConfig.poolAdapter` is zero, `epochRevenues[currentEpoch][token] += amountReceived;` is used to update value, and `thisBalance` is equal to `IERC20(token).balanceOf(address(this))` **The issue is that `IERC20(token).balanceOf(address(this))` may contains the token that hasn't been claimed. In such case, it means that the amount will be added twice.**
 
 ```solidity
 228     function checkpoint() public {
@@ -54,17 +58,18 @@ __The issue is that `IERC20(token).balanceOf(address(this))` may contains the to
 269     }
 ```
 
-
 ## Impact Details
+
 `epochRevenues` isn't updated correctly in some case, so some users will claim more token than expected, and other user can't claim the tokens
 
 ## References
+
 Add any relevant links to documentation or code
 
-
-
 ## Proof of Concept
+
 Put the following code in `src/test/RevenueHandler.t.sol` and run
+
 ```bash
 FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/0TbY2mhyGA4gLPShfh-PwBlQ3PDNUdL1 --fork-block-number 17133822 --mc RevenueHandlerTest --mt testTwoCheckpoint -vv
 [⠊] Compiling...

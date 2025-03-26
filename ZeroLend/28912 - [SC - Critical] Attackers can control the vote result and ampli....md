@@ -1,5 +1,4 @@
-
-# Attackers can control the vote result and amplify target gauge's share 
+# 28912 - \[SC - Critical] Attackers can control the vote result and ampli...
 
 Submitted on Mar 1st 2024 at 17:54:55 UTC by @offside0011 for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,15 +11,19 @@ Report severity: Critical
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
 ## Description
+
 ## Brief/Intro
+
 There is on lock on `PoolVoter.sol`. The voting results can be manipulated by repeatedly staking and unstaking in OmnichainStaking.
 
 ## Vulnerability Details
-Users can obtain NFTs by locking their zero tokens in either `lockerLp` or `lockerToken`. After acquiring the NFT, they can stake it in the `OmnichainStaking` to earn the corresponding token. Subsequently, they gain the ability to vote through PoolVoter, allowing them to control the share of the respective pool.
-When users vote, the PoolVoter.sol directly uses their balance in OmnichainStaking to determine their voting weight.
+
+Users can obtain NFTs by locking their zero tokens in either `lockerLp` or `lockerToken`. After acquiring the NFT, they can stake it in the `OmnichainStaking` to earn the corresponding token. Subsequently, they gain the ability to vote through PoolVoter, allowing them to control the share of the respective pool. When users vote, the PoolVoter.sol directly uses their balance in OmnichainStaking to determine their voting weight.
+
 ```
     function _vote(
         address _who,
@@ -36,6 +39,7 @@ When users vote, the PoolVoter.sol directly uses their balance in OmnichainStaki
 ```
 
 Although there are some checks in OmnichainStaking to avoid transfer between users
+
 ```
     function transfer(address, uint256) public pure override returns (bool) {
         // don't allow users to transfer voting power. voting power can only
@@ -55,7 +59,8 @@ Although there are some checks in OmnichainStaking to avoid transfer between use
         return false;
     }
 ```
-This check can be bypassed by unstaking  directly and then staking it for another user.
+
+This check can be bypassed by unstaking directly and then staking it for another user.
 
 ```
         if (data.length > 0) from = abi.decode(data, (address));
@@ -73,10 +78,12 @@ This check can be bypassed by unstaking  directly and then staking it for anothe
 ```
 
 ## Impact Details
+
 The voting results can be manipulated and amplified, and the gauge pool rewards weight is based on the results of the voting. Therefore, attackers can exploit this to gain additional profits.
 
 * TIP1: Through auditing the code, another issue in the profit distribution process may be discovered. By manipulating the voting ratio at that moment, attackers can gain more profits. However, this second vulnerability would be analyzed more after fixing the first one.
 * TIP2: There is a bug in PoolVoter.sol, the bool check is wrong
+
 ```
     function registerGauge(
         address _asset,
@@ -87,7 +94,9 @@ The voting results can be manipulated and amplified, and the gauge pool rewards 
             isPool[_asset] = true;
         }
 ```
+
 * TIP3 Another bug in voters.ts, the `governance.vestedZeroNFT.target` and `lending.protocolDataProvider.target` is wrong.
+
 ```
   await factory.setAddresses(
     guageImpl.target,
@@ -101,11 +110,11 @@ The voting results can be manipulated and amplified, and the gauge pool rewards 
 ```
 
 ## References
-https://github.com/zerolend/governance/blob/main/contracts/voter/PoolVoter.sol#L98
-https://github.com/zerolend/governance/blob/main/contracts/locker/OmnichainStaking.sol#L60
 
+https://github.com/zerolend/governance/blob/main/contracts/voter/PoolVoter.sol#L98 https://github.com/zerolend/governance/blob/main/contracts/locker/OmnichainStaking.sol#L60
 
 ## Proof of concept
+
 ```
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;

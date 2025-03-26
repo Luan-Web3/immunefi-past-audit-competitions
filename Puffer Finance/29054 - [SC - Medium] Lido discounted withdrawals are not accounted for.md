@@ -1,5 +1,4 @@
-
-# Lido discounted withdrawals are not accounted for
+# 29054 - \[SC - Medium] Lido discounted withdrawals are not accounted for
 
 Submitted on Mar 5th 2024 at 22:27:05 UTC by @OxDEADBEEF for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,21 +11,22 @@ Report severity: Medium
 Target: https://etherscan.io/address/0xd9a442856c234a39a81a089c06451ebaa4306a72
 
 Impacts:
-- Protocol insolvency
-- Permanent freezing of funds
+
+* Protocol insolvency
+* Permanent freezing of funds
 
 ## Description
+
 ## Brief/Intro
 
-The `PufferVault` stakes `ETH` into `LIDO` to gain yield. 
-The operator can request withdrawals from LIDO and anyone can claim them.
-The current implementation assumes the amount requested is the amount that will be claimable and updates the vaults accounting respectively.
+The `PufferVault` stakes `ETH` into `LIDO` to gain yield. The operator can request withdrawals from LIDO and anyone can claim them. The current implementation assumes the amount requested is the amount that will be claimable and updates the vaults accounting respectively.
 
 However - `LIDO` can provide a lower (discounted) amount from the requested amount. This will cause the vault to calculate as if it has more assets then it really has - leading to an inflated share/asset ratio.
 
 ## Vulnerability Details
 
 `pufferVault` calculates the `totalAssets()` based on all floating ETH value. This includes stETH that is locked in `LIDO` for withdrawing by checking `$.lidoLockedETH`:
+
 ```solidity
      * @dev See {IERC4626-totalAssets}.
      * Eventually, stETH will not be part of this vault anymore, and the Vault(pufETH) will represent shares of total ETH holdings
@@ -45,9 +45,11 @@ However - `LIDO` can provide a lower (discounted) amount from the requested amou
         return $.lidoLockedETH;
     }
 ```
+
 This appears fine because it is expected that LIDO will release ETH from stETH at a 1:1 value. However - this is not true. In slashing events on LIDO - when claiming withdrawals, there can be a "discounted" amount.
 
 https://stake.lido.fi/withdrawals/request
+
 ```
 Why is the claimable amount may differ from my requested amount?
 
@@ -55,6 +57,7 @@ The amount you can claim may differ from your initial request due to a slashing 
 ```
 
 Withdraw request and claim:
+
 ```solidity
     function initiateETHWithdrawalsFromLido(uint256[] calldata amounts)
         external
@@ -112,24 +115,20 @@ Withdraw request and claim:
 ```
 
 Notice the above behavior where:
-1. `$.lidoLockedETH` is increased by ***REQUESTED*** withdraw value
-2. `$.lidoLockedETH` is deducted by ***RECEIVED*** amount. 
 
-As explained above - in slashing events, the ***RECEIVED*** amount will be less then the ***REQUESTED*** amount.
+1. `$.lidoLockedETH` is increased by _**REQUESTED**_ withdraw value
+2. `$.lidoLockedETH` is deducted by _**RECEIVED**_ amount.
+
+As explained above - in slashing events, the _**RECEIVED**_ amount will be less then the _**REQUESTED**_ amount.
 
 This means that `$.lidoLockedETH` will hold a value that is not retrievable. `totalAssets()` will be higher then the actual value the contract has.
-  
+
 ## Impact Details
 
-Since `totalAssets()` will be inflated - the share/asset ratio will be incorrect. 
-Currently withdrawals are not allowed.
+Since `totalAssets()` will be inflated - the share/asset ratio will be incorrect. Currently withdrawals are not allowed.
 
 1. If withdrawals are allowed - there can be an insolvency issue where users cannot withdraw/redeem all their shares.
-2. Deposits will be minted an incorrect share amount 
-
-
-
-
+2. Deposits will be minted an incorrect share amount
 
 ## Proof of Concept
 
@@ -182,9 +181,10 @@ Add the following test to `test/Integration/PufferTest.integration.t.sol`
         // As if it still holds the lost value.
         assertEq(backingETHAmountBeforeLoss, backingETHAmountAfterLoss);
     }
-``` 
+```
 
 To run the test:
+
 ```
 forge test --match-test "testBug()"
 ```

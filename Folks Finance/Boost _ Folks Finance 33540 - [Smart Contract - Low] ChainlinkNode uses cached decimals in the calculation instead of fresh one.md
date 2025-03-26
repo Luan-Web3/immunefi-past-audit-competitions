@@ -1,5 +1,4 @@
-
-# ChainlinkNode uses cached decimals in the calculation instead of fresh one
+# Boost \_ Folks Finance 33540 - \[Smart Contract - Low] ChainlinkNode uses cached decimals in the calculation instead of fresh one
 
 Submitted on Mon Jul 22 2024 21:35:42 GMT-0400 (Atlantic Standard Time) by @Tripathi for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,17 +11,19 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0xA758c321DF6Cd949A8E074B22362a4366DB1b725
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
 
 ChainlinkNode uses cached decimals in the calculation of 18 decimal precision, which can lead to inflated or deflated prices. The ChainlinkNode fetches the Chainlink price feed's decimals once during the registration of the node in `NodeManager::registerNode()` and same decimal is used in every price calculation
 
-As Chainlink price feeds fetch the decimals from the current aggregator and the aggregator can be changed, ` the decimals could also change`. This would lead to incorrect price conversion if the price with new decimals is used with old cached decimals. 
-
+As Chainlink price feeds fetch the decimals from the current aggregator and the aggregator can be changed, `the decimals could also change`. This would lead to incorrect price conversion if the price with new decimals is used with old cached decimals.
 
 ## Vulnerability Details
+
 Let's look at the `NodeManager::registerNode()`
 
 ```solidity
@@ -40,6 +41,7 @@ Let's look at the `NodeManager::registerNode()`
     }
 
 ```
+
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/oracle/modules/NodeManager.sol#L20
 
 Assuming the node is a Chainlink Node, it calls the internal `_registerNode()`:
@@ -56,8 +58,8 @@ Assuming the node is a Chainlink Node, it calls the internal `_registerNode()`:
     }
 
 ```
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/oracle/modules/NodeManager.sol#L85
-it ensures that the NodeDefinition is valid by checking the decimal parameter with the corresponding Chainlink Aggregator decimals in `_isValidNodeDefinition()`.
+
+https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/oracle/modules/NodeManager.sol#L85 it ensures that the NodeDefinition is valid by checking the decimal parameter with the corresponding Chainlink Aggregator decimals in `_isValidNodeDefinition()`.
 
 `_isValidNodeDefinition()` calls `ChainlinkNode::isValid()` to check if the node definition is valid:
 
@@ -81,16 +83,14 @@ it ensures that the NodeDefinition is valid by checking the decimal parameter wi
     }
 
 ```
+
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/oracle/nodes/ChainlinkNode.sol#L83
 
-`decimals == chainlinkAggregator.decimals()` ensures that the registered decimals are the same as the corresponding Chainlink Aggregator decimals. 
-However, the issue is that the same cached decimal is used in the calculation of the price every time, which is incorrect. Chainlink can change the aggregator, and if the new aggregator changes the decimal value of the asset, it will fetch an incorrect price.
+`decimals == chainlinkAggregator.decimals()` ensures that the registered decimals are the same as the corresponding Chainlink Aggregator decimals. However, the issue is that the same cached decimal is used in the calculation of the price every time, which is incorrect. Chainlink can change the aggregator, and if the new aggregator changes the decimal value of the asset, it will fetch an incorrect price.
 
 ## Impact Details
 
 Incorrect prices due to the use of cached decimals.
-
-
 
 ## Recommendation
 
@@ -121,11 +121,10 @@ Ideally, the decimals should be fetched every time latestRoundData() is called:
 
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/oracle/nodes/ChainlinkNode.sol#L27
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
->To accommodate the dynamic nature of offchain environments, Chainlink Data Feeds are updated from time to time to add new features and capabilities as well as respond to externalities such as token migrations, protocol rebrands, extreme market events, and upstream issues with data or node operations.
-These updates include changes to the aggregator configuration or a complete replacement of the aggregator that the proxy uses. If you consume data feeds through the proxy, your applications can continue to operate during these changes
+> To accommodate the dynamic nature of offchain environments, Chainlink Data Feeds are updated from time to time to add new features and capabilities as well as respond to externalities such as token migrations, protocol rebrands, extreme market events, and upstream issues with data or node operations. These updates include changes to the aggregator configuration or a complete replacement of the aggregator that the proxy uses. If you consume data feeds through the proxy, your applications can continue to operate during these changes
 
 https://docs.chain.link/data-feeds#updates-to-proxy-and-aggregator-contracts

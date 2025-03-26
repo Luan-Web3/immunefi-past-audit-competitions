@@ -1,5 +1,4 @@
-
-# OOB Write leading to memory corruption in fd_memcpy(fd_sign)
+# Boost \_ Firedancer v0.1 33378 - \[Blockchain\_DLT - Medium] OOB Write leading to memory corruption in
 
 Submitted on Thu Jul 18 2024 23:33:45 GMT-0400 (Atlantic Standard Time) by @c4a4dda89 for [Boost | Firedancer v0.1](https://immunefi.com/bounty/firedancer-boost/)
 
@@ -12,9 +11,11 @@ Report severity: Medium
 Target: https://github.com/firedancer-io/firedancer/tree/e60d9a6206efaceac65a5a2c3a9e387a79d1d096
 
 Impacts:
-- Process to process RCE between sandboxed tiles
+
+* Process to process RCE between sandboxed tiles
 
 ## Description
+
 ## Brief/Intro
 
 The `fd_mux_during_frag_fn` is called after the mux has received a new frag.
@@ -57,11 +58,10 @@ typedef void (fd_mux_during_frag_fn)( void * ctx,
                                       int *  opt_filter );
 ```
 
-
 Specifically, the parameters `seq`, `sig`, `chunk`, and `sz` originate from the received mcache fragment. Since the producer could be compromised, these fields are considered untrusted.
 
-In the `during_frag` function within the fd_sign tile implementation (src/app/fdctl/run/tiles/fd_sign.c), 
-The "sz" parameter is not subject to any boundary checks, which can lead to an Out-Of-Bounds (OOB) Write when an attacker controls the "sz". In the case `FD_KEYGUARD_ROLE_VOTER `
+In the `during_frag` function within the fd\_sign tile implementation (src/app/fdctl/run/tiles/fd\_sign.c), The "sz" parameter is not subject to any boundary checks, which can lead to an Out-Of-Bounds (OOB) Write when an attacker controls the "sz". In the case `FD_KEYGUARD_ROLE_VOTER`
+
 ```c
 static void FD_FN_SENSITIVE
 during_frag_sensitive( void * _ctx,
@@ -112,7 +112,8 @@ during_frag_sensitive( void * _ctx,
 }
 ```
 
-## Vulnerability Details 
+## Vulnerability Details
+
 ```c
 case FD_KEYGUARD_ROLE_VOTER:
       fd_memcpy( ctx->_data, ctx->in_data[ in_idx ], sz );
@@ -122,15 +123,15 @@ case FD_KEYGUARD_ROLE_VOTER:
 The "sz" parameter is not subject to any boundary checks, which can lead to an Out-Of-Bounds (OOB) Write when an attacker controls the "sz".
 
 ## Impact Details
-Process-to-process memory corruption may lead to the process-to-process RCE between sandboxed tiles. 
+
+Process-to-process memory corruption may lead to the process-to-process RCE between sandboxed tiles.
 
 ## References
-https://github.com/firedancer-io/firedancer/blob/e60d9a6206efaceac65a5a2c3a9e387a79d1d096/src/app/fdctl/run/tiles/fd_sign.c#L78
 
+https://github.com/firedancer-io/firedancer/blob/e60d9a6206efaceac65a5a2c3a9e387a79d1d096/src/app/fdctl/run/tiles/fd\_sign.c#L78
 
-
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 The lack of a PoC (Proof of Concept) stems from the complexity of the attack. Since it involves a process-to-process exploit, modifying the producer to generate untrusted input is necessary. We highly encourage the Firedancer team to review the report for a comprehensive explanation of the vulnerability. The report includes code snippets that clearly demonstrate the issue.

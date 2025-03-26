@@ -1,5 +1,4 @@
-
-# Protocol uses Pyth to fetch price which is a pull based oracle and requires price updates to be pushed by the user which is not taken care off
+# Boost \_ Folks Finance 33441 - \[Smart Contract - Insight] Protocol uses Pyth to fetch price which is a pull based oracle and requires price updates to be pushed by the user which is not taken care off
 
 Submitted on Sat Jul 20 2024 14:05:39 GMT-0400 (Atlantic Standard Time) by @Tripathi for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,10 +11,10 @@ Report severity: Insight
 Target: https://testnet.snowtrace.io/address/0xA758c321DF6Cd949A8E074B22362a4366DB1b725
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
-
 
 ## Brief/Intro
 
@@ -57,11 +56,10 @@ Implementation of Pyth pull based oracle have 2 steps
 
 2. Users of the protocol need to update the price onchain before consuming it.
 
-
-This can be done before calling `PythNode::process()` dispatch a call updatePriceFeeds on the Pyth oracle proxy to refresh the price. 
-Or provide a interface for users for updating price before consuming it.
+This can be done before calling `PythNode::process()` dispatch a call updatePriceFeeds on the Pyth oracle proxy to refresh the price. Or provide a interface for users for updating price before consuming it.
 
 ## Impact Details
+
 Pyth Oracle doesn' update price on its own. User need to update the price before consuming it. Since folks finance fail to integrate Pyth correctly user will end of consuming stale price which is not up to date
 
 ## Reference
@@ -71,16 +69,14 @@ Pyth Oracle doesn' update price on its own. User need to update the price before
 
 or Euler or any other protocol which already sets an example for best integration
 
-
 ## POC
 
-1. Currently `PythNode::process()` uses `pyth.getPriceUnsafe()` and `pyth.getEmaPriceUnsafe()` before updating the price, SO USer will consume the stale price which is not upto date. 
+1. Currently `PythNode::process()` uses `pyth.getPriceUnsafe()` and `pyth.getEmaPriceUnsafe()` before updating the price, SO USer will consume the stale price which is not upto date.
 
 Showing a POC on onchain condintions
 
-
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 Setting environment from original repo seems difficult so created onchain similar environment to show POC
@@ -142,23 +138,18 @@ contract ImpementedPythNode {
 
 ```
 
-Copy above contract and deploy in the remix. 
+Copy above contract and deploy in the remix.
+
 1. `ImplementedfetchPrice()` represents the [PythNode::process()](https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/oracle/nodes/PythNode.sol#L23) which consume price from `pyth.getEmaPriceUnsafe()` and `pyth.getPriceUnsafe()` methods.
-
 2. Call `ImplementedfetchPrice()` on any chain or testnet(also change corresponding priceFeedId ) and note the returned price
-
 3. Now call `CorrectFetchPrice()` by updating the price. For `priceUpdate` calldata fetch this from Hermes. And note the price. https://docs.pyth.network/price-feeds/api-reference/evm/update-price-feeds this could help
 
+At 1:30UTC eth/usd price went from 3498 to 3490 in some miliseconds. FOr me first call returned \~3494 and second call returned \~3490
 
+The first method is going to return 3498 and correct method will return 3490 USDC. This is what i'm referring. Pull based oracle doesn't update this price updates while user are expected to fetch the price update from offchain `Hermes` in this case and update the price before using it.
 
+In this case
 
-At 1:30UTC eth/usd price went from 3498 to 3490 in some miliseconds. FOr me first call returned ~3494 and second call returned ~3490
-
-The first method is going to return 3498 and correct method will return 3490 USDC. This is what i'm referring. 
-Pull based oracle doesn't update this price updates while user are expected to fetch the price update from offchain `Hermes` in this case and update the price before using it. 
-
-
-In this case 
 ```solidity
     function calcLiquidationAmounts(
         DataTypes.LiquidationLoansParams memory loansParams,
@@ -178,17 +169,11 @@ In this case
 
 }         
 ```
+
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LiquidationLogic.sol#L185
 
 In such cases processPriceFeed will give inflated or stale values which will lead to loss of funds for user and protocol.
 
-https://in.tradingview.com/symbols/ETHUSD/  whenever there is a sudden change call both function and check the difference. 
+https://in.tradingview.com/symbols/ETHUSD/ whenever there is a sudden change call both function and check the difference.
 
 Check [Euler](https://github.com/euler-xyz/euler-price-oracle/blob/master/src/adapter/pyth/PythOracle.sol#L13) how manages dispatch a call `updatePriceFeeds` on the Pyth oracle proxy to refresh the price before any consumption of price
-
-
-
-
-
-
- 

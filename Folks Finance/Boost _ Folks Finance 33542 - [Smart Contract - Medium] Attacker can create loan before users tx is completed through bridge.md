@@ -1,5 +1,4 @@
-
-# Attacker can create loan before user's tx is completed through bridge
+# Boost \_ Folks Finance 33542 - \[Smart Contract - Medium] Attacker can create loan before users tx is completed through bridge
 
 Submitted on Mon Jul 22 2024 22:40:57 GMT-0400 (Atlantic Standard Time) by @cryptoticky for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,25 +11,26 @@ Report severity: Medium
 Target: https://sepolia.etherscan.io/address/0x16Eecb8CeB2CE4Ec542634d7525191dfce587C85
 
 Impacts:
-- Temporary freezing of funds of at least 24h
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Temporary freezing of funds of at least 24h
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
 ## Description
+
 ## Brief/Intro
-Attacker can create loan before user's tx is completed through bridge
-It is similar to Report #33272.
-https://bugs.immunefi.com/dashboard/submission/33272
+
+Attacker can create loan before user's tx is completed through bridge It is similar to Report #33272. https://bugs.immunefi.com/dashboard/submission/33272
 
 ## Vulnerability Details
-When user send the message to bridge, it would be 10+ seconds.
-So attacker can get the tx information from the source chain and create a loan before the user's tx is completed.
 
+When user send the message to bridge, it would be 10+ seconds. So attacker can get the tx information from the source chain and create a loan before the user's tx is completed.
 
 ## Impact Details
-If user use SpokeCommon.createLoan, user will just loss the gas cost.
-But if user use SpokeToken.createLoanAndDeposit, the deposited amount will locked in hubChain or spokeToken contract of source chain for a while.
+
+If user use SpokeCommon.createLoan, user will just loss the gas cost. But if user use SpokeToken.createLoanAndDeposit, the deposited amount will locked in hubChain or spokeToken contract of source chain for a while.
 
 ## Recommendation
+
 Same to report 33272.
 
 ```
@@ -155,9 +155,11 @@ contract FolksFinance is PoC {
     }
 }
 ```
-        
+
 ## Proof of concept
+
 ## Proof of Concept
+
 ```
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;

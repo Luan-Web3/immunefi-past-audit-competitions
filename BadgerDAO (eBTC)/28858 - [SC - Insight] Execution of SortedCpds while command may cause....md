@@ -1,5 +1,4 @@
-
-# Execution of SortedCpd's while command may cause excessive gas consumption.
+# 28858 - \[SC - Insight] Execution of SortedCpds while command may cause...
 
 Submitted on Feb 29th 2024 at 01:10:58 UTC by @cryptoticky for [Boost | eBTC](https://immunefi.com/bounty/ebtc-boost/)
 
@@ -12,16 +11,21 @@ Report severity: Insight
 Target: https://github.com/ebtc-protocol/ebtc/blob/release-0.7/packages/contracts/contracts/SortedCdps.sol
 
 Impacts:
-- Unbounded gas consumption
+
+* Unbounded gas consumption
 
 ## Description
+
 ## Brief/Intro
+
 Execution of SortedCpd's while command may cause excessive gas consumption.
 
 ## Vulnerability Details
+
 The codes below can result in significant gas costs.
 
 CdpManager.sol:373-376 lines
+
 ```solidity
 while (currentBorrower != address(0) && getSyncedICR(_cId, totals.price) < MCR) {
     _cId = sortedCdps.getPrev(_cId);
@@ -30,6 +34,7 @@ while (currentBorrower != address(0) && getSyncedICR(_cId, totals.price) < MCR) 
 ```
 
 HintHelpers.sol:68-74 lines
+
 ```solidity
 while (
     vars.currentCdpUser != address(0) &&
@@ -39,15 +44,14 @@ while (
     vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
 }
 ```
-If there are a significant number of CDPs with ICRs smaller than MCRs, the user must pay a significant gas cost and out of gas exception can occur, resulting in gas loss.
-In the worst-case scenario, the gas cost may exceed the block gas limit and the protocol will not be able to operate normally.
-However, the latter is theoretically possible, but will not happen in reality.
+
+If there are a significant number of CDPs with ICRs smaller than MCRs, the user must pay a significant gas cost and out of gas exception can occur, resulting in gas loss. In the worst-case scenario, the gas cost may exceed the block gas limit and the protocol will not be able to operate normally. However, the latter is theoretically possible, but will not happen in reality.
 
 In this report, the former is explained and solutions are presented.
 
 Let's look at the cases (no CDP and 100 CDPs) : ICR < MCR
 
-You can create PoC_CDPManager.redemptions.gaslimit.t.sol file in foundry_test folder.
+You can create PoC\_CDPManager.redemptions.gaslimit.t.sol file in foundry\_test folder.
 
 And run this in terminal.
 
@@ -214,12 +218,12 @@ contract PoC_CDPManagerRedemptionsGasLimitTest is eBTCBaseInvariants {
 
 ```
 
-It can be seen that when there are 100 CDPs with ICR < MCR, the gas cost is about 3.7 times higher than when there is no.
-If 1000 CDPs were present, it would take about 37 times more gas.
+It can be seen that when there are 100 CDPs with ICR < MCR, the gas cost is about 3.7 times higher than when there is no. If 1000 CDPs were present, it would take about 37 times more gas.
 
 ## Impact Details
 
 #### 1. The user has to pay a considerable fee for gas.
+
 #### 2. It is easy to cause gas loss due to out of gas exception.
 
 As you can see, the gas amount is 1066824 with 100 CDPs (ICR < MCR).
@@ -230,14 +234,13 @@ https://etherscan.io/tx/0x86cbd747180c6c7ce935fbdf853b87e0addfa3046633071e16cb9e
 
 The gas price is 139.797022618 Gwei.
 
-1066824 * 139.797022618 Gwei = 149,138,818,857,425,232
+1066824 \* 139.797022618 Gwei = 149,138,818,857,425,232
 
-ether price is $3,350
-so gas cost = $3,350 * 0.149 = $499.15
+ether price is $3,350 so gas cost = $3,350 \* 0.149 = $499.15
 
 This increases arithmetic with more CDP (ICR < MCR).
 
-If there are 1000 CDPs, the gas cost is about $5,000.  :)
+If there are 1000 CDPs, the gas cost is about $5,000. :)
 
 ## Recommend
 
@@ -302,15 +305,13 @@ When price is changed, the IRC and last CDP would be changed.
 
 But based on the stored last CDP, the search can be carried out back and forth.
 
-This does not require many modifications to SortedCDPs contact than Solution 1, and will also drastically reduce the number of computations.
-It may be more effective to update this variable whenever there is a change in CDP due to various operations.
-
+This does not require many modifications to SortedCDPs contact than Solution 1, and will also drastically reduce the number of computations. It may be more effective to update this variable whenever there is a change in CDP due to various operations.
 
 ## Proof of Concept
 
 Let's look at the cases (no CDP and 100 CDPs) : ICR < MCR
 
-You can create PoC_CDPManager.redemptions.gaslimit.t.sol file in foundry_test folder.
+You can create PoC\_CDPManager.redemptions.gaslimit.t.sol file in foundry\_test folder.
 
 And run this in terminal.
 
@@ -477,12 +478,12 @@ contract PoC_CDPManagerRedemptionsGasLimitTest is eBTCBaseInvariants {
 
 ```
 
-It can be seen that when there are 100 CDPs with ICR < MCR, the gas cost is about 3.7 times higher than when there is no.
-If 1000 CDPs were present, it would take about 37 times more gas.
+It can be seen that when there are 100 CDPs with ICR < MCR, the gas cost is about 3.7 times higher than when there is no. If 1000 CDPs were present, it would take about 37 times more gas.
 
 ## Impact Details
 
 #### 1. The user has to pay a considerable fee for gas.
+
 #### 2. It is easy to cause gas loss due to out of gas exception.
 
 As you can see, the gas amount is 1066824 with 100 CDPs (ICR < MCR).
@@ -493,10 +494,9 @@ https://etherscan.io/tx/0x86cbd747180c6c7ce935fbdf853b87e0addfa3046633071e16cb9e
 
 The gas price is 139.797022618 Gwei.
 
-1066824 * 139.797022618 Gwei = 149,138,818,857,425,232
+1066824 \* 139.797022618 Gwei = 149,138,818,857,425,232
 
-ether price is $3,350
-so gas cost = $3,350 * 0.149 = $499.15
+ether price is $3,350 so gas cost = $3,350 \* 0.149 = $499.15
 
 This increases arithmetic with more CDP (ICR < MCR).
 

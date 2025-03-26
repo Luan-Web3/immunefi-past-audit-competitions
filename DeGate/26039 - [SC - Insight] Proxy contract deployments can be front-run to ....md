@@ -1,5 +1,4 @@
-
-# Proxy contract deployments can be front-run to take over ownership
+# 26039 - \[SC - Insight] Proxy contract deployments can be front-run to ...
 
 Submitted on Nov 23rd 2023 at 14:43:11 UTC by @p4rsely for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,25 +11,27 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x54D7aE423Edb07282645e740C046B9373970a168#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Bug Description
+
 The way the implementation and proxy contracts are deployed, allows for a front-run opportunity which allows the attacker to take ownership of the proxies and also set any deposit and/or exchange contract address of their choice.
 
-Taking a look at the deployment script, the deployment does not use a Solidity contract as a Deployment factory and relies on a script.
-This in itself is not a problem, however combined with the functionality of the implementation contracts via the proxy this can possibly be exploited.
+Taking a look at the deployment script, the deployment does not use a Solidity contract as a Deployment factory and relies on a script. This in itself is not a problem, however combined with the functionality of the implementation contracts via the proxy this can possibly be exploited.
 
 The pro of using a factory is that each transaction is atomic so all functionality can be bundled into one transaction negating the front-run issue.
 
-The current deployment script deploys each contract and initializes it in a separate transaction. This allows for a front-running opportunity for MEV bots if these proxies ever need to be redeployed. They may need to be redeployed should the protocol ever enter shutdown or exodus mode which is not reversible. 
+The current deployment script deploys each contract and initializes it in a separate transaction. This allows for a front-running opportunity for MEV bots if these proxies ever need to be redeployed. They may need to be redeployed should the protocol ever enter shutdown or exodus mode which is not reversible.
 
 How the implementation works is that once the exchange and deposit contracts are set within the separate ExchangeV3 and DefaultDepositContract contracts, it can never be reset, thus in a shutdown or exodus scenario both would need to be redeployed as they refer to each other.
 
 Due to the lack of access control on the initialize functions of each contract of the Exchangev3 and DefaultDepositContracts anyone can call the initialize function successfully if they are the first to call it. Each contract implements the initialize function which sets the caller as the new owner of the contract.
 
-The current code is below:
-https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/contracts/core/impl/ExchangeV3.sol#L81-L102
+The current code is below: https://github.com/degatedev/protocols/blob/degate\_mainnet/packages/loopring\_v3/contracts/core/impl/ExchangeV3.sol#L81-L102
+
 ```
     // -- Initialization --
     function initialize(
@@ -56,9 +57,10 @@ https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/
     }
 
 ```
-and 
 
-https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/contracts/core/impl/DefaultDepositContract.sol#L54-L65
+and
+
+https://github.com/degatedev/protocols/blob/degate\_mainnet/packages/loopring\_v3/contracts/core/impl/DefaultDepositContract.sol#L54-L65
 
 ```
     function initialize(
@@ -76,11 +78,15 @@ https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/
 ```
 
 ## Impact
+
 This could lead to the takeover of both proxies of the protocol and possible loss of funds.
+
 ## Risk Breakdown
+
 Difficulty to Exploit: Easy
 
 ## Recommendation
+
 Should the project wish to remain as currently created due to Solidity version compatibility, it can be considered to deploy using a Solidity contract or to set access control on the inititalize functions to be the address of the proxyOwner, as they will only be deployed as proxies going forward.
 
 It can also be considered to check each important `await` statement in the script to not revert by using something as below
@@ -90,22 +96,25 @@ await expect(contract.call()).not.to.be.reverted;
 ```
 
 ## References
-Contracts: 
 
-https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/contracts/core/impl/ExchangeV3.sol#L81-L102
+Contracts:
 
-https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/contracts/core/impl/DefaultDepositContract.sol#L54-L65
+https://github.com/degatedev/protocols/blob/degate\_mainnet/packages/loopring\_v3/contracts/core/impl/ExchangeV3.sol#L81-L102
+
+https://github.com/degatedev/protocols/blob/degate\_mainnet/packages/loopring\_v3/contracts/core/impl/DefaultDepositContract.sol#L54-L65
 
 Deployment script:
 
-https://github.com/degatedev/protocols/blob/degate_mainnet/packages/loopring_v3/migrations/8_deploy_exchange_v3.js
+https://github.com/degatedev/protocols/blob/degate\_mainnet/packages/loopring\_v3/migrations/8\_deploy\_exchange\_v3.js
 
 ## Proof of concept
+
 ## PoC
+
 Please copy/paste the code below into a file in the test directory of a foundry project called `ExchangeFrontrunTest.sol`
 
-Please run the test with a fork of the mainnet
-`forge test --fork-url {YOU_RPC_PROVIDER} --match-test test_FrontrunDeployer -vv`
+Please run the test with a fork of the mainnet `forge test --fork-url {YOU_RPC_PROVIDER} --match-test test_FrontrunDeployer -vv`
+
 ```
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.7.0;

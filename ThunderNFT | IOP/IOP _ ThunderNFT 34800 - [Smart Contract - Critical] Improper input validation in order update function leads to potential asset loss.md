@@ -1,5 +1,4 @@
-
-# Improper input validation in order update function leads to potential asset loss
+# IOP \_ ThunderNFT 34800 - \[Smart Contract - Critical] Improper input validation in order update funct
 
 Submitted on Tue Aug 27 2024 06:31:34 GMT-0400 (Atlantic Standard Time) by @InquisitorScythe for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -9,17 +8,22 @@ Report type: Smart Contract
 
 Report severity: Critical
 
-Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/thunder_exchange
+Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/thunder\_exchange
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-The update_order function lacks proper validation for sell orders, allowing attackers to forge asset amounts without transferring the actual assets. This critical vulnerability in the order update mechanism could be exploited in production to create sell orders with artificially inflated asset amounts. Subsequently, attackers could cancel these fraudulent orders and withdraw assets they never actually deposited, potentially leading to significant theft of assets from the exchange or other users' funds, undermining the entire trading system's integrity and security.
+
+The update\_order function lacks proper validation for sell orders, allowing attackers to forge asset amounts without transferring the actual assets. This critical vulnerability in the order update mechanism could be exploited in production to create sell orders with artificially inflated asset amounts. Subsequently, attackers could cancel these fraudulent orders and withdraw assets they never actually deposited, potentially leading to significant theft of assets from the exchange or other users' funds, undermining the entire trading system's integrity and security.
 
 ## Vulnerability Details
-To explain this vulnerability, let's first look at the code for the place_order function. It is a payable function that checks `msg_asset_id()` and `msg_amount()` when a user creates a sell order.
+
+To explain this vulnerability, let's first look at the code for the place\_order function. It is a payable function that checks `msg_asset_id()` and `msg_amount()` when a user creates a sell order.
+
 ```rust
     #[storage(read), payable]
     fn place_order(order_input: MakerOrderInput) {
@@ -49,7 +53,9 @@ To explain this vulnerability, let's first look at the code for the place_order 
         });
     }
 ```
+
 But in `update_order`, there is no such check, which allow user can update the amount of selling asset.
+
 ```rust
     fn update_order(order_input: MakerOrderInput) {
         _validate_maker_order_input(order_input);
@@ -72,7 +78,9 @@ But in `update_order`, there is no such check, which allow user can update the a
         });
     }
 ```
+
 At last, in `cancel_order`, the contract allows user withdraw his assets base on the amount claimed in order.
+
 ```rust
     #[storage(read)]
     fn cancel_order(
@@ -117,11 +125,14 @@ At last, in `cancel_order`, the contract allows user withdraw his assets base on
         });
     }
 ```
+
 Such improper input validation case could lead to direct asset theft, I'll show the detail below.
 
 ### Fix advice
+
 1. Check `msg_asset_id()` and `msg_amount()` in `update_order` when updating sell order.
 2. Distingulish ERC-721 and multi native asset, choose the correct amount in `ExecutionResult`:
+
 ```rs
     pub fn s1(maker_order: MakerOrder, taker_order: TakerOrder) -> ExecutionResult {
         ExecutionResult {
@@ -145,25 +156,28 @@ Such improper input validation case could lead to direct asset theft, I'll show 
 ```
 
 ## Impact Details
-First, this is a critical level bug which allow attacker steal assets selling on the platfrom.
-I believe the underlying issue here is that the smart contract only considered scenarios involving ERC-721 NFT trading, without taking into account situations involving ERC-1155 NFTs or other native assets.
+
+First, this is a critical level bug which allow attacker steal assets selling on the platfrom. I believe the underlying issue here is that the smart contract only considered scenarios involving ERC-721 NFT trading, without taking into account situations involving ERC-1155 NFTs or other native assets.
 
 As per defined in [Multi Native Asset Example](https://docs.fuel.network/docs/sway/blockchain-development/native_assets/#multi-native-asset-example), multi native asset model is equivalent to ERC-1155 Standard use in Ethereum. For single native asset (ERC-721), there is only one asset for each AssetId, but for multi native asset (ERC-11555), it allows multiple asset for each AssetId.
 
 The following is a detailed attack scenario:
-1. Victim **UserA** wants to sell 1000 of his NFT/native assets called *ERC1155_NFT* on platfrom, he creates a sell order by calling `place_order`, then 1000 *ERC1155_NFT* sent to the thunder exchange contract.
-2. Attacker **UserB** wants to steal those 1000 *ERC1155_NFT*, he creates a sell order by calling `place_order` with 1 *ERC1155_NFT*, then his 1 *ERC1155_NFT* sent to the thunder exchange contract.
-3. Attacker **UserB** calls `update_order` to increase the amount of his sell order to 1000 *ERC1155_NFT*, becase `update_order` does not require a deposit and check `msg_amount()`, this operation success.
-4. Attacker **UserB** calls `cancel_order` to withdraw 1000 *ERC1155_NFT* from thunder exchange contract, because the transfer amount is based on `unwrapped_order.amount`. Now **UserB** has 1000 *ERC1155_NFT* and only 1 *ERC1155_NFT* left on exchange contract.
 
+1. Victim **UserA** wants to sell 1000 of his NFT/native assets called _ERC1155\_NFT_ on platfrom, he creates a sell order by calling `place_order`, then 1000 _ERC1155\_NFT_ sent to the thunder exchange contract.
+2. Attacker **UserB** wants to steal those 1000 _ERC1155\_NFT_, he creates a sell order by calling `place_order` with 1 _ERC1155\_NFT_, then his 1 _ERC1155\_NFT_ sent to the thunder exchange contract.
+3. Attacker **UserB** calls `update_order` to increase the amount of his sell order to 1000 _ERC1155\_NFT_, becase `update_order` does not require a deposit and check `msg_amount()`, this operation success.
+4. Attacker **UserB** calls `cancel_order` to withdraw 1000 _ERC1155\_NFT_ from thunder exchange contract, because the transfer amount is based on `unwrapped_order.amount`. Now **UserB** has 1000 _ERC1155\_NFT_ and only 1 _ERC1155\_NFT_ left on exchange contract.
 
 ## References
-+ https://docs.fuel.network/docs/sway/blockchain-development/native_assets/#multi-native-asset-example
 
-        
+* https://docs.fuel.network/docs/sway/blockchain-development/native\_assets/#multi-native-asset-example
+
 ## Proof of concept
+
 ## Proof of Concept
+
 1. Create a multi native asset contract with following code in `erc1155/src/main.sw`:
+
 ```rust
 contract;
  
@@ -308,7 +322,9 @@ fn require_access_owner() {
     );
 }
 ```
+
 2. create integration test script `hardness.rs` with rust sdk. refer: https://docs.fuel.network/docs/sway/testing/testing-with-rust/
+
 ```rust
 use std::ptr::null;
 
@@ -676,7 +692,8 @@ async fn test() {
 ```
 
 3. run test with `cargo test -- --nocapture`, output like:
-```plain
+
+```
 Owner Wallet address: 95a7aa6cc32743f8706c40ef49a7423b47da763bb4bbc055b1f07254dc729036
 NFT Creator Wallet address: bdaad6a89e073e177895b3e5a9ccd15806749eda134a6438dae32fc5b6601f3f
 Owner Wallet balance: Ok({"0000000000000000000000000000000000000000000000000000000000000000": 1000000000})

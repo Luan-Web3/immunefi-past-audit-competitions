@@ -1,5 +1,4 @@
-
-# Newly created gauge may missed out on its rewards.
+# 31295 - \[SC - High] Newly created gauge may missed out on its rewards
 
 Submitted on May 16th 2024 at 17:25:04 UTC by @Lin511 for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,14 +11,19 @@ Report severity: High
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
+
 Newly created gauge may missed out on its rewards when the first distribute took place, due to the incorrect use of memory variables.
 
 ## Vulnerability Details
-In Voter._distribute(), `claimable[_gauge]` is assigned to a memory variable `_claimable`, then `claimable[_gauge]` is reset to zero.
+
+In Voter.\_distribute(), `claimable[_gauge]` is assigned to a memory variable `_claimable`, then `claimable[_gauge]` is reset to zero.
+
 ```solidity
     function _distribute(address _gauge) internal {
         // Distribute once after epoch has ended
@@ -43,7 +47,8 @@ In Voter._distribute(), `claimable[_gauge]` is assigned to a memory variable `_c
     }
 ```
 
-After that `claimable[_gauge]` is updated in _updateFor(_gauge).
+After that `claimable[_gauge]` is updated in \_updateFor(\_gauge).
+
 ```solidity
     function _updateFor(address _gauge) internal {
         require(isGauge[_gauge], "invalid gauge");
@@ -66,24 +71,23 @@ After that `claimable[_gauge]` is updated in _updateFor(_gauge).
 
 ```
 
-At last, if `_claimable` is greater than zero, reward will be send to gauge.   
-There is a problem with that `_claimable` is a memory variable, when `claimable[_gauge]` be updated, `_claimable` is not along with it, so there is a scenario that gauge won't receive it's reward on it's first distribute:  
-1, `createGauge()` called, gauge A created.  
-2, some one vote for it.  
-3, minter called `notifyRewardAmount()`.  
+At last, if `_claimable` is greater than zero, reward will be send to gauge.\
+There is a problem with that `_claimable` is a memory variable, when `claimable[_gauge]` be updated, `_claimable` is not along with it, so there is a scenario that gauge won't receive it's reward on it's first distribute:\
+1, `createGauge()` called, gauge A created.\
+2, some one vote for it.\
+3, minter called `notifyRewardAmount()`.\
 4, some one call `distribute()`, it's the first distribute of gauge A, when contracts runs to `distribute(guage A)`, `claimable[_gauge]` is greater than zero but `_claimable` is equal to zero, so gauge A missed out on it's reward this time.
 
 ## Impact Details
+
 Contracts may not work as intended, in the worst-case scenario, if the distribute() function is called only once, newly created guage could lose its rewards.
 
-
 ## References
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L366-L375
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L481
 
-
+https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L366-L375 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L481
 
 ## Proof of Concept
+
 ```solidity
 // SPDX-License-Identifier: GPL-3
 pragma solidity ^0.8.15;

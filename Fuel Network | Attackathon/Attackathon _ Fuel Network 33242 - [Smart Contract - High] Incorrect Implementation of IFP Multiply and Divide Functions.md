@@ -1,5 +1,6 @@
+# Attackathon \_ Fuel Network 33242 - \[Smart Contract - High] Incorrect Implementation of IFP Multiply
 
-# Incorrect Implementation of IFP Multiply and Divide Functions
+## Incorrect Implementation of IFP Multiply and Divide Functions
 
 Submitted on Mon Jul 15 2024 20:37:02 GMT-0400 (Atlantic Standard Time) by @Blockian for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,18 +13,24 @@ Report severity: High
 Target: https://github.com/FuelLabs/sway-libs/tree/0f47d33d6e5da25f782fc117d4be15b7b12d291b
 
 Impacts:
-- Incorrect math
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
-## Description
-# Fuel Network bug report
-## Incorrect Implementation of IFP Multiply and Divide Functions
+* Incorrect math
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
 ### Description
-The current implementation of the multiply and divide functions in `sway-libs` for the signed Fixed Point numbers is flawed.
-Specifically, the implementation always returns a positive number, even when a negative result is expected.
 
-## Root Cause
+## Fuel Network bug report
+
+### Incorrect Implementation of IFP Multiply and Divide Functions
+
+#### Description
+
+The current implementation of the multiply and divide functions in `sway-libs` for the signed Fixed Point numbers is flawed. Specifically, the implementation always returns a positive number, even when a negative result is expected.
+
+### Root Cause
+
 The `multiply` function from the `IFP64` implementation is as follows:
+
 ```rs
     fn multiply(self, other: Self) -> Self {
         let non_negative = if (self.non_negative
@@ -43,6 +50,7 @@ The `multiply` function from the `IFP64` implementation is as follows:
 ```
 
 Similarly, the `divide` function is implemented as:
+
 ```rs
     fn divide(self, divisor: Self) -> Self {
         let non_negative = if (self.non_negative
@@ -63,22 +71,24 @@ Similarly, the `divide` function is implemented as:
 
 In both functions, when determining the value of `non_negative`, the code incorrectly compares `self` with `self` instead of `self` with `other` or `divisor`. This results in `non_negative` always being set to true, regardless of the values being operated on.
 
-***NOTE***: This error affects all `IFP` types.
+_**NOTE**_: This error affects all `IFP` types.
 
-## Impact
-This issue affects every implementation of signed fixed point numbers in the Fuel ecosystem.
-Any project utilizing these implementations will encounter incorrect calculations.
+### Impact
+
+This issue affects every implementation of signed fixed point numbers in the Fuel ecosystem. Any project utilizing these implementations will encounter incorrect calculations.
 
 In the crypto space, even minor errors, like off by one, can lead to substantial financial losses, underscoring the critical nature of this bug.
 
-## Proposed fix
+### Proposed fix
+
 Compare `self` and `other` in multiply and `self` and `divisor` in divide
 
 By correctly comparing `self` with `other` or `divisor`, the functions will properly set the `non_negative` value, ensuring accurate results.
 
-        
-## Proof of concept
-# Proof of Concept
+### Proof of concept
+
+## Proof of Concept
+
 Run the POC's with `forc test`
 
 ```rs

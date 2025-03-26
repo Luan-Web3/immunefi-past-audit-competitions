@@ -1,5 +1,4 @@
-
-# `VotingEscrow.sol::checkpoint` is completely broken
+# 31567 - \[SC - Critical] VotingEscrowsolcheckpoint is completely broken
 
 Submitted on May 21st 2024 at 12:28:04 UTC by @gladiator111 for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,18 +11,23 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
+
 `VotingEscrow.sol::checkpoint` is completely broken because of incorrect update of Epoch.
 
 ## Vulnerability Details
-`Note - I have selected the closest impact. Please adjust the impact/severity as you may seem proper. Although it is clearly apparent but still I will present more POC/ evidence as to why this is a critical issue. As the time of boost is about to end, I am submitting this just confirming the basic vulnerability`                                                                                       
 
-`Note for Immunefi Triage - Do not close this issue as the boost period is about to end. This is a legitimate issue, please read the whole report carefully, if any doubt ask in the comments. Thanks!`                    
+`Note - I have selected the closest impact. Please adjust the impact/severity as you may seem proper. Although it is clearly apparent but still I will present more POC/ evidence as to why this is a critical issue. As the time of boost is about to end, I am submitting this just confirming the basic vulnerability`
+
+`Note for Immunefi Triage - Do not close this issue as the boost period is about to end. This is a legitimate issue, please read the whole report carefully, if any doubt ask in the comments. Thanks!`
 
 In the `VotingEscrow.sol::_checkpoint`, the epoch is updated after every 1 week increment and not 2 week increment. So , the epochs are not updated correctly.
+
 ```solidity
 function _checkpoint(uint256 _tokenId, LockedBalance memory oldLocked, LockedBalance memory newLocked) internal {
         Point memory oldPoint;
@@ -157,9 +161,10 @@ function _checkpoint(uint256 _tokenId, LockedBalance memory oldLocked, LockedBal
             userPointHistory[_tokenId][userEpoch] = newPoint;
         }
     }
-``` 
-This leads to the whole checkpoint function being broken. This checkpoint function is crucial for all parts of the protocols. So, if this breaks then the whole protocol, including distributing the rewards etc breaks. For Example:-
-This checkpoint function is also used in `RewardDistributor::_checkpointTotalSupply()`
+```
+
+This leads to the whole checkpoint function being broken. This checkpoint function is crucial for all parts of the protocols. So, if this breaks then the whole protocol, including distributing the rewards etc breaks. For Example:- This checkpoint function is also used in `RewardDistributor::_checkpointTotalSupply()`
+
 ```solidity
 function _checkpointTotalSupply() internal {
         address ve = votingEscrow;
@@ -178,20 +183,25 @@ function _checkpointTotalSupply() internal {
         timeCursor = t;
     }
 ```
+
 This effectively breaks the entire protocol.
+
 ## Impact Details
+
 The whole functionality of the protocol breaks
 
 ## References
+
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L1170-1301
 
-
 ## Proof of Concept
-This POC shows that after passing just 1 EPOCH timestamp, the epoch gets from 0 to 4 clearly indicating broken epoch accounting.
-Paste the following code in `VotingEscrow.t.sol` and run using the command
+
+This POC shows that after passing just 1 EPOCH timestamp, the epoch gets from 0 to 4 clearly indicating broken epoch accounting. Paste the following code in `VotingEscrow.t.sol` and run using the command
+
 ```bash
 forge test --match-test testEpochBreaks -vvvv --fork-url $FORK_URL
-``` 
+```
+
 ```solidity
     function testEpochBreaks() public {
         veALCX.checkpoint();                                // checkpointing

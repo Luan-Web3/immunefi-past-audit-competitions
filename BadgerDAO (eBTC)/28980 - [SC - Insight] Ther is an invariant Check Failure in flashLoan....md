@@ -1,5 +1,4 @@
-
-# Ther is an invariant Check Failure in flashLoan Function
+# 28980 - \[SC - Insight] Ther is an invariant Check Failure in flashLoan...
 
 Submitted on Mar 4th 2024 at 01:28:46 UTC by @XDZIBECX for [Boost | eBTC](https://immunefi.com/bounty/ebtc-boost/)
 
@@ -12,15 +11,18 @@ Report severity: Insight
 Target: https://github.com/ebtc-protocol/ebtc/blob/release-0.7/packages/contracts/contracts/ActivePool.sol
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
-There is a vulnerability in the `flashLoan` function is relates to an invariant check that assumes the collateral rate remains constant throughout the flash loan operation and this check fails to account for potential manipulation within the same transaction, allowing for inflation or deflation of collateral value.  so If an attacker  exploit this vulnerability it's could lead to arbitrage opportunities or unjust profit by creating discrepancies in collateral value without triggering the contract's safety checks, and this can  impact the protocol's financial sand potentially lead to protocol insolvency if the discrepancies significantly affect the protocol's asset valuation.
+
+There is a vulnerability in the `flashLoan` function is relates to an invariant check that assumes the collateral rate remains constant throughout the flash loan operation and this check fails to account for potential manipulation within the same transaction, allowing for inflation or deflation of collateral value. so If an attacker exploit this vulnerability it's could lead to arbitrage opportunities or unjust profit by creating discrepancies in collateral value without triggering the contract's safety checks, and this can impact the protocol's financial sand potentially lead to protocol insolvency if the discrepancies significantly affect the protocol's asset valuation.
 
 ## Vulnerability Details
 
-this is the vulnerable part : 
+this is the vulnerable part :
 
 ```solidity
 require(
@@ -29,25 +31,24 @@ require(
 );
 
 ```
-in this  line  is intended to ensure the collateral's share rate remains unchanged after a flash loan operation, and assuming that no external interactions can affect the collateral rate within the same transaction. so this assumption is flawed. and an attacker can manipulate the collateral's perceived value as an example, through market manipulation, oracle manipulation, within the transaction of the flash loan.
-This manipulation could temporarily inflate or deflate the collateral's value, allowing the attacker to benefit from the discrepancy in valuation, all while bypassing the contract's safety mechanisms designed to prevent such occurrences.
+
+in this line is intended to ensure the collateral's share rate remains unchanged after a flash loan operation, and assuming that no external interactions can affect the collateral rate within the same transaction. so this assumption is flawed. and an attacker can manipulate the collateral's perceived value as an example, through market manipulation, oracle manipulation, within the transaction of the flash loan. This manipulation could temporarily inflate or deflate the collateral's value, allowing the attacker to benefit from the discrepancy in valuation, all while bypassing the contract's safety mechanisms designed to prevent such occurrences.
 
 ## Impact Details
-if an attacker exploit this vulenrbaility it's can be significant financial instability for the protocol the attackers could profit from the temporary inflation or deflation of collateral values, extracting value from the protocol unjustly.
-and in In severe cases, if the exploited discrepancies significantly impact the protocol's ability to maintain its financial obligations, it could lead to insolvency. 
+
+if an attacker exploit this vulenrbaility it's can be significant financial instability for the protocol the attackers could profit from the temporary inflation or deflation of collateral values, extracting value from the protocol unjustly. and in In severe cases, if the exploited discrepancies significantly impact the protocol's ability to maintain its financial obligations, it could lead to insolvency.
 
 ## References
 
- - https://github.com/ebtc-protocol/ebtc/blob/a96bd000c23425f04c3223a441a625bfb21f6686/packages/contracts/contracts/ActivePool.sol#L288C1-L338C6
-
+* https://github.com/ebtc-protocol/ebtc/blob/a96bd000c23425f04c3223a441a625bfb21f6686/packages/contracts/contracts/ActivePool.sol#L288C1-L338C6
 
 ## Proof of Concept
 
-i fuzz with a scenario that show under certain conditions,  when the collateral rate is manipulated within the transaction of a flash loan, the invariant check can fail. In the test, 481 out of 1000 runs failed the invariant check, indicating that the assumption of a constant collateral rate does not always hold. This serves as evidence that an attacker could exploit this assumption to their advantage.
+i fuzz with a scenario that show under certain conditions, when the collateral rate is manipulated within the transaction of a flash loan, the invariant check can fail. In the test, 481 out of 1000 runs failed the invariant check, indicating that the assumption of a constant collateral rate does not always hold. This serves as evidence that an attacker could exploit this assumption to their advantage.
 
- here is the fuzz test : 
+here is the fuzz test :
 
-```python 
+```python
 import random
 
 # Constants
@@ -108,4 +109,5 @@ result = active_pool.flashLoan("receiver", "token", 1000, "data")
 print("Flash Loan Successful:", result)
 
 ```
-The fuzz test run for 1000 test cases, out of which the invariant check failed in 481 cases. this is demonstrate that under certain conditions, specifically when the collateral rate is manipulated within the transaction of a flash loan, the invariant check (collateral.getPooledEthByShares(DECIMAL_PRECISION) == oldRate) can fail. This indicates show the vulnerability where the assumption that the collateral rate will remain constant during the flash loan operation does not hold true.
+
+The fuzz test run for 1000 test cases, out of which the invariant check failed in 481 cases. this is demonstrate that under certain conditions, specifically when the collateral rate is manipulated within the transaction of a flash loan, the invariant check (collateral.getPooledEthByShares(DECIMAL\_PRECISION) == oldRate) can fail. This indicates show the vulnerability where the assumption that the collateral rate will remain constant during the flash loan operation does not hold true.

@@ -1,5 +1,4 @@
-
-# Wrong calculation of boost amount in Voter.poke
+# 30814 - \[SC - Critical] Wrong calculation of boost amount in Voterpoke
 
 Submitted on May 6th 2024 at 16:29:36 UTC by @cryptoticky for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,15 +11,17 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
-The Voter.poke function votes again with the same weights, effectively renewing the previous vote. 
-However, the boost value reflected in the previous weights will not be taken into account when the poke function is called.
-The boost is always 0.
+
+The Voter.poke function votes again with the same weights, effectively renewing the previous vote. However, the boost value reflected in the previous weights will not be taken into account when the poke function is called. The boost is always 0.
 
 ## Vulnerability Details
+
 ```
 /// @inheritdoc IVoter
     function poke(uint256 _tokenId) public {
@@ -42,18 +43,18 @@ The boost is always 0.
         _vote(_tokenId, _poolVote, _weights, _boost);
     }
 ```
-`// Previous boost will be taken into account with weights being pulled from the votes mapping`
-Will the calculation be done like this explanation?
-The answer is `No`.
+
+`// Previous boost will be taken into account with weights being pulled from the votes mapping` Will the calculation be done like this explanation? The answer is `No`.
 
 ```
 _weights[i] = votes[_tokenId][_poolVote[i]];
 ```
+
 This only reflects the previous weight and does not reproduce the previous boost.
 
 ## Recommendation
-In order to reproduce the boost in the Poke function, it is recommended to record the previous boost amount.
 
+In order to reproduce the boost in the Poke function, it is recommended to record the previous boost amount.
 
 ## Proof of Concept
 

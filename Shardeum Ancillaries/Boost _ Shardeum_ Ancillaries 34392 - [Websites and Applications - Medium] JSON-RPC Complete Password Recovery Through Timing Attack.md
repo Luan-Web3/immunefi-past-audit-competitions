@@ -1,5 +1,4 @@
-
-# JSON-RPC Complete Password Recovery Through Timing Attack
+# Boost \_ Shardeum\_ Ancillaries 34392 - \[Websites and Applications - Medium] JSON-RPC Complete Password Recovery Through Timing Attack
 
 Submitted on Sun Aug 11 2024 04:22:08 GMT-0400 (Atlantic Standard Time) by @Swift77057 for [Boost | Shardeum: Ancillaries](https://immunefi.com/bounty/shardeum-ancillaries-boost/)
 
@@ -12,26 +11,32 @@ Report severity: Medium
 Target: https://github.com/shardeum/json-rpc-server/tree/dev
 
 Impacts:
-- Malicious interactions with an already-connected wallet, such as: Modifying transaction arguments or parameters, Substituting contract addresses, Submitting malicious transactions
-- Improperly disclosing confidential user information, such as: Email address, Phone number, Physical address, etc.
-- Retrieve sensitive data/files from a running server, such as: /etc/shadow, database passwords, blockchain keys (this does not include non-sensitive environment variables, open source code, or usernames)
+
+* Malicious interactions with an already-connected wallet, such as: Modifying transaction arguments or parameters, Substituting contract addresses, Submitting malicious transactions
+* Improperly disclosing confidential user information, such as: Email address, Phone number, Physical address, etc.
+* Retrieve sensitive data/files from a running server, such as: /etc/shadow, database passwords, blockchain keys (this does not include non-sensitive environment variables, open source code, or usernames)
 
 ## Description
+
 ## Overview
+
 There is a vulnerability in Shardeum's JSON-RPC implementation. In particular, it uses an unsafe comparison to validate the user-provided password against a hardcoded password from a config file.
 
-The unsafe comparison has a timing leak that allows for password recovery via a classic timing attack (https://en.wikipedia.org/wiki/Timing_attack). An unprivileged attacker can exploit this vulnerability to recover the JSON-RPC password.
+The unsafe comparison has a timing leak that allows for password recovery via a classic timing attack (https://en.wikipedia.org/wiki/Timing\_attack). An unprivileged attacker can exploit this vulnerability to recover the JSON-RPC password.
 
 The attack does not require any previous knowledge of the password, and is available to a completely unauthenticated attacker. However it relies on being able to gather accurate timing measurements from the server.
 
 Viable attack conditions include an attacker VM that is colocated with the victim VM in an AWS cluster, two servers that are in the same data centre, a compromised machine on the same network where the JSON-RPC server runs, and so on...
 
 ## Impact
+
 The impact is that an unauthenticated user can recover the RPC password. It falls under the impact category of
-- Retrieve sensitive data/files from a running server, such as: /etc/shadow, database passwords, blockchain keys (this does not include non-sensitive environment variables, open source code, or usernames)
+
+* Retrieve sensitive data/files from a running server, such as: /etc/shadow, database passwords, blockchain keys (this does not include non-sensitive environment variables, open source code, or usernames)
 
 ## Root Cause
-The root cause is the use of a timing-unsafe comparison in the Typescript implementation of the RPC server. The vulnerability is located in the file `json-rpc-server/src/routes/authenticate.ts`. We find it at line marked with an [a]:
+
+The root cause is the use of a timing-unsafe comparison in the Typescript implementation of the RPC server. The vulnerability is located in the file `json-rpc-server/src/routes/authenticate.ts`. We find it at line marked with an \[a]:
 
 ```
 router.route('/:passphrase').get(async function (req: Request, res: Response) {
@@ -78,11 +83,11 @@ bool String::SlowEquals(
 }
 ```
 
-On line [b] the length of the user-provided password is compared against the length of the RPC password. V8 will return early if they mismatch. Here, an attacker can measure whether their input password has the same length as the RPC password by measuring the time it takes for the server to respond.
+On line \[b] the length of the user-provided password is compared against the length of the RPC password. V8 will return early if they mismatch. Here, an attacker can measure whether their input password has the same length as the RPC password by measuring the time it takes for the server to respond.
 
-After that, on line [c] the Javascript engine will check the first character of the user-provided password against the first character of the RPC password. An attacker can try every possible character and measure whether the first character matches the first character of the RPC password, thereby recover the first character of the RPC password.
+After that, on line \[c] the Javascript engine will check the first character of the user-provided password against the first character of the RPC password. An attacker can try every possible character and measure whether the first character matches the first character of the RPC password, thereby recover the first character of the RPC password.
 
-After that, on line [d], the Javascript engine uses a StringComparator object which will compare the two strings one character at a time. By measuring the timing it takes for the server to respond, the attacker can guess and bruteforce the RPC password one character at a time. This is the classic timing attack that can recover the password one character at a time:
+After that, on line \[d], the Javascript engine uses a StringComparator object which will compare the two strings one character at a time. By measuring the timing it takes for the server to respond, the attacker can guess and bruteforce the RPC password one character at a time. This is the classic timing attack that can recover the password one character at a time:
 
 From https://github.com/v8/v8/blob/78c8a81546e63c87304998b98b831ba2ad991e31/src/objects/string-comparator.cc#L49:
 
@@ -121,20 +126,20 @@ bool StringComparator::Equals(
 }
 ```
 
-At line [e] is where the loop breaks on the first mismatched character. This is what lets us recover the password one character at a time.
+At line \[e] is where the loop breaks on the first mismatched character. This is what lets us recover the password one character at a time.
 
 ## Fix
-For more information about how to use timing-safe comparison functions, see the discussion in thread:
-https://stackoverflow.com/questions/31095905/whats-the-difference-between-a-secure-compare-and-a-simple
 
-In particular, Node.js supports the following API:
-https://nodejs.org/dist/latest-v6.x/docs/api/crypto.html#crypto_crypto_timingsafeequal_a_b
+For more information about how to use timing-safe comparison functions, see the discussion in thread: https://stackoverflow.com/questions/31095905/whats-the-difference-between-a-secure-compare-and-a-simple
+
+In particular, Node.js supports the following API: https://nodejs.org/dist/latest-v6.x/docs/api/crypto.html#crypto\_crypto\_timingsafeequal\_a\_b
 
 To fix the vulnerability, the JSON-RPC should use `crypto.timingSafeEqual()` API when comparing the two passwords.
-        
+
 ## Proof of concept
 
 ## Proof of Concept
+
 To get good timing measurements, we wrote an attacker tool in C. This can be compiled with the following command:
 
 ```
@@ -142,6 +147,7 @@ gcc -o attack attack.c && ./attack
 ```
 
 Here is the source-code file `attack.c`:
+
 ```
 #include <stdio.h>
 #include <stdlib.h>
@@ -302,8 +308,8 @@ int main(int argc, char ** argv) {
 }
 ```
 
-The attack was run against a minimized test environment where the relevant parts have been lifted from the JSON-RPC project:
-`src/index.ts`:
+The attack was run against a minimized test environment where the relevant parts have been lifted from the JSON-RPC project: `src/index.ts`:
+
 ```
 // src/index.ts
 import express, { Express, Request, Response } from "express";
@@ -327,6 +333,7 @@ app.listen(port, () => {
 ```
 
 `src/config.ts`:
+
 ```
 type Config = {
   passphrase: string
@@ -340,6 +347,7 @@ export const CONFIG: Config = {
 ```
 
 `src/routes/autheticate.ts`:
+
 ```
 import express from 'express'
 export const router = express.Router()
@@ -490,9 +498,10 @@ sha4xxxx 4972 26250632 1481593 20961 20964
 sha4d3ux 5008 19448205 1512045 20851 20844
 ```
 
-The columns are as follows `attempted password | minimum measured time | maximum measured time | avg measured time | median measured time | averaged median measured time`. Only the first two columns are necessary to recover the password. 
+The columns are as follows `attempted password | minimum measured time | maximum measured time | avg measured time | median measured time | averaged median measured time`. Only the first two columns are necessary to recover the password.
 
 As can be seen in the data, it takes some time for the server to stabilize before it can give us a good measurement. Here's the last few measurements made by the attacker program:
+
 ```
 xxxxxxxx 4797 20196880 1482843 19745 19751
 sxxxxxxx 4902 22333983 1440873 19722 19729

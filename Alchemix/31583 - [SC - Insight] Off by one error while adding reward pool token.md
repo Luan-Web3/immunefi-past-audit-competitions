@@ -1,5 +1,4 @@
-
-# Off by one error while adding reward pool token
+# 31583 - \[SC - Insight] Off by one error while adding reward pool token
 
 Submitted on May 21st 2024 at 14:45:01 UTC by @sss for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,24 +11,30 @@ Report severity: Insight
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardPoolManager.sol
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
+
 The provided code snippet is from a Solidity function `RewardPoolManager::_addRewardPoolToken()`, which adds reward pool tokens to a contract. It contains an off-by-one error in the check for the maximum number of reward pool tokens.
 
 ## Vulnerability Details
-- The code checks if the number of reward pool tokens is less than `MAX_REWARD_POOL_TOKENS`.
-- However, the condition should be `<=` rather than `<`, as the maximum count should be inclusive.
+
+* The code checks if the number of reward pool tokens is less than `MAX_REWARD_POOL_TOKENS`.
+* However, the condition should be `<=` rather than `<`, as the maximum count should be inclusive.
 
 ## Impact Details
-- Due to the off-by-one error, the contract allows adding one more reward pool token than intended.
-- This may lead to unexpected behavior such as exceeding storage limits or unexpected gas costs.
-- It could potentially disrupt the functionality of the contract or introduce vulnerabilities in token management.
+
+* Due to the off-by-one error, the contract allows adding one more reward pool token than intended.
+* This may lead to unexpected behavior such as exceeding storage limits or unexpected gas costs.
+* It could potentially disrupt the functionality of the contract or introduce vulnerabilities in token management.
 
 ## References
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardPoolManager.sol#L13
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardPoolManager.sol#L145
+
+https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardPoolManager.sol#L13 https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardPoolManager.sol#L145
+
 ```solidity
     uint256 internal constant MAX_REWARD_POOL_TOKENS = 10;
 
@@ -44,6 +49,7 @@ https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardPoolMana
 ```
 
 **fix:**
+
 ```diff
     uint256 internal constant MAX_REWARD_POOL_TOKENS = 10;
 
@@ -58,9 +64,10 @@ https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardPoolMana
     }
 ```
 
-
 ## Proof of Concept
+
 on test file `RewardPoolManagerTest.t.sol` the test for max token is done but it is incomplete add these two lines to add two more tokens which makes total of 10 tokens which is max but it reverts and run poc
+
 ```diff
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.15;

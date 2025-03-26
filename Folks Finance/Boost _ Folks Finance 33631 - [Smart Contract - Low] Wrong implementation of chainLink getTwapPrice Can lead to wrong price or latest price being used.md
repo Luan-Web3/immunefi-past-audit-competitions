@@ -1,5 +1,4 @@
-
-# Wrong implementation of chainLink getTwapPrice Can lead to wrong price or latest price being used.
+# Boost \_ Folks Finance 33631 - \[Smart Contract - Low] Wrong implementation of chainLink getTwapPrice Can lead to wrong price or latest price being used
 
 Submitted on Wed Jul 24 2024 23:49:26 GMT-0400 (Atlantic Standard Time) by @gizzy for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,15 +11,19 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0xA758c321DF6Cd949A8E074B22362a4366DB1b725
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
-The TWAP price calculation wrongly assumes that roundId is  incremental which from chainlink docs is not ( https://docs.chain.link/data-feeds/historical-data#getrounddata-return-values ) .This assumption leads to the twap Price being wrong when a new aggregator is updated in chainlink which will in turn update the PhaseID
-   
+
+The TWAP price calculation wrongly assumes that roundId is incremental which from chainlink docs is not ( https://docs.chain.link/data-feeds/historical-data#getrounddata-return-values ) .This assumption leads to the twap Price being wrong when a new aggregator is updated in chainlink which will in turn update the PhaseID
 
 ## Vulnerability Details
-The getTwapPrice function the chainlink node is used to get the Time-Weighted Average Price (TWAP)  given a particular twapTimeInterval .
+
+The getTwapPrice function the chainlink node is used to get the Time-Weighted Average Price (TWAP) given a particular twapTimeInterval .
+
 ```Solidity
  function getTwapPrice(
         AggregatorV3Interface chainlink,
@@ -55,20 +58,24 @@ The getTwapPrice function the chainlink node is used to get the Time-Weighted Av
         return priceSum / priceCount;
     }
 ```
-The problem is that getRoundData(--latestRoundId) decreases the  latestRoundId , when the phaseId is which currently 6 is incremented to 7 . Then the first roundID of phaseid 7  will be the  latestRoundID =  (7 <<64 | 1).(from chainlink doc : https://docs.chain.link/data-feeds/historical-data#getrounddata-return-values ) This latestRoundID will greatly differ from phase 6 latestRoundID . 
-Calling the getTwapPrice with the phaseID 7 latestRoundID , in the loop when --latestRoundID occurs chain link will return instead of reverting will return 0 as price and 0 as updated at . 
- updatedAt  which is zero will be less than startTime . this will break the loop and return the latestPrice as the TWAP price . 
+
+The problem is that getRoundData(--latestRoundId) decreases the latestRoundId , when the phaseId is which currently 6 is incremented to 7 . Then the first roundID of phaseid 7 will be the latestRoundID = (7 <<64 | 1).(from chainlink doc : https://docs.chain.link/data-feeds/historical-data#getrounddata-return-values ) This latestRoundID will greatly differ from phase 6 latestRoundID . Calling the getTwapPrice with the phaseID 7 latestRoundID , in the loop when --latestRoundID occurs chain link will return instead of reverting will return 0 as price and 0 as updated at . updatedAt which is zero will be less than startTime . this will break the loop and return the latestPrice as the TWAP price .
 
 The poc shows transition from phaseId of 5 to 6 of ETH/USD of mainnet. and its effects
 
 ## Impact Details
+
 The flaw in the price if big enough can be exploited for functionalities that needs oracle to function
+
 ## References
+
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/oracle/nodes/ChainlinkNode.sol#L47C1-L78C6
-        
+
 ## Proof of concept
+
 ## Proof of Concept
-This POC  shows an example with transition from phaseID 5 to 6 of ETH/USD Oracle of mainnet
+
+This POC shows an example with transition from phaseID 5 to 6 of ETH/USD Oracle of mainnet
 
 ```Solidity
 import "../libForge/forge-std/src/Test.sol";

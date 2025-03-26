@@ -1,5 +1,4 @@
-
-# Users might receive less rewars token after `Voter.poke` is called.
+# 31199 - \[SC - Critical] Users might receive less rewars token after Vot...
 
 Submitted on May 14th 2024 at 20:56:20 UTC by @jasonxiale for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,16 +11,19 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
 
 Impacts:
-- Permanent freezing of unclaimed yield
+
+* Permanent freezing of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 A token owner can call `Voter.poke` to update the voting power, during the `Voter.poke` call, the `Bribe.totalVoting` isn't updated correctly, which results that the `Bribe.earned` will not calculate the rewards correctly.
 
 ## Vulnerability Details
-While a token owner calls [Voter.poke](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L194-L212), `Voter._reset` is called at the beginning of the [Voter._vote](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L413).
-In `Voter._reset`, `Bribe.withdraw` is called in [Voter.sol#L396](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L396)
-And `Bribe.withdraw` is defined [as](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L319-L329)
+
+While a token owner calls [Voter.poke](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L194-L212), `Voter._reset` is called at the beginning of the [Voter.\_vote](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L413). In `Voter._reset`, `Bribe.withdraw` is called in [Voter.sol#L396](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L396) And `Bribe.withdraw` is defined [as](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L319-L329)
+
 ```solidity
 319     function withdraw(uint256 amount, uint256 tokenId) external {
 320         require(msg.sender == voter);
@@ -37,6 +39,7 @@ And `Bribe.withdraw` is defined [as](https://github.com/alchemix-finance/alchemi
 ```
 
 On other side, `Bribe.deposit` is defined [as](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L303-L316)
+
 ```solidity
 303     function deposit(uint256 amount, uint256 tokenId) external {
 304         require(msg.sender == voter);
@@ -54,10 +57,9 @@ On other side, `Bribe.deposit` is defined [as](https://github.com/alchemix-finan
 316     }
 ```
 
-
 **As show above, `totalVoting` isn't updated in `Bribe.withdraw`, and the function doesn't call `_writeVotingCheckpoint` to update the checkpoint**.
 
-Then, while calculating the reward in [Bribe.earned](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L221-L280),  the function uses `votingCheckpoints.votes` to calculate the rewards in [Bribe.sol#L255-L261](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L255-L261) and [Bribe.sol#L268-L277](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L268-L277)
+Then, while calculating the reward in [Bribe.earned](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L221-L280), the function uses `votingCheckpoints.votes` to calculate the rewards in [Bribe.sol#L255-L261](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L255-L261) and [Bribe.sol#L268-L277](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L268-L277)
 
 ```solidity
 221     function earned(address token, uint256 tokenId) public view returns (uint256) {
@@ -83,21 +85,22 @@ Then, while calculating the reward in [Bribe.earned](https://github.com/alchemix
 ```
 
 So to sum up, during `Voter.poke` call:
-1. `Bribe.withdraw` will be called, but within the function `Bribe.totalVoting` isn't deducting `amount`
-1. `Bribe.deposit` will be called in [Voter._vote](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L441), but this time, `Bribe.totalVoting` is added `amount`
-So `Voter.poke` function will cause `Bribe.totalVoting` to increase.
-Then when calculating the rewards amount in `Bribe.earned`, `Bribe.totalVoting` is used, which will result wrong amount of rewards.
 
+1. `Bribe.withdraw` will be called, but within the function `Bribe.totalVoting` isn't deducting `amount`
+2. `Bribe.deposit` will be called in [Voter.\_vote](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L441), but this time, `Bribe.totalVoting` is added `amount` So `Voter.poke` function will cause `Bribe.totalVoting` to increase. Then when calculating the rewards amount in `Bribe.earned`, `Bribe.totalVoting` is used, which will result wrong amount of rewards.
 
 ## Impact Details
+
 User might receive less reward token after `Voter.poke` is called, and the unclaimed reward token will stuck in the contract.
+
 ## References
+
 Add any relevant links to documentation or code
 
-
-
 ## Proof of Concept
-Add the following code to `src/test/Voting.t.sol`, and run 
+
+Add the following code to `src/test/Voting.t.sol`, and run
+
 ```bash
 $ FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/$API --fork-block-number 17133822 --mc VotingTest --mt testAliceBribes -vv
 [⠊] Compiling...
@@ -118,9 +121,10 @@ Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 9.93ms (10.25ms CPU
 
 ```
 
-From the output we can see that 
-1. in `testAliceBribesNoPoke` Alice doesn't call `Voter.poke`, token1 and token2 will get 50000*1e18 aura
-2. in `testAliceBribesPoke`, Alice calls `Voter.poke` 3 times, token1 and token2 will get 20000*1e18 aura
+From the output we can see that
+
+1. in `testAliceBribesNoPoke` Alice doesn't call `Voter.poke`, token1 and token2 will get 50000\*1e18 aura
+2. in `testAliceBribesPoke`, Alice calls `Voter.poke` 3 times, token1 and token2 will get 20000\*1e18 aura
 
 ```solidity
     function testAliceBribesNoPoke() public {

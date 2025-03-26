@@ -1,5 +1,4 @@
-
-# The smart contract could be inoperable due to wrong replaceOwner() calling
+# 25952 - \[SC - Insight] The smart contract could be inoperable due to w...
 
 Submitted on Nov 21st 2023 at 22:07:40 UTC by @piken for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,11 +11,15 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x2028834B2c0A36A918c10937EeA71BE4f932da52#code
 
 Impacts:
-- The smart contract could be inoperable due to wrong replaceOwner() calling
+
+* The smart contract could be inoperable due to wrong replaceOwner() calling
 
 ## Description
+
 ## Bug Description
+
 `MultiSigWallet` allows eligible owner to submit any transaction by calling `submitTransaction()`:
+
 ```solidity
     function submitTransaction(address destination, uint value, bytes data)
         public
@@ -26,7 +29,9 @@ Impacts:
         confirmTransaction(transactionId);
     }
 ```
+
 Other owners can confirm the transaction by calling `confirmTransaction()`:
+
 ```solidity
     function confirmTransaction(uint transactionId)
         public
@@ -39,7 +44,9 @@ Other owners can confirm the transaction by calling `confirmTransaction()`:
         executeTransaction(transactionId);
     }
 ```
-The transaction will be executed once confirmation numbers reach the threshold `required` 
+
+The transaction will be executed once confirmation numbers reach the threshold `required`
+
 ```solidity
     function executeTransaction(uint transactionId)
         public
@@ -70,17 +77,22 @@ The transaction will be executed once confirmation numbers reach the threshold `
         }
     }
 ```
-The owner of `MultiSigWallet` can also be replaced through above process. 
-However, the owner could be replaced to `address(0)` if somehow the owners made a mistake. Additionally, if the total number of owners equals to threshold `required` before incorrect owner replacing, there would be no enough qualified owners to correct the mistake after the transaction was executed.
+
+The owner of `MultiSigWallet` can also be replaced through above process. However, the owner could be replaced to `address(0)` if somehow the owners made a mistake. Additionally, if the total number of owners equals to threshold `required` before incorrect owner replacing, there would be no enough qualified owners to correct the mistake after the transaction was executed.
+
 ## Impact
+
 1. `MultiSigWallet` will be inoperable
 2. Any assets in `MultiSigWallet` will be locked forever
+
 ## Risk Breakdown
+
 Difficulty to Exploit: Hard
 
-
 ## Recommendation
+
 Check if `newOwner` is `address(0)`:
+
 ```diff
     function replaceOwner(address owner, address newOwner)
         public
@@ -100,15 +112,19 @@ Check if `newOwner` is `address(0)`:
         OwnerAddition(newOwner);
     }
 ```
+
 ## References
+
 https://etherscan.io/address/0x2028834B2c0A36A918c10937EeA71BE4f932da52#code
 
-Line165~Line180
+Line165\~Line180
 
 ## Proof of concept
+
 1. Create a foundry project
 2. Copy below codes to test/MultiSigWallet.t.sol
-3. Run `forge test --fork-url MAINNET_URL --chain-id 1 --fork-block-number 18620472 --match-test testUpdateOwner`(replace MAINNET_URL with your Ethereum RPC URL  to test:
+3. Run `forge test --fork-url MAINNET_URL --chain-id 1 --fork-block-number 18620472 --match-test testUpdateOwner`(replace MAINNET\_URL with your Ethereum RPC URL to test:
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;

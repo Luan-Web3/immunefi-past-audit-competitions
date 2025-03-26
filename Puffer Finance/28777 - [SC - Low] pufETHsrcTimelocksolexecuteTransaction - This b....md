@@ -1,5 +1,6 @@
+# 28777 - \[SC - Low] pufETHsrcTimelocksolexecuteTransaction - This b...
 
-# `pufETH/src/Timelock.sol::executeTransaction()` - This bug makes it possible to unexpectedly execute a timelocked queued transaction TWICE, accidentally/mistakenly.
+## `pufETH/src/Timelock.sol::executeTransaction()` - This bug makes it possible to unexpectedly execute a timelocked queued transaction TWICE, accidentally/mistakenly.
 
 Submitted on Feb 26th 2024 at 21:41:35 UTC by @OxSCSamurai for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,37 +13,41 @@ Report severity: Low
 Target: https://etherscan.io/address/0x3C28B7c7Ba1A1f55c9Ce66b263B33B204f2126eA#code
 
 Impacts:
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
-- Protocol at risk of getting queued transactions executed more than once
 
-## Description
-## Brief/Intro
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+* Protocol at risk of getting queued transactions executed more than once
+
+### Description
+
+### Brief/Intro
 
 Please read the following carefully:
-- This bug makes it possible to unexpectedly execute a timelocked queued transaction more than once, ACCIDENTALLY/MISTAKENLY.
-- This vulnerability/risk does NOT require attacker access to privileged addresses/multisigs, because there is no attacker to begin with.
-- Due to this bug, ACCIDENTAL actions can lead to unfavorable/unacceptable impacts/risks on the protocol or users.
 
-## Vulnerability Details
+* This bug makes it possible to unexpectedly execute a timelocked queued transaction more than once, ACCIDENTALLY/MISTAKENLY.
+* This vulnerability/risk does NOT require attacker access to privileged addresses/multisigs, because there is no attacker to begin with.
+* Due to this bug, ACCIDENTAL actions can lead to unfavorable/unacceptable impacts/risks on the protocol or users.
 
-- Case 1: operations multisig queues transaction, later executes tx and then community multisig executes same tx again.
-- Case 2: operations multisig queues transaction, community multisig executes tx before timelock delay passes, and then operations multisig executes same tx again after timelock delay.
+### Vulnerability Details
 
-- The bug is related to the lack of proper validation/checks for `queue[txHash] = 0;`. 
-- For more details and clarity please see the bugfix section for my fixes.
-
-- The bug allows for queued transactions to be executed more than once, which should not be allowed due to the potential risks/impacts involved.
-- Could potentially cause damage but at least frustration to protocol and/or users if the same transaction was executed twice. By "same transaction" I'm specifically referring to tx with same `operationId` or `txHash`. 
-- The invariant being violated by this bug is that `it should never be possible to execute the same queued transaction more than once`.
+* Case 1: operations multisig queues transaction, later executes tx and then community multisig executes same tx again.
+* Case 2: operations multisig queues transaction, community multisig executes tx before timelock delay passes, and then operations multisig executes same tx again after timelock delay.
+* The bug is related to the lack of proper validation/checks for `queue[txHash] = 0;`.
+* For more details and clarity please see the bugfix section for my fixes.
+* The bug allows for queued transactions to be executed more than once, which should not be allowed due to the potential risks/impacts involved.
+* Could potentially cause damage but at least frustration to protocol and/or users if the same transaction was executed twice. By "same transaction" I'm specifically referring to tx with same `operationId` or `txHash`.
+* The invariant being violated by this bug is that `it should never be possible to execute the same queued transaction more than once`.
 
 Type of queued transactions that we dont want to execute twice, i.e. same tx with same operationId executed TWICE:
-- upgrade a contract
-- depositing into EigenLayer's stETH strategy contract
-- redeeming stETH for ETH from EL (via Lido)
-- pretty much all the transactions that can be queued by operations multisig now and in the future after upgrades
 
-# The buggy function: 
-- see my bugfix section after the PoC section:
+* upgrade a contract
+* depositing into EigenLayer's stETH strategy contract
+* redeeming stETH for ETH from EL (via Lido)
+* pretty much all the transactions that can be queued by operations multisig now and in the future after upgrades
+
+## The buggy function:
+
+* see my bugfix section after the PoC section:
+
 ```solidity
     function executeTransaction(address target, bytes calldata callData, uint256 operationId)
         external
@@ -81,60 +86,59 @@ Type of queued transactions that we dont want to execute twice, i.e. same tx wit
     }
 ```
 
-## Impact Details
+### Impact Details
 
-# Potential Impacts in scope:
-- 1) Griefing: see definition of griefing below, which isnt restricted to only an attacker, could be non-attack griefing too
-- 2) Contract fails to deliver promised returns, but doesn't lose value: this should include not only financial related but also non-financial related functionality which should not exist. i.e. promised returns should include promised contract functionality.
+## Potential Impacts in scope:
 
-# See more detailed explanations of above two impacts in scope below:
+*
+  1. Griefing: see definition of griefing below, which isnt restricted to only an attacker, could be non-attack griefing too
+*
+  2. Contract fails to deliver promised returns, but doesn't lose value: this should include not only financial related but also non-financial related functionality which should not exist. i.e. promised returns should include promised contract functionality.
 
-1) Griefing risk is not necessarily isolated to an attacker, it could happen without an attacker/attack, as explained below:
+## See more detailed explanations of above two impacts in scope below:
+
+1. Griefing risk is not necessarily isolated to an attacker, it could happen without an attacker/attack, as explained below:
 
 Griefing can encompass situations where disruption, harm, or inconvenience is caused not only by intentional attacks but also by accidental actions or negligence. While griefing often implies malicious intent, the consequences of actions that result from accidental mistakes or negligence can have similar effects on the protocol and its users.
 
 For example:
 
-- Accidental Actions: Suppose a user unintentionally triggers a series of transactions that disrupt the functioning of a decentralized application (DApp) or smart contract, causing financial losses or inconvenience to other users. Even though the action was not malicious, it still results in griefing-like consequences.
-
-- Negligence: If developers or administrators of a protocol fail to properly secure or maintain the system, leading to vulnerabilities being exploited or critical errors occurring, the resulting disruptions and losses could be considered a form of griefing, albeit stemming from negligence rather than malicious intent.
+* Accidental Actions: Suppose a user unintentionally triggers a series of transactions that disrupt the functioning of a decentralized application (DApp) or smart contract, causing financial losses or inconvenience to other users. Even though the action was not malicious, it still results in griefing-like consequences.
+* Negligence: If developers or administrators of a protocol fail to properly secure or maintain the system, leading to vulnerabilities being exploited or critical errors occurring, the resulting disruptions and losses could be considered a form of griefing, albeit stemming from negligence rather than malicious intent.
 
 In both cases, whether the disruption is caused intentionally or unintentionally, the impact on the protocol and its users can be similar. It may result in economic losses, loss of trust, reputational damage, and the need for mitigation efforts. Therefore, when discussing griefing in the context of Web3 protocols, it's important to consider a broad spectrum of actions and their consequences, including those stemming from accidents or negligence.
 
-2) The impact "Contract fails to deliver promised returns, but doesn't lose value" can be considered as the contract not behaving as expected, irrespective of whether user funds are involved. In the context of smart contracts, the expected behavior is typically defined by the contract's code and its intended purpose. If the contract fails to fulfill its obligations or execute its functions as intended, it's considered a failure, regardless of whether user funds are directly impacted.
+2. The impact "Contract fails to deliver promised returns, but doesn't lose value" can be considered as the contract not behaving as expected, irrespective of whether user funds are involved. In the context of smart contracts, the expected behavior is typically defined by the contract's code and its intended purpose. If the contract fails to fulfill its obligations or execute its functions as intended, it's considered a failure, regardless of whether user funds are directly impacted.
 
 Even if no user funds are involved, such a failure can still have significant repercussions, including loss of trust, reputational damage, legal implications, and economic consequences. Therefore, ensuring that smart contracts behave as expected is crucial for maintaining the integrity and reliability of the entire system, regardless of the specific financial implications.
 
 Therefore both mentioned impacts should be relevant to this bug and bug report, but at least the griefing impact if not both.
 
-# IMPACTS:
-- Even if both the community & operations multisigs were/are fully TRUSTED, this trust factor does not cover accidental actions, and this bug report is about accidental/mistaken actions, and NOT about malicious actions.
-- If a role/user/multisig is fully trusted, the assumption is that they will never do anything bad out of malicious intention, however, bad things could happen due to accidental/mistaken actions too, and the current implementation has no mitigation against accidental or mistaken transaction executions made possible by this bug.
+## IMPACTS:
 
-## References
+* Even if both the community & operations multisigs were/are fully TRUSTED, this trust factor does not cover accidental actions, and this bug report is about accidental/mistaken actions, and NOT about malicious actions.
+* If a role/user/multisig is fully trusted, the assumption is that they will never do anything bad out of malicious intention, however, bad things could happen due to accidental/mistaken actions too, and the current implementation has no mitigation against accidental or mistaken transaction executions made possible by this bug.
+
+### References
+
 https://github.com/PufferFinance/pufETH/blob/3e76d02c7b54323d347c8277327d3877bab591f5/src/Timelock.sol#L182-L225
 
+### Proof of Concept
 
+## PoC tests:
 
-## Proof of Concept
+PRIMARY PoC tests: main PoCs for this bug report TEST 1: proving the bug exists TEST 2: proving my bugfix works
 
-# PoC tests:
+SECONDARY PoC tests, not included:
 
-PRIMARY PoC tests: main PoCs for this bug report
-TEST 1: proving the bug exists
-TEST 2: proving my bugfix works
+* (I will investigate the below further and if I think valid, I will do PoCs for them too, and add to this bug report or create a new report, depending on feedback from Immunefi team.): TEST 3: proving that it's possible to execute same upgrade tx twice TEST 4: proving temporary freezing of funds: might not be valid, need to check. TEST 5: proving (temporary) insolvency: might not be valid, need to check.
 
-SECONDARY PoC tests, not included: 
-- (I will investigate the below further and if I think valid, I will do PoCs for them too, and add to this bug report or create a new report, depending on feedback from Immunefi team.):
-TEST 3: proving that it's possible to execute same upgrade tx twice
-TEST 4: proving temporary freezing of funds: might not be valid, need to check.
-TEST 5: proving (temporary) insolvency: might not be valid, need to check.
-
-For this bug report and its PoC I made use of existing test file `pufETH/test/Integration/PufferTest.integration.t.sol`, and added my own test function as per below. 
+For this bug report and its PoC I made use of existing test file `pufETH/test/Integration/PufferTest.integration.t.sol`, and added my own test function as per below.
 
 > Please note: CASE 1 and CASE 2 from the below test function should not be executed at the same time, so execute one of them at a time, and keep the other one commented out. See details in test function below:
 
-# MY TEST FUNCTION:
+## MY TEST FUNCTION:
+
 ```solidity
     /// //audit test function added for PoC/testing purposes
     function test_double_execute_queued_EL_deposit_tx()
@@ -213,13 +217,15 @@ For this bug report and its PoC I made use of existing test file `pufETH/test/In
     }
 ```
 
-# TEST 1: proving the bug exists
-forge command used:
-`ETH_RPC_URL=https://mainnet.infura.io/v3/84da59df4c5640e0a7da367d8fcb76b1 forge test --match-test test_double_execute_queued_EL_deposit_tx -vvvvv`
+## TEST 1: proving the bug exists
+
+forge command used: `ETH_RPC_URL=https://mainnet.infura.io/v3/84da59df4c5640e0a7da367d8fcb76b1 forge test --match-test test_double_execute_queued_EL_deposit_tx -vvvvv`
 
 > CASE 1: operations multisig executes queued tx first:
-- operations multisig queues deposit tx and then executes it after timelock delay, then community multisig successfully executes same tx again. 
-- Result: +-2000 stETH deposited into EL strategy contract
+
+* operations multisig queues deposit tx and then executes it after timelock delay, then community multisig successfully executes same tx again.
+* Result: +-2000 stETH deposited into EL strategy contract
+
 ```solidity
     │   │   │   ├─ [2972] 0x17144556fd3424EDC8Fc8A4C940B2D04936d17eb::balanceOf(Eigen stETH strategy: [0x93c4b944D05dfe6df7645A86cd2206016c51564D]) [delegatecall]
     │   │   │   │   └─ ← 77473584173803977821625 [7.747e22]
@@ -242,9 +248,12 @@ Test result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.44s
 
 Ran 1 test suite in 1.44s: 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
+
 > CASE 2: community multisig executes queued tx first:
-- community multisig executes queued tx before/after timelock delay expires, then operations multisig successfully executes same tx again.
-- Result: +-2000 stETH deposited into EL strategy contract
+
+* community multisig executes queued tx before/after timelock delay expires, then operations multisig successfully executes same tx again.
+* Result: +-2000 stETH deposited into EL strategy contract
+
 ```solidity
     │   │   │   ├─ [2972] 0x17144556fd3424EDC8Fc8A4C940B2D04936d17eb::balanceOf(Eigen stETH strategy: [0x93c4b944D05dfe6df7645A86cd2206016c51564D]) [delegatecall]
     │   │   │   │   └─ ← 77473584173803977821625 [7.747e22]
@@ -268,12 +277,15 @@ Test result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.72s
 Ran 1 test suite in 1.72s: 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
 
-# TEST 2: proving my bugfix works
+## TEST 2: proving my bugfix works
+
 `ETH_RPC_URL=https://mainnet.infura.io/v3/84da59df4c5640e0a7da367d8fcb76b1 forge test --match-test test_double_execute_queued_EL_deposit_tx -vvvvv`
 
 > CASE 1: operations multisig executes queued tx first:
-- operations multisig queues deposit tx and then executes it after timelock delay, then community multisig tries to execute same tx again, but it reverts
-- Result: only +-1000 stETH deposited into EL strategy contract
+
+* operations multisig queues deposit tx and then executes it after timelock delay, then community multisig tries to execute same tx again, but it reverts
+* Result: only +-1000 stETH deposited into EL strategy contract
+
 ```solidity
     │   │   │   ├─ [2972] 0x17144556fd3424EDC8Fc8A4C940B2D04936d17eb::balanceOf(Eigen stETH strategy: [0x93c4b944D05dfe6df7645A86cd2206016c51564D]) [delegatecall]
     │   │   │   │   └─ ← 76473584173803977821627 [7.647e22]
@@ -306,9 +318,12 @@ Encountered 1 failing test in test/Integration/PufferTest.integration.t.sol:Puff
 
 Encountered a total of 1 failing tests, 0 tests succeeded
 ```
+
 > CASE 2: community multisig executes queued tx first:
-- community multisig executes queued tx before/after timelock delay expires, then operations multisig tries to execute same tx again, but it reverts.
-- Result: only +-1000 stETH deposited into EL strategy contract
+
+* community multisig executes queued tx before/after timelock delay expires, then operations multisig tries to execute same tx again, but it reverts.
+* Result: only +-1000 stETH deposited into EL strategy contract
+
 ```solidity
     │   │   │   ├─ [2972] 0x17144556fd3424EDC8Fc8A4C940B2D04936d17eb::balanceOf(Eigen stETH strategy: [0x93c4b944D05dfe6df7645A86cd2206016c51564D]) [delegatecall]
     │   │   │   │   └─ ← 76473584173803977821627 [7.647e22]
@@ -344,9 +359,10 @@ Encountered 1 failing test in test/Integration/PufferTest.integration.t.sol:Puff
 Encountered a total of 1 failing tests, 0 tests succeeded
 ```
 
-# SUGGESTED BUG MITIGATION / BUGFIX:
+## SUGGESTED BUG MITIGATION / BUGFIX:
 
 My suggested bugfixes below to prevent queued transaction from being successfully executed twice:
+
 ```diff
     function executeTransaction(address target, bytes calldata callData, uint256 operationId) 
         external

@@ -1,5 +1,4 @@
-
-# The locker's supply can be arbitrarily inflated by an attacker due to unaccounted merge() 
+# 29095 - \[SC - High] The lockers supply can be arbitrarily inflated ...
 
 Submitted on Mar 7th 2024 at 00:56:31 UTC by @Trust for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,17 +11,21 @@ Report severity: High
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Theft of unclaimed yield
+
+* Theft of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-Users can lock Zero tokens in locker contracts (LockerLP/LockerToken) to receive locker NFTs. They can merge those NFTs through `merge()`.
-OmnichainStaking 
+
+Users can lock Zero tokens in locker contracts (LockerLP/LockerToken) to receive locker NFTs. They can merge those NFTs through `merge()`. OmnichainStaking
 
 ## Vulnerability Details
+
 BaseLocker manages the current locked supply of underlying: `uint256 public supply;`
 
 Supply is added in each `_depositFor()`:
+
 ```
 function _depositFor(
     uint256 _tokenId,
@@ -41,13 +44,16 @@ function _depositFor(
         lock.power
     );
 ```
+
 It is likewise reduced in `withdraw()`:
+
 ```
      uint256 supplyBefore = supply;
      supply = supplyBefore - value;
 ```
 
-The issue is that not all `_depositFor()` calls increase the supply - when it is called for `MERGE_TYPE` deposit, it simply combines two existing supplies. Therefore, `supply` variable will become forever out of sync. It is manipulable by an  attacker by creating two locks and merging them, he could do this at the last second of every week so that his founds would be blocked for only a single block.
+The issue is that not all `_depositFor()` calls increase the supply - when it is called for `MERGE_TYPE` deposit, it simply combines two existing supplies. Therefore, `supply` variable will become forever out of sync. It is manipulable by an attacker by creating two locks and merging them, he could do this at the last second of every week so that his founds would be blocked for only a single block.
+
 ```
 uint256 unlockTime = ((block.timestamp + _lockDuration) / WEEK) * WEEK; // Locktime is rounded down to weeks
 require(_value > 0, "value = 0"); // dev: need non-zero value
@@ -55,12 +61,11 @@ require(unlockTime > block.timestamp, "Can only lock in the future");
 ```
 
 ## Impact Details
+
 Anything that accounts using the locker supply() can be manipulated, for example to lead to a diluted reward distribution for a particular chain. Attacker can also make `supply` drift to a very large number, so that future deposits would overflow, making the contract unable to service `createLock()` requests.
 
-
-
-
 ## Proof of Concept
+
 THe POC is a standalone file including all the necessary contracts. Simply deploy BaseLockerPOC and run `inflate_supply()` to see that merging leaks supply() by the attacker.
 
 ```

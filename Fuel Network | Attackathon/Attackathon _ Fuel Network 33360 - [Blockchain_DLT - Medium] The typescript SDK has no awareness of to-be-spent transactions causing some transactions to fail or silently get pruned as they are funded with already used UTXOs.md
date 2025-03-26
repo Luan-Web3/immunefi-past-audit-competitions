@@ -1,5 +1,4 @@
-
-# The typescript SDK has no awareness of to-be-spent transactions causing some transactions to fail or silently get pruned as they are funded with already used UTXOs
+# Attackathon \_ Fuel Network 33360 - \[Blockchain\_DLT - Medium] The typescript SDK has no awareness of
 
 Submitted on Thu Jul 18 2024 16:50:03 GMT-0400 (Atlantic Standard Time) by @n4nika for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,24 +11,29 @@ Report severity: Medium
 Target: https://github.com/FuelLabs/fuels-ts/tree/v0.91.0
 
 Impacts:
-- A bug in the respective layer 0/1/2 network code that results in unintended smart contract behavior with no concrete funds at direct risk
+
+* A bug in the respective layer 0/1/2 network code that results in unintended smart contract behavior with no concrete funds at direct risk
 
 ## Description
+
 ## Brief/Intro
+
 The `Typescript SDK` provides the `fund` function which retrieves `UTXOs`, which belong to the owner and can be used to fund the request in question, from fuel's graphql api. These then get added to the request making it possible to send it to the network as it now has inputs which can be spent by its outputs. Now this works when a user only wants to fund one transaction per block as in the next block, the spent UTXO will not exist anymore. However if a user wants to fund multiple transactions within one block, the following can happen:
 
 It is important to note, that the graphql API will return a random UTXO which has enough value to fund the transaction in question.
+
 * user has 2 spendable `UTXOs` in their wallet which can cover all expenses
 * user funds transaction `tA` with an input gotten from the API `iA`
 * user submits `tA` to fuel
 * `iA` is still in possession of the user as no new block has been produced
 * user funds a transaction `tB` and gets the same input `iA` from the API
 * user tries to submit transaction `tB` to fuel but now one of the following can happen:
-1) if the recipient and all other parameters are the same as in `tA`, submission will fail as `tB` will have the same `txHash` as `tA`
-2) if the parameters are different, there will be a collision in the `txpool` and `tA` will be removed from the `txpool`
 
+1. if the recipient and all other parameters are the same as in `tA`, submission will fail as `tB` will have the same `txHash` as `tA`
+2. if the parameters are different, there will be a collision in the `txpool` and `tA` will be removed from the `txpool`
 
 ## Vulnerability Details
+
 The problem occurs, because the `fund` function in `fuels-ts/packages/account/src/account.ts` gets the needed ressources statelessly with the function `getResourcesToSpend` without taking into consideration already used `UTXOs`:
 
 ```ts
@@ -67,27 +71,26 @@ The problem occurs, because the `fund` function in `fuels-ts/packages/account/sr
 ```
 
 ## Impact Details
+
 This issue will lead to unexpected SDK behaviour. Looking at the scenario in `Brief/Intro`, it could have the following impacts for users:
 
-1) A transaction does not get included in the `txpool` / in a block
-2) A previous transaction silently gets removed from the `txpool` and replaced with a new one
-
+1. A transaction does not get included in the `txpool` / in a block
+2. A previous transaction silently gets removed from the `txpool` and replaced with a new one
 
 ## Recommendation
+
 I would recommend adding a buffer to the `Account` class, in which retrieved `resources` are saved. These can then be provided to `getResourcesToSpend` to be excluded from future queries but need to be removed from the buffer if their respective transaction fails to be included, in order to be able to use those `resources` again in such cases.
 
-        
 ## Proof of concept
+
 ## Proof of Concept
-The following PoC transfers 100 coins from `wallet2` to `wallet` after which `wallet2` has two `UTXOs` one with value `100` and one with a very high value (this is printed to the console).
-Afterwards, `wallet` will attempt transfering `80` coins back to `wallet2` twice in one block, each in a separate transaction. This should work perfectly fine as `wallet` has two `UTXOs` where each can cover the cost of each respective transaction.
-Now when running this one of the following will happen:
-1) both transfers from `wallet` to `wallet2` get a different UTXO. This is the case if execution is successful and `wallet2` has `80` coins more than `wallet` in the end.
-2) both transfers get the same UTXO. In this case the script will fail and throw an error as then both transactions will have the same hash
 
+The following PoC transfers 100 coins from `wallet2` to `wallet` after which `wallet2` has two `UTXOs` one with value `100` and one with a very high value (this is printed to the console). Afterwards, `wallet` will attempt transfering `80` coins back to `wallet2` twice in one block, each in a separate transaction. This should work perfectly fine as `wallet` has two `UTXOs` where each can cover the cost of each respective transaction. Now when running this one of the following will happen:
 
-In order to execute this PoC, please deploy a local node with a blocktime of `5secs` as I wrote my PoC for that blocktime. Note that with a small change it will also work with other blocktimes.
-Then add the PoC to a file `poc_resources.ts` and compile it with `tsc poc_resources.ts`.  
+1. both transfers from `wallet` to `wallet2` get a different UTXO. This is the case if execution is successful and `wallet2` has `80` coins more than `wallet` in the end.
+2. both transfers get the same UTXO. In this case the script will fail and throw an error as then both transactions will have the same hash
+
+In order to execute this PoC, please deploy a local node with a blocktime of `5secs` as I wrote my PoC for that blocktime. Note that with a small change it will also work with other blocktimes. Then add the PoC to a file `poc_resources.ts` and compile it with `tsc poc_resources.ts`.\
 Finally execute it with `node poc_resources.js`.
 
 Since the choice which `UTXO` is taken as input is random, it might take a few tries to trigger the bug!

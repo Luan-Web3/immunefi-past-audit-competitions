@@ -1,5 +1,4 @@
-
-# Resubmission with Pause Bypass: Potential Exploit in swapAndDeposit1Inch Function due to Incorrect Return Value Assumption and Residual stETH Risk
+# 28646 - \[SC - Insight] Resubmission with Pause Bypass Potential Exploi...
 
 Submitted on Feb 22nd 2024 at 23:05:17 UTC by @offside0011 for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,14 +11,14 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x7276925e42f9c4054afa2fad80fa79520c453d6a
 
 Impacts:
-- Theft of unclaimed yield
+
+* Theft of unclaimed yield
 
 ## Description
+
 ## This is a resubmission of #28611 and #28614
 
-Please refer to the previous submissions for technical details:
-https://bugs.immunefi.com/dashboard/submission/28611
-https://bugs.immunefi.com/dashboard/submission/28614
+Please refer to the previous submissions for technical details: https://bugs.immunefi.com/dashboard/submission/28611 https://bugs.immunefi.com/dashboard/submission/28614
 
 ## Vulnerability
 
@@ -28,6 +27,7 @@ Dust stETH could still be stolen from the current depositor.
 These issues are already documented in the audit reports from BlockSec and Quantstamp, and the Puffer Team has been notified.
 
 ## Explanation
+
 In response to the previous issue, the team confirmed that:
 
 > Puffer Depositor swap functions are in scope, but due to them being paused bugs will only be considered if they can bypass the pause mechanism.
@@ -37,7 +37,6 @@ However, these swap functions are still accessible on the mainnet. We have alrea
 ## Recommendation
 
 Currently, only a small amount of dust (approximately $46) is vulnerable. The functions should be paused.
-
 
 ## Proof of Concept
 

@@ -1,5 +1,4 @@
-
-# `RewardsDistributor.tokensPerWeek` might be zero in some extreme cases
+# 31385 - \[SC - Low] RewardsDistributortokensPerWeek might be zero i...
 
 Submitted on May 17th 2024 at 22:21:00 UTC by @jasonxiale for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,14 +11,19 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardsDistributor.sol
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
+
 `RewardsDistributor.tokensPerWeek` is used to record the amount of alcx to distribute per week, if its value is zero, it means there is no alcx will be distributed. In current implementation, there will be an extreme case that if the `RewardsDistributor.checkpointToken` isn't called for more than 20 weeks, some weeks in the past will has empty `RewardsDistributor.tokensPerWeek`
 
 ## Vulnerability Details
-In [RewardsDistributor._checkpointToken](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/RewardsDistributor.sol#L226-L254), the function will update `lastTokenTime` to ` block.timestamp` first, and then loop 20 WEEK in for-loop
+
+In [RewardsDistributor.\_checkpointToken](https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/RewardsDistributor.sol#L226-L254), the function will update `lastTokenTime` to `block.timestamp` first, and then loop 20 WEEK in for-loop
+
 ```solidity
 227     function _checkpointToken() internal {
 ...
@@ -34,31 +38,21 @@ In [RewardsDistributor._checkpointToken](https://github.com/alchemix-finance/alc
 252         }
 254     }
 ```
-__And next time when `RewardsDistributor.checkpointToken` is called, the function record `RewardsDistributor.tokensPerWeek` from the timestamp the function is called instead of the `RewardsDistributor.tokensPerWeek` hasn't been recordeded.__
-So if the `RewardsDistributor.checkpointToken` hasn't been called in more than 20 weeks, the `RewardsDistributor.tokensPerWeek` will be like:
-RewardsDistributor.tokensPerWeek[week_00] -> value_00
-RewardsDistributor.tokensPerWeek[week_01] -> value_01
-RewardsDistributor.tokensPerWeek[week_02] -> value_02
-...
-RewardsDistributor.tokensPerWeek[week_19] -> value_19
-RewardsDistributor.tokensPerWeek[week_20] -> 0
-RewardsDistributor.tokensPerWeek[week_21] -> 0
-RewardsDistributor.tokensPerWeek[week_22] -> 0
-...
-RewardsDistributor.tokensPerWeek[week_nn] -> value_nn   <<<<--- next RewardsDistributor.checkpointToken is called, the `RewardsDistributor.tokensPerWeek` will be updated from here
-RewardsDistributor.tokensPerWeek[week_nm] -> value_nm
 
+**And next time when `RewardsDistributor.checkpointToken` is called, the function record `RewardsDistributor.tokensPerWeek` from the timestamp the function is called instead of the `RewardsDistributor.tokensPerWeek` hasn't been recordeded.** So if the `RewardsDistributor.checkpointToken` hasn't been called in more than 20 weeks, the `RewardsDistributor.tokensPerWeek` will be like: RewardsDistributor.tokensPerWeek\[week\_00] -> value\_00 RewardsDistributor.tokensPerWeek\[week\_01] -> value\_01 RewardsDistributor.tokensPerWeek\[week\_02] -> value\_02 ... RewardsDistributor.tokensPerWeek\[week\_19] -> value\_19 RewardsDistributor.tokensPerWeek\[week\_20] -> 0 RewardsDistributor.tokensPerWeek\[week\_21] -> 0 RewardsDistributor.tokensPerWeek\[week\_22] -> 0 ... RewardsDistributor.tokensPerWeek\[week\_nn] -> value\_nn <<<<--- next RewardsDistributor.checkpointToken is called, the `RewardsDistributor.tokensPerWeek` will be updated from here RewardsDistributor.tokensPerWeek\[week\_nm] -> value\_nm
 
 ## Impact Details
+
 Because `RewardsDistributor.tokensPerWeek` is used to calcuate the amount of alcx a user can claim, if its value is 0, it means there will be no alcx can be claim.
 
 ## References
+
 Add any relevant links to documentation or code
 
-
-
 ## Proof of Concept
+
 Put the following code in `src/test/Minter.t.sol`, and run
+
 ```bash
 FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/0TbY2mhyGA4gLPShfh-PwBlQ3PDNUdL1 --fork-block-number 17133822 --mc MinterTest --mt testNoEmissions -vv
 [⠊] Compiling...

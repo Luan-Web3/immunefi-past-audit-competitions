@@ -1,5 +1,4 @@
-
-# Steal Rewards and Take over Network by Faking AppData When Gossiping a Transaction
+# 33922 - \[BC - Critical] Steal Rewards and Take over Network by Faking A...
 
 Submitted on Aug 2nd 2024 at 01:19:16 UTC by @Blockian for [Boost | Shardeum: Core](https://immunefi.com/bounty/shardeum-core-boost/)
 
@@ -12,60 +11,71 @@ Report severity: Critical
 Target: https://github.com/shardeum/shardus-core/tree/dev
 
 Impacts:
-- Direct loss of funds
+
+* Direct loss of funds
 
 ## Description
+
 ## Impact
+
 1. Steal other nodes' rewards
 2. Create many nodes without staking any actual stake, thus taking over the network
 3. Probably other stuff as well
+
 ## Root Cause
+
 The root cause is that `txPreCrackData` isn't called for gossiped transactions, and so the `appData` and related staking data is trusted.
+
 ## Flow
+
 ### Stealing rewards
+
 1. Innocent operator (`operator 1`) stakes a node (`node a`).
 2. `node a` deserves a reward
 3. Malicious operator (`attacker`) calls gossips an `unstake` transaction, with `appData` claiming to unstake `node a`.
 4. The validation passes because it is done compared to a malicious `appData`.
 5. `attacker` gets the reward.
+
 ### Taking over the network
+
 1. Malicious node stakes one node
-3. Malicious node stakes 100 nodes
-	1. Shouldn't be possible, but is possible because it can fake the appData
-4. Malicious node unstakes the first node, gets back all stake
-5. Malicious node stakes one node
-6. Now the malicious node can create an arbitrary amount of valid nodes, but with a stake that is worth only one node.
-7. Can use this to take over the network.
+2. Malicious node stakes 100 nodes
+   1. Shouldn't be possible, but is possible because it can fake the appData
+3. Malicious node unstakes the first node, gets back all stake
+4. Malicious node stakes one node
+5. Now the malicious node can create an arbitrary amount of valid nodes, but with a stake that is worth only one node.
+6. Can use this to take over the network.
+
 ## Deep Dive
-The handler `spread_tx_to_group` (in https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/state-manager/TransactionQueue.ts#L661-L661) calls `handleSharedTX` (https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/state-manager/TransactionQueue.ts#L1036-L1036) which calls `validateTxnFields` with the fields supplied by the gossip (https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/state-manager/TransactionQueue.ts#L1046-L1046). These pass because they can be supplied by the gossiping malicious node. 
-The transaction is queued, applied, and reaches:
-https://github.com/shardeum/shardeum//blob/c7b10c2370028f7c7cbd2a01839e50eb50faa904/src/index.ts#L3772
-Which takes the reward from the wrong node.
+
+The handler `spread_tx_to_group` (in https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/state-manager/TransactionQueue.ts#L661-L661) calls `handleSharedTX` (https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/state-manager/TransactionQueue.ts#L1036-L1036) which calls `validateTxnFields` with the fields supplied by the gossip (https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/state-manager/TransactionQueue.ts#L1046-L1046). These pass because they can be supplied by the gossiping malicious node. The transaction is queued, applied, and reaches: https://github.com/shardeum/shardeum//blob/c7b10c2370028f7c7cbd2a01839e50eb50faa904/src/index.ts#L3772 Which takes the reward from the wrong node.
+
 ## Suggested Fix
-`appData` should be populated the same way is it populated in `handleInject`, by calling `txPreCrackData`:
-https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1450-L1450
-Which calls
-https://github.com/shardeum/shardeum//blob/c7b10c2370028f7c7cbd2a01839e50eb50faa904/src/index.ts#L4705
-To get the nominee and more, not allowing for the gossiping node to supply fake appData and staking related data.
+
+`appData` should be populated the same way is it populated in `handleInject`, by calling `txPreCrackData`: https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1450-L1450 Which calls https://github.com/shardeum/shardeum//blob/c7b10c2370028f7c7cbd2a01839e50eb50faa904/src/index.ts#L4705 To get the nominee and more, not allowing for the gossiping node to supply fake appData and staking related data.
+
 ## Severity
-This lets node steal other nodes rewards, which is critical.
-It can also allow to crash nodes by:
-- Unstaking a node that has more stakeLock than stake by operator, causing an underflow
+
+This lets node steal other nodes rewards, which is critical. It can also allow to crash nodes by:
+
+* Unstaking a node that has more stakeLock than stake by operator, causing an underflow
 
 Can also be used to take over the network, which is critical.
 
-
 ## Proof of concept
+
 ## POC
-This POC introduces some changes to allow for a malicious node, but it shouldn't affect the behaviour of the innocent nodes.
-This POC shows how to steal rewards.
+
+This POC introduces some changes to allow for a malicious node, but it shouldn't affect the behaviour of the innocent nodes. This POC shows how to steal rewards.
 
 In order to run the POC, you need to:
-- `shardus start 10`
-- Start a `json-rpc-server`
-- Call `node poc.js --rpc http://127.0.0.1:8080`
+
+* `shardus start 10`
+* Start a `json-rpc-server`
+* Call `node poc.js --rpc http://127.0.0.1:8080`
 
 This is the `poc.js` file:
+
 ```js
 const { ethers } = require("ethers");
 const logger = require("./logger");

@@ -1,5 +1,4 @@
-
-# All data in `_userLoans` mapping will not be deleted after calling `deleteUserLoan()`
+# Boost \_ Folks Finance 33356 - \[Smart Contract - Low] All data in \_userLoans mapping will not be deleted after calling deleteUserLoan
 
 Submitted on Thu Jul 18 2024 15:57:02 GMT-0400 (Atlantic Standard Time) by @Lastc0de for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,10 +11,13 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0x2cAa1315bd676FbecABFC3195000c642f503f1C9
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
+
 In Solidity, a struct is a complex data type that allows you to group together variables of different data types. And a mapping is a data structure that allows you to store key-value pairs.
 
 The security implications of deleting a struct that contains a mapping are subtle, but important to understand in the context of Ethereum smart contracts.
@@ -27,15 +29,13 @@ However, for mappings, the delete keyword has no effect. This is because mapping
 This can lead to potential security issues, particularly if you’re not aware of this behavior. For example, let’s say you have a struct that contains sensitive data within a mapping. If you delete the struct assuming that all data within it will be erased, the data in the mapping will still persist, potentially leading to unintended access or misuse.
 
 ## Vulnerability Details
+
 unintended access or misuse.
 
+* Vulnerable contract is `LoanManager.sol` : https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/LoanManager.sol
+* Vulnerable function is `deleteUserLoan()` : https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/hub/LoanManager.sol#L60C1-L73C1
 
-* Vulnerable contract is `LoanManager.sol` :
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/LoanManager.sol
-
-* Vulnerable function is `deleteUserLoan()` :
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/hub/LoanManager.sol#L60C1-L73C1
-~~~
+```
     function deleteUserLoan(bytes32 loanId, bytes32 accountId) external override onlyRole(HUB_ROLE) nonReentrant {
         // check user loan active and account owner
         if (!isUserLoanActive(loanId)) revert UnknownUserLoan(loanId);
@@ -49,15 +49,17 @@ https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27
 
         emit DeleteUserLoan(loanId, accountId);
     }
-~~~
-This function will delete `_userLoans` after several checks.
-`_userLoans` is struct which contains a mapping.
-~~~
+```
+
+This function will delete `_userLoans` after several checks. `_userLoans` is struct which contains a mapping.
+
+```
     mapping(bytes32 loanId => UserLoan) internal _userLoans;
-~~~
+```
 
 `UserLoan` struct have two struct which contains mapping - `UserLoanCollateral` and `UserLoanBorrow`:
-~~~
+
+```
     struct UserLoan {
         bool isActive;
         bytes32 accountId;
@@ -67,9 +69,11 @@ This function will delete `_userLoans` after several checks.
         mapping(uint8 poolId => UserLoanCollateral) collaterals; // @audit is here
         mapping(uint8 poolId => UserLoanBorrow) borrows; // Audit is here
     }
-~~~
+```
+
 `UserLoanCollateral` and `UserLoanBorrow` , each of these two stores important values:
-~~~
+
+```
     struct UserLoanCollateral {
         uint256 balance; // denominated in f token
         uint256 rewardIndex;
@@ -83,22 +87,23 @@ This function will delete `_userLoans` after several checks.
         uint256 lastStableUpdateTimestamp; // defined if stable borrow
         uint256 rewardIndex;
     }
-~~~
+```
 
-**Result:**
-The `deleteUserLoan` function used **delete** keyword to delete `_userLoans` struct which contains mapping for a `loanId`.
-However, if you call the `deleteUserLoan` function, it will not delete the **collaterals** and **borrows** mapping within the UserInfo struct. This means that even after a user has been deleted, their active data will still persist in the contract.
+**Result:** The `deleteUserLoan` function used **delete** keyword to delete `_userLoans` struct which contains mapping for a `loanId`. However, if you call the `deleteUserLoan` function, it will not delete the **collaterals** and **borrows** mapping within the UserInfo struct. This means that even after a user has been deleted, their active data will still persist in the contract.
 
 ## Impact Details
-All data in _userLoans for loanId is not deleted
-we expect it to be completely erased
+
+All data in \_userLoans for loanId is not deleted we expect it to be completely erased
+
 ## References
+
 Add any relevant links to documentation or code
 
-        
 ## Proof of concept
+
 ## Proof of Concept
-~~~
+
+```
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
@@ -210,4 +215,4 @@ contract FolksStructFuzzing is Test {
     }
 }
 
-~~~
+```

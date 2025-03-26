@@ -1,5 +1,6 @@
+# 31382 - \[SC - High] VotingEscrowupdateUnlockTime - Its possible for...
 
-# `VotingEscrow::updateUnlockTime()` - It's possible for voters to update their vote tokens unlock time as many times as they wish beyond the 365 day MAX limit, violating protocol invariant.
+## `VotingEscrow::updateUnlockTime()` - It's possible for voters to update their vote tokens unlock time as many times as they wish beyond the 365 day MAX limit, violating protocol invariant.
 
 Submitted on May 17th 2024 at 20:19:03 UTC by @OxSCSamurai for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,18 +13,21 @@ Report severity: High
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
-## Description
-## Brief/Intro
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+### Description
+
+### Brief/Intro
 
 `VotingEscrow::updateUnlockTime()` - It's possible for voters to update their vote tokens unlock time as many times as they wish beyond the 365 day MAX limit, violating protocol invariant.
 
-- it's made clear throughout the codebase and protocol docs that the maximum lock period for the NFT tokens is 1 year, i.e. 365 days, however, the bug in the `updateUnlockTime()` function makes it possible to repeatedly call this function(in different `block.timestamp` timestamps) to extend the unlock period almost indefinitely(e.g. extend by `MAXTIME` each time), but at least for almost 2 years it seems, as can be seen from the added `hevm.warp()` lines in the test function further down below.
+* it's made clear throughout the codebase and protocol docs that the maximum lock period for the NFT tokens is 1 year, i.e. 365 days, however, the bug in the `updateUnlockTime()` function makes it possible to repeatedly call this function(in different `block.timestamp` timestamps) to extend the unlock period almost indefinitely(e.g. extend by `MAXTIME` each time), but at least for almost 2 years it seems, as can be seen from the added `hevm.warp()` lines in the test function further down below.
 
-## Vulnerability Details
+### Vulnerability Details
 
 The buggy function:
+
 ```solidity
     /**
      * @notice Extend the unlock time for `_tokenId`
@@ -54,29 +58,26 @@ The buggy function:
     }
 ```
 
-## Impact Details
+### Impact Details
 
-Impact: High
-Likelihood: Medium
-Severity: High
+Impact: High Likelihood: Medium Severity: High
 
-- a potential vote outcome manipulation impact
-- if this is indeed a bug and not just my imagination, then I've demonstrated this bug with my first PoC below
-- if you confirm that this bug is valid, I will aim to setup a PoC to demonstrate governance vote manipulation impact, which I already tried to do with my second set of PoC tests, and hopefully succeeded, but not 100% sure, please confirm?
+* a potential vote outcome manipulation impact
+* if this is indeed a bug and not just my imagination, then I've demonstrated this bug with my first PoC below
+* if you confirm that this bug is valid, I will aim to setup a PoC to demonstrate governance vote manipulation impact, which I already tried to do with my second set of PoC tests, and hopefully succeeded, but not 100% sure, please confirm?
 
-## References
+### References
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/9e14da88d8db05794623d8ab5f449451a10c15ac/src/VotingEscrow.sol#L709-L735
 
+### Proof of Concept
 
+## PROOF OF CONCEPT (PoC):
 
-## Proof of Concept
-
-# PROOF OF CONCEPT (PoC):
-
-## Modified test function:
+### Modified test function:
 
 I modified the existing protocol test for my PoC:
+
 ```solidity
     function testUpdateLockDuration() public {
         hevm.startPrank(admin);
@@ -161,9 +162,10 @@ I modified the existing protocol test for my PoC:
     }
 ```
 
-### Test1 Result:
+#### Test1 Result:
 
 Main test result proving its possible to update/extend the lock period many times past the 365 day limit:
+
 ```solidity
 make test_file_debug_test FILE=VotingEscrow TEST=testUpdateLockDuration
 FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/blahblahblah --match-path src/test/VotingEscrow.t.sol --match-test testUpdateLockDuration -vvvvv
@@ -380,8 +382,11 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 62.86s (43.31s CPU 
 
 Ran 1 test suite in 65.46s (62.86s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
-## Next, added voting to the test with additional modifications:
+
+### Next, added voting to the test with additional modifications:
+
 Test function modified again:
+
 ```solidity
     function testUpdateLockDuration() public {
         hevm.startPrank(admin);
@@ -454,10 +459,13 @@ Test function modified again:
         hevm.stopPrank();
     }
 ```
-## Test results:
+
+### Test results:
+
 The below 3 tests test voting at different epochs or timestamps, as per the modified test function:
 
-### Testing `voter.vote(tokenId, pools, weights, _boost1);`:
+#### Testing `voter.vote(tokenId, pools, weights, _boost1);`:
+
 ```solidity
     ââ€ [536816] Voter::vote(1, [0xC4C319E2D4d66CcA4464C0c2B32c9Bd23ebe784e], [5000], 978304445704673151 [9.783e17])
     â   ââ€ [5229] VotingEscrow::isApprovedOrOwner(0x8392F6669292fA56123F71949B52d883aE57e225, 1) [staticcall]
@@ -603,7 +611,8 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 78.14s (55.19s CPU 
 Ran 1 test suite in 82.10s (78.14s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
 
-### Testing `voter.vote(tokenId, pools, weights, _boost2);`:
+#### Testing `voter.vote(tokenId, pools, weights, _boost2);`:
+
 ```solidity
     ââ€ [541831] Voter::vote(1, [0xC4C319E2D4d66CcA4464C0c2B32c9Bd23ebe784e], [5000], 978288844487017269 [9.782e17])
     â   ââ€ [1229] VotingEscrow::isApprovedOrOwner(0x8392F6669292fA56123F71949B52d883aE57e225, 1) [staticcall]
@@ -685,7 +694,8 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 76.17s (54.31s CPU 
 Ran 1 test suite in 79.84s (76.17s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
 
-### Testing `voter.vote(tokenId, pools, weights, _boost3);`:
+#### Testing `voter.vote(tokenId, pools, weights, _boost3);`:
+
 ```solidity
     ââ€ [541831] Voter::vote(1, [0xC4C319E2D4d66CcA4464C0c2B32c9Bd23ebe784e], [5000], 978278570514414615 [9.782e17])
     â   ââ€ [1229] VotingEscrow::isApprovedOrOwner(0x8392F6669292fA56123F71949B52d883aE57e225, 1) [staticcall]
@@ -728,4 +738,4 @@ Ran 1 test suite in 84.34s (80.96s CPU time): 1 tests passed, 0 failed, 0 skippe
 
 SUGGESTED BUGFIX:
 
-- should take into account the previous update unlock time's `block.timestamp` and therefore the previous update's timestamp for after `MAXTIME` was added, so that we can know how much time was left to use for future unlock time updates, and save that as a state/storage variable which we will use in the `updateUnlockTime()` to ensure our new unlock time extension doesn't exceed the max limit of 365 days.
+* should take into account the previous update unlock time's `block.timestamp` and therefore the previous update's timestamp for after `MAXTIME` was added, so that we can know how much time was left to use for future unlock time updates, and save that as a state/storage variable which we will use in the `updateUnlockTime()` to ensure our new unlock time extension doesn't exceed the max limit of 365 days.

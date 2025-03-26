@@ -1,5 +1,6 @@
+# IOP \_ ThunderNFT 34629 - \[Smart Contract - Critical] Theft of Deposited Funds
 
-# Theft of Deposited Funds
+## Theft of Deposited Funds
 
 Submitted on Sun Aug 18 2024 18:33:15 GMT-0400 (Atlantic Standard Time) by @Blockian for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -9,20 +10,27 @@ Report type: Smart Contract
 
 Report severity: Critical
 
-Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/thunder_exchange
+Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/thunder\_exchange
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
-- Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
 
-## Description
-# Thunder Exchange
-## Theft of Deposited Funds
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+* Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
+
 ### Description
+
+## Thunder Exchange
+
+### Theft of Deposited Funds
+
+#### Description
+
 A critical vulnerability exists that enables a malicious actor to steal all deposited non-unique tokens (e.g., tokens following the `ERC1155` standard) listed for sale.
 
-## Root Cause
+### Root Cause
+
 As discussed in our Discord exchange, the `Order.amount` field was introduced to accommodate ERC1155-style tokens:
+
 > Hi! Yes, amount is added in case of Erc1155 style token standard
 
 However, when updating a sell order, there is no validation to ensure that the order maker has deposited the required additional tokens into the exchange.
@@ -43,6 +51,7 @@ In the code snippet below, you can see that the `update_order` function does not
 This omission allows an attacker to modify the `amount` variable in the order without actually depositing the corresponding tokens.
 
 For comparison, the `place_order` function does perform this validation:
+
 ```rs
     fn place_order(order_input: MakerOrderInput) {
         // ...
@@ -57,26 +66,29 @@ For comparison, the `place_order` function does perform this validation:
     }
 ```
 
+### Impact
 
-## Impact
 This vulnerability permits an attacker to artificially increase the `amount` in an order, and subsequently invoke the `cancel_order` function.
 
 As a result, the exchange sends the inflated number of tokens to the attacker, effectively enabling theft from legitimate users.
 
-## Proposed fix
+### Proposed fix
+
 To mitigate this issue, it is recommended to enforce the following during an order update:
 
 1. Increase in Amount: Require the user to deposit additional tokens if the `amount` is increased.
 2. Decrease in Amount: Refund the corresponding tokens to the user if the `amount` is decreased.
 
-        
-## Proof of concept
-# Proof of Concept
+### Proof of concept
+
+## Proof of Concept
+
 Due to the relatively new nature of the Sway language and the limited availability of reliable testing tools, the proof of concept (PoC) is complex.
 
 Below is a pseudo-PoC followed by a detailed actual PoC.
 
-## Pseudo POC
+### Pseudo POC
+
 1. An innocent user creates a Sell Order for some Asset
 2. The malicious actor creates a Sell Order for the same Asset
 3. The malicious actor updates the Sell Order amount to include the innocent user's deposit (for example, innocent user deposited `X` tokens, the malicious actor deposited `Y` tokens, the malicious actor updates the Sell Order to be `X + Y`)
@@ -92,18 +104,19 @@ Below is a pseudo-PoC followed by a detailed actual PoC.
         exchange.cancel_order(order.strategy, order.nonce, order.side);
 ```
 
-## Actual POC
+### Actual POC
+
 There are some steps to follow:
 
 To create an actual PoC, some modifications to the protocol are necessary.
 
 1. The protocol currently only allows addresses to interact, which is generally fine. However, when transferring coins in the Fuel ecosystem, a Variable Output needs to be added to the transaction — this isn't supported by the current Sway testing tools.
-
 2. Since this vulnerability is unrelated to the nature of who interacts with the protocol, adjustments will be made to allow contracts to interact, enabling the PoC. These changes are strictly for testing purposes and do not affect the core issue.
 
-### Changes to the protocol for the POC
+#### Changes to the protocol for the POC
 
-- Add the following changes to the `thunder_exchange` contract:
+* Add the following changes to the `thunder_exchange` contract:
+
 ```rs
 // line 141 change from:
         let caller = get_msg_sender_address_or_panic();
@@ -158,19 +171,18 @@ To create an actual PoC, some modifications to the protocol are necessary.
 
 In addition, To make an `MakerOrderInput` Struct, we need to make the `ExtraParams` Struct public, so in the `order_types.sw` file, lets add a `pub` in line 37.
 
+#### The tests files.
 
-### The tests files.
-
-- Create `forc.toml` in `contracts-v1` and add the below in the `forc.toml`:
+* Create `forc.toml` in `contracts-v1` and add the below in the `forc.toml`:
 
 ```rs
 [workspace]
 members = ["tests", "asset_manager", "erc721", "execution_manager", "execution_strategies/strategy_fixed_price_sale" ,"libraries", "interfaces" , "pool", "royalty_manager", "thunder_exchange", "test_asset", "test_user", "test_attacker"]
 ```
 
-- Create 4 new folder called `tests`, `test_user`, `test_attacker`, and `test_asset` under the `contracts-v1` directory:
+* Create 4 new folder called `tests`, `test_user`, `test_attacker`, and `test_asset` under the `contracts-v1` directory:
+* In the each folder create a folder named `src` with a file called `main.sw`, and a `forc.toml` file. The folder tree will look like this:
 
-- In the each folder create a folder named `src` with a file called `main.sw`, and a `forc.toml` file. The folder tree will look like this:
 ```bash
 contracts-v1
 ├── test_asset
@@ -191,10 +203,12 @@ contracts-v1
 │       └── main.sw
 ```
 
+#### tests folder
 
-### tests folder
 In the `tests` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -228,7 +242,8 @@ test_user = { path = "../test_user" }
 test_attacker = { path = "../test_attacker" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -390,9 +405,12 @@ fn test_attack() {
 }
 ```
 
-### test_user folder
+#### test\_user folder
+
 In the `test_user` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -406,7 +424,8 @@ libraries = { path = "../libraries" }
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -481,9 +500,12 @@ impl TestUser for Contract {
 }
 ```
 
-### test_attacker folder
+#### test\_attacker folder
+
 In the `test_attacker` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -497,7 +519,8 @@ libraries = { path = "../libraries" }
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -575,9 +598,12 @@ impl TestAttacker for Contract {
 }
 ```
 
-### test_asset folder
+#### test\_asset folder
+
 In the `test_asset` folder. The test asset is simply the Fuel Team SRC3 [example](https://github.com/FuelLabs/sway-standards/blob/master/examples/src3-mint-burn/multi_asset/src/multi_asset.sw)
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -589,8 +615,9 @@ name = "test_asset"
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
-```rs
+* Add the below in the `main.sw`:
+
+````rs
 contract;
 
 use standards::{src20::SRC20, src3::SRC3};
@@ -751,18 +778,19 @@ impl SRC20 for Contract {
         }
     }
 }
-```
+````
 
+#### Interfaces
 
-### Interfaces
-Now we need to add the `test_user` and `test_attacker` interfaces to interact with.
-In the `interfaces/src` folder, in the `lib.sw` add the following lines:
+Now we need to add the `test_user` and `test_attacker` interfaces to interact with. In the `interfaces/src` folder, in the `lib.sw` add the following lines:
+
 ```rs
 pub mod test_user_interface;
 pub mod test_attacker_interface;
 ```
 
 Additionally, create a file called `test_user_interface.sw` in the `interfaces/src` folder and add the following:
+
 ```rs
 library;
 
@@ -784,6 +812,7 @@ abi TestUser {
 ```
 
 Create a file called `test_attacker_interface.sw` in the `interfaces/src` folder and add the following:
+
 ```rs
 library;
 
@@ -801,11 +830,12 @@ abi TestAttacker {
 
 ```
 
+#### Run it all!
 
-### Run it all!
-Simply run `forc test`  in `smart-contracts/contracts-v1`.
+Simply run `forc test` in `smart-contracts/contracts-v1`.
 
-## POC TL;DR
+### POC TL;DR
+
 1. Initializing the project contracts
 2. Minting some coins to the `test_user` and `test_attacker`
 3. Test User creates an innocent Sell Order

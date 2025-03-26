@@ -1,5 +1,4 @@
-
-# Alchemix : The first epoch's ALCX emissions of voter contract will be stuck forever.
+# 31494 - \[SC - High] Alchemix The first epochs ALCX emissions of vo...
 
 Submitted on May 20th 2024 at 13:23:00 UTC by @Norah for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,32 +11,37 @@ Report severity: High
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Permanent freezing of unclaimed yield
+
+* Permanent freezing of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-- During each epoch, the minter contract distributes emissions to various components of the Alchemix system, one of them being the voter contract.
-- Anyone can call the `distribute()` function on the voter contract. If the minter period/epoch is over, the rewards are distributed to the various gauges, and `minter.updatePeriod()` is called, which triggers the minter contract to distribute the emissions for the previous epoch.
+
+* During each epoch, the minter contract distributes emissions to various components of the Alchemix system, one of them being the voter contract.
+* Anyone can call the `distribute()` function on the voter contract. If the minter period/epoch is over, the rewards are distributed to the various gauges, and `minter.updatePeriod()` is called, which triggers the minter contract to distribute the emissions for the previous epoch.
 
 ## Vulnerability Details
-- The problem arises if the `_distribute()` function is called first and then `minter.updatePeriod()`. I
-      - In this scenario, during the first epoch, since there are no emissions at this point, no rewards will be distributed.
-      - Afterward, `minter.updatePeriod()` will be triggered, sending the rewards to the voter contract.
-- However, the rewards distribution routine has already been called, so no reward will be transferred to the contract or updated in the claimable[_gauge] mapping for the gauges to claim later on.
-     - Essentially, there is emissions are now stuck in the `voter` contract forever.
--  Ideally, minter.updatePeriod() should be called first, to allow the minter contract to send the rewards, and then the _distribute() routine should be called to distribute and update the rewards in claimable or send them directly to the gauge
-- For more detail check POC.
+
+* The problem arises if the `_distribute()` function is called first and then `minter.updatePeriod()`. I - In this scenario, during the first epoch, since there are no emissions at this point, no rewards will be distributed. - Afterward, `minter.updatePeriod()` will be triggered, sending the rewards to the voter contract.
+* However, the rewards distribution routine has already been called, so no reward will be transferred to the contract or updated in the claimable\[\_gauge] mapping for the gauges to claim later on.
+  * Essentially, there is emissions are now stuck in the `voter` contract forever.
+* Ideally, minter.updatePeriod() should be called first, to allow the minter contract to send the rewards, and then the \_distribute() routine should be called to distribute and update the rewards in claimable or send them directly to the gauge
+* For more detail check POC.
 
 ## Impact Details
-- As a result, the rewards for the first epoch will be forever stuck in the voter contract, and gauges will be unable to claim these rewards.
-- This will result in the permanent freezing of yield (emissions) for the gauges.
+
+* As a result, the rewards for the first epoch will be forever stuck in the voter contract, and gauges will be unable to claim these rewards.
+* This will result in the permanent freezing of yield (emissions) for the gauges.
 
 ## References
+
 Add any relevant links to documentation or code
 
 ## Recommendation
-- Update the code of the `distribute()` routine so that `IMinter(minter).updatePeriod()` is called before `_distribute().`
-- Also, remove the timestamp check from `_distribute()` and place it in `distribute()`.
+
+* Update the code of the `distribute()` routine so that `IMinter(minter).updatePeriod()` is called before `_distribute().`
+* Also, remove the timestamp check from `_distribute()` and place it in `distribute()`.
 
 ```
  function distribute() external {
@@ -55,7 +59,6 @@ Add any relevant links to documentation or code
 
         }
 ```
-
 
 ```
    function _distribute(address _gauge) internal {
@@ -78,16 +81,14 @@ Add any relevant links to documentation or code
 
 ```
 
-
-
 ## Proof of Concept
 
 I have created a test showcasing how the rewards sent during the first epoch are stuck in the voter contract for 3 epochs.
 
-- For better understanding, re-run the test after implementing the recommended changes.
-- Note that there will still be a lag between gauge_balance and claimable_amount (i.e., gauge_balance will be updated in the next epoch each time), but that is due to a different bug.
-- Add the test below to the voting.t.sol file of the test suite and run it with the following command:    
-     - forge test --fork-url https://eth-mainnet.g.alchemy.com/v2/{Alchemy-api-key} --match-test "testFirstEpochRewardsStuck" -vvv
+* For better understanding, re-run the test after implementing the recommended changes.
+* Note that there will still be a lag between gauge\_balance and claimable\_amount (i.e., gauge\_balance will be updated in the next epoch each time), but that is due to a different bug.
+* Add the test below to the voting.t.sol file of the test suite and run it with the following command:
+  * forge test --fork-url https://eth-mainnet.g.alchemy.com/v2/{Alchemy-api-key} --match-test "testFirstEpochRewardsStuck" -vvv
 
 ```solidity
 

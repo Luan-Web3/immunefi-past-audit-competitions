@@ -1,5 +1,4 @@
-
-# Wrong timestamp for totalVoting
+# 30860 - \[SC - Critical] Wrong timestamp for totalVoting
 
 Submitted on May 7th 2024 at 04:17:29 UTC by @cryptoticky for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,14 +11,18 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
 
 Impacts:
-- Theft of unclaimed yield
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+* Theft of unclaimed yield
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
 ## Description
+
 ## Brief/Intro
+
 The attacker can change `totalVoting` at the first second of a new epoch and steal all reward for an epoch.
 
 ## Vulnerability Details
+
 ```
     /// @inheritdoc IBribe
     function earned(address token, uint256 tokenId) public view returns (uint256) {
@@ -41,24 +44,26 @@ The attacker can change `totalVoting` at the first second of a new epoch and ste
         return reward;
     }
 ```
-If an attacker call `Voter.distribute` at `_lastEpochStart + DURATION`, then `Bribe.resetVoting` function is triggered and `totalVoting` is updated to `0`.
-And then if the attacker call `Voter.vote` function the same params (or tokenId with less votingPower), then `Bribe._writeVotingCheckpoint` is triggered and `votingCheckpoints[getPriorVotingIndex(_lastEpochEnd)].votes` is updated with the new votes.
-And the attacker claim the reward at the next block before other users claim.
-The smaller the new vote amount, the more rewards the attacker can steal.
+
+If an attacker call `Voter.distribute` at `_lastEpochStart + DURATION`, then `Bribe.resetVoting` function is triggered and `totalVoting` is updated to `0`. And then if the attacker call `Voter.vote` function the same params (or tokenId with less votingPower), then `Bribe._writeVotingCheckpoint` is triggered and `votingCheckpoints[getPriorVotingIndex(_lastEpochEnd)].votes` is updated with the new votes. And the attacker claim the reward at the next block before other users claim. The smaller the new vote amount, the more rewards the attacker can steal.
 
 ## Impact Details
+
 The attacker can steal reward and other users can't claim the reward.
 
-## Recommandation 
+## Recommandation
+
 Bribe.sol: 268 line
+
 ```
 uint256 _priorSupply = votingCheckpoints[getPriorVotingIndex(_lastEpochEnd)].votes;
 ```
-to 
+
+to
+
 ```
 uint256 _priorSupply = votingCheckpoints[getPriorVotingIndex(_lastEpochEnd) - 1].votes;
 ```
-
 
 ## Proof of Concept
 

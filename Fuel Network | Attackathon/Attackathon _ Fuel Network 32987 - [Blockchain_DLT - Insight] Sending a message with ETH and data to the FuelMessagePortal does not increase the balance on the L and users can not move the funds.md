@@ -1,5 +1,4 @@
-
-# Sending a message with `ETH` and data to the FuelMessagePortal does not increase the balance on the L2 and users can not move the funds
+# Attackathon \_ Fuel Network 32987 - \[Blockchain\_DLT - Insight] Sending a message with ETH and data to
 
 Submitted on Tue Jul 09 2024 00:46:47 GMT-0400 (Atlantic Standard Time) by @SimaoAmaro for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,17 +11,21 @@ Report severity: Insight
 Target: https://github.com/FuelLabs/fuel-core/tree/v0.31.0
 
 Impacts:
-- Permanent freezing of funds on the L1 Bridge side
+
+* Permanent freezing of funds on the L1 Bridge side
 
 ## Description
+
 ## Brief/Intro
+
 `FuelMessagePortal::sendMessage()` allows depositing to Fuel (the L2) ETH and data. However, when both ETH and data are deposited, the query api does not correctly return the new L2 balance and it's impossible to use this message as an utxo until other messages are added. Also, due to incorrect balance being returned, it will also not be possible ot use the sdk to withdraw the full amount, even if another deposit with ETH only is made and both messages are used as UTXO.
 
 ## Vulnerability Details
 
 In both fuel-core and fuel-vm the code assumes that when the data is empty the transaction is just a message and disregards the ETH component. This is a bug because users can deposit ETH together with data to the L2, but when they do this, their ETH will be ignored.
 
-The first location of the bug lies in fuel-core/src/query/balance/asset_query.rs in `messages_iter()`. This method is called from `asset_query::coins()`, which is called when fetching the balance of an user in fuel-core/src/query/balance.rs, `balance()`. The balance is fetched by going through the deposit events, now stored as messages after the block was produced and filtering them by data. In `message_iter()`, a message is recognized as a coin only if the data field is empty, which may not be the case for deposits in the L1, as users are free to include data along their ETH.
+The first location of the bug lies in fuel-core/src/query/balance/asset\_query.rs in `messages_iter()`. This method is called from `asset_query::coins()`, which is called when fetching the balance of an user in fuel-core/src/query/balance.rs, `balance()`. The balance is fetched by going through the deposit events, now stored as messages after the block was produced and filtering them by data. In `message_iter()`, a message is recognized as a coin only if the data field is empty, which may not be the case for deposits in the L1, as users are free to include data along their ETH.
+
 ```solidity
 fn messages_iter(&self) -> impl Iterator<Item = StorageResult<CoinType>> + '_ {
     ...
@@ -30,9 +33,11 @@ fn messages_iter(&self) -> impl Iterator<Item = StorageResult<CoinType>> + '_ {
     ...
 }
 ```
+
 Thus, due to this, the L2 balance will always be incorrect when there are ETH deposits with data.
 
 The second location of the bug is in fuel-vm/fuel-tx. In fuel-tx/src/transaction.rs, `add_unsigned_message_input()`, the utxo message is added as an input of type `Input::message_data_signed()` if the data is not empty, as can be seen in the following code snippet.
+
 ```solidity
 fn add_unsigned_message_input(
     ...
@@ -47,7 +52,9 @@ fn add_unsigned_message_input(
     ...
 }
 ```
+
 Then, as part of the transaction validation flow, in fuel-tx/src/transaction/validity.rs, `check_common_part()`, it tries to find inputs that are spendable, and returns an error if none is. The input assigned before, `MessageDataSigned`, is not a spendable input, which means that using only the message from the L1 with ETH and data will not allow the user to move the funds.
+
 ```solidity
 pub(crate) fn check_common_part<T>(
     ...
@@ -74,14 +81,15 @@ where
 ```
 
 ## Impact Details
+
 Permanently locked funds until the user bridges more funds with only ETH or receives funds in the L2 directly. Additionally, the user can not use the sdk to transfer all the funds because the deposit with ETH and data does not count towards the balance, so the sdk will think it is transferring more funds than it has.
 
 ## References
-https://github.com/FuelLabs/fuel-core/blob/v0.31.0/crates/fuel-core/src/query/balance/asset_query.rs#L136
-https://github.com/FuelLabs/fuel-vm/blob/v0.55.0/fuel-tx/src/transaction.rs#L517-L528
-https://github.com/FuelLabs/fuel-vm/blob/v0.55.0/fuel-tx/src/transaction/validity.rs#L370-L382
-        
+
+https://github.com/FuelLabs/fuel-core/blob/v0.31.0/crates/fuel-core/src/query/balance/asset\_query.rs#L136 https://github.com/FuelLabs/fuel-vm/blob/v0.55.0/fuel-tx/src/transaction.rs#L517-L528 https://github.com/FuelLabs/fuel-vm/blob/v0.55.0/fuel-tx/src/transaction/validity.rs#L370-L382
+
 ## Proof of concept
+
 ## Proof of Concept
 
 Two proof of concepts were built. The first shows that the balance is not increased with a ETH and data deposit and it's not possible to move the assets using only this message. The second confirms that doing another deposit with ETH still shows incorrect balance but allows moving the funds. Both tests are placed in fuel-core/tests and are a modification of test `messages_are_spendable_after_relayer_is_synced` in relayer.rs.

@@ -1,5 +1,4 @@
-
-# In function function getTwapPrice if (latestRoundId == 0) check inside catch is useless
+# Mitigation Audit \_ Folks Finance 34942 - \[Smart Contract - Insight] In function function getTwapPric
 
 Submitted on Sun Sep 01 2024 16:10:07 GMT-0400 (Atlantic Standard Time) by @Paludo0x for [Mitigation Audit | Folks Finance](https://immunefi.com/bounty/mitigation-audit-folksfinance/)
 
@@ -12,20 +11,22 @@ Report severity: Insight
 Target: https://github.com/Folks-Finance/folks-finance-xchain-contracts/pull/9
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Vulnerability Details
 
-In `ChainlinkNode::getTwapPrice()` there's a ` while (latestRoundId > 0)` iteration.
-Inside the try / catch block there's the following check:
+In `ChainlinkNode::getTwapPrice()` there's a `while (latestRoundId > 0)` iteration. Inside the try / catch block there's the following check:
+
 ```
                 if (latestRoundId == 0) {
                     break;
                 }
 ```
 
-This check is useless and unnecessarily consumes gas because the termination condition of the while cycle is  `latestRoundId > 0`, therefore the `break` from the while cycle will be done anyway  when `latestRoundId  = 0`.
+This check is useless and unnecessarily consumes gas because the termination condition of the while cycle is `latestRoundId > 0`, therefore the `break` from the while cycle will be done anyway when `latestRoundId = 0`.
 
 This is the relevant code
 
@@ -69,14 +70,14 @@ This is the relevant code
 ```
 
 ## Impact Details
+
 The impact is unecessary consuming of gas
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
-This test shall be run in remix.
-First you need to deploy the contract `AlwaysRevert ` and then deploy `Test ` using address of `AlwaysRevert`.
+This test shall be run in remix. First you need to deploy the contract `AlwaysRevert` and then deploy `Test` using address of `AlwaysRevert`.
 
 ```
 pragma solidity >=0.7.0 <0.9.0;
@@ -128,6 +129,7 @@ contract Test {
     }
 }
 ```
+
 The function `getTwapPrice` is a simplified version of original version, while `getTwapPrice_without_break` is without if statement.
 
 Both reach the status where `latestRoundId = 0` without issues.

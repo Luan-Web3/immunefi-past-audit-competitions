@@ -1,5 +1,6 @@
+# 30781 - \[SC - Low] It is possible to lower the quorum requirements...
 
-# It is possible to lower the quorum requirements that will lead to the past unmet proposals become executable
+## It is possible to lower the quorum requirements that will lead to the past unmet proposals become executable
 
 Submitted on May 5th 2024 at 20:55:25 UTC by @MTNether for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,22 +13,23 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/AlchemixGovernor.sol
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
-- Protocol insolvency
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
-- Permanent freezing of funds
 
-## Description
-## Brief/Intro
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+* Protocol insolvency
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+* Permanent freezing of funds
+
+### Description
+
+### Brief/Intro
 
 The lowering quorum poses a significant risk within governance systems, where reducing the quorum requirements could inadvertently render previously unmet proposals executable. This vulnerability arises when the quorum threshold is decreased below its initial value in the future, potentially allowing past proposals that failed to meet the original quorum to be executed. This could lead to unexpected changes in the system, bypassing intended checks and safeguards, and potentially disrupting the integrity of the governance process.
 
-## Vulnerability Details
+### Vulnerability Details
 
 Alchemix utilizes the widely recognized OpenZeppelin governance system, facilitating proposal submission, voting, and execution upon meeting quorum requirements. This governance model, prevalent across various protocols, decentralizes decision-making, avoiding reliance on a single entity and promoting inclusivity. However, a potential pitfall of this model lies in its ability to modify the proposal acceptance quorum in the future. While not inherently a bug, this poses a challenge as it fails to record previous quorums, potentially allowing previously unmet proposals to be executed, circumventing established invariants and requirements.
 
-The contract `L2GovernorVotesQuorumFraction` is responsible for keeping the aforementioned quorum. If we look at the contracts deeply, we can see there is not a snapshot or data keeping for these quorums.
-Also, the `quorumNumerator` can be updated in the future via the mentioned governance model:
+The contract `L2GovernorVotesQuorumFraction` is responsible for keeping the aforementioned quorum. If we look at the contracts deeply, we can see there is not a snapshot or data keeping for these quorums. Also, the `quorumNumerator` can be updated in the future via the mentioned governance model:
 
 ```Solidity
     function updateQuorumNumerator(uint256 newQuorumNumerator) external virtual onlyGovernance {
@@ -49,18 +51,19 @@ And also:
 
 It is similar to this one but completely differs as it doesn't mention the impacts, doesn't share a runnable POC, and also doesn't discuss the ways which is possible.
 
-## Impact Details
+### Impact Details
+
 This complicated attack type may have several impacts on the system:
 
 1. Transitioning the Timelock contract to one deployed by the attacker, giving them control over crucial functions and proposals.
 2. Cancelling and quietly nullifying important and highly-supported proposals, undermining the governance process.
 3. Triggering the execution of malicious and hazardous proposals, potentially causing severe harm to the system.
 
+### References
 
-## References
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/governance/L2GovernorVotesQuorumFraction.sol#L16
 
-# Recommended Mitigation Steps
+## Recommended Mitigation Steps
 
 Checkpointing the quorum is essential to prevent changes in the quorum from inadvertently transforming previously unsuccessful proposals into successful ones solely due to quorum adjustments.
 
@@ -72,8 +75,7 @@ Or you can update the contracts to match the OpenZeppelin contracts version 4.7.
 // OpenZeppelin Contracts (last updated v4.5.0) (governance/extensions/GovernorVotesQuorumFraction.sol)
 ```
 
-
-## Proof of Concept
+### Proof of Concept
 
 You can add these tests to the file `AlchemixGovernor.t.sol` and run it:
 

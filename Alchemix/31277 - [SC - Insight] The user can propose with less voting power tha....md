@@ -1,5 +1,4 @@
-
-# The user can propose with less voting power than proposalThreshold.
+# 31277 - \[SC - Insight] The user can propose with less voting power tha...
 
 Submitted on May 16th 2024 at 03:55:34 UTC by @cryptoticky for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,39 +11,43 @@ Report severity: Insight
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/AlchemixGovernor.sol
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
 ## Description
+
 ## Brief/Intro
+
 The user can propose with less voting power than proposalThreshold.
 
 ## Vulnerability Details
+
 This error arises from the difference between the timing of calculating votingPower and proposalThreshold.
 
 L2Governor.sol
+
 ```
 require(
             getVotes(_msgSender(), block.timestamp - 1) >= proposalThreshold(),
             "Governor: veALCX power below proposal threshold"
         );
 ```
+
 the votingPower is calculated at `block.timestamp - 1`.
 
-but 
+but
+
 ```
 function proposalThreshold() public view override(L2Governor) returns (uint256) {
         return (token.getPastTotalSupply(block.timestamp) * proposalNumerator) / PROPOSAL_DENOMINATOR;
     }
 ```
-`proposalThreshold` is calculated at `block.timestamp`
-In `block.timestamp`, `VotingEscrow.totalSupplyAtT` becomes smaller than at `block.timestamp - 1` point.
-If a withdraw occurs at this point, it makes more changes.
-An attacker may artificially carry out withdraw to make the `VotingEscrow.totalSupplyAtT` smaller.
-Or the attacker can propose in the same transaction as soon as a user withdraw a large amount.
+
+`proposalThreshold` is calculated at `block.timestamp` In `block.timestamp`, `VotingEscrow.totalSupplyAtT` becomes smaller than at `block.timestamp - 1` point. If a withdraw occurs at this point, it makes more changes. An attacker may artificially carry out withdraw to make the `VotingEscrow.totalSupplyAtT` smaller. Or the attacker can propose in the same transaction as soon as a user withdraw a large amount.
 
 ## Impact Details
-By lowering the minimum unit price to create an offer, it makes it easier for an attacker to generate a malicious offer.
 
+By lowering the minimum unit price to create an offer, it makes it easier for an attacker to generate a malicious offer.
 
 ## Proof of Concept
 

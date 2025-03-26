@@ -1,5 +1,4 @@
-
-# The `MultiSigWallet::getTransactionIds()` function contains logic bugs which would exclude one valid transaction ID from the defined range in the returned list.
+# 26116 - \[SC - Insight] The MultiSigWalletgetTransactionIds function co...
 
 Submitted on Nov 25th 2023 at 12:28:13 UTC by @OxSCSamurai for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,38 +11,30 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x2028834B2c0A36A918c10937EeA71BE4f932da52#code
 
 Impacts:
-- Function does not return expected value(s) due to logic bug
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Function does not return expected value(s) due to logic bug
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Bug Description
 
 The MultiSigWallet::getTransactionIds() function contains logic bugs which would exclude one valid transaction ID from the defined range in the returned list.
 
 The getTransactionIds() function is designed to return an array of transaction IDs within a specified range. However, there are logic errors in the function which would result in the function returning a value(s) which is not expected, but the caller of the function will not know any better, and just assume the returned value is correct, or complete, which it isn't.
 
-The first logic error occurs when calculating/assigning the length of the return array `_transactionIds`. 
-Instead of using `((to + 1) - from)` to represent the correct number of entries(and array length), the statement on L373 incorrectly uses `(to - from)`:
-`_transactionIds = new uint[](to - from);`
+The first logic error occurs when calculating/assigning the length of the return array `_transactionIds`. Instead of using `((to + 1) - from)` to represent the correct number of entries(and array length), the statement on L373 incorrectly uses `(to - from)`: `_transactionIds = new uint[](to - from);`
 
 This will result in an incorrect array length every time, and therefore exclude one of the valid entries that was supposed to be returned.
 
-To demonstrate the logic bug/error:
-Lets say `from = 0` and `to = 5`, then the correct number of entries should be 6. But why you ask?
-Here you go: 0,1,2,3,4,5 = SIX entries. Therefore the array length should be 6. However, (to - from) = (5 - 0) = 5, which is 1 less than 6.
+To demonstrate the logic bug/error: Lets say `from = 0` and `to = 5`, then the correct number of entries should be 6. But why you ask? Here you go: 0,1,2,3,4,5 = SIX entries. Therefore the array length should be 6. However, (to - from) = (5 - 0) = 5, which is 1 less than 6.
 
-The second logic error is here on L374:
-`for (i=from; i<to; i++)`
-It excludes a valid index/entry, which is represented by the value of `to`. Yes, usually we do `i < array.length`, so what is the correct length in this example? Remember, it is 6. So if we do `i<6` then it would be correct, but the current implementation uses `i<to` which is `i<5`, which is incorrect, and will exclude the final entry, the 6th entry from the returned results.
+The second logic error is here on L374: `for (i=from; i<to; i++)` It excludes a valid index/entry, which is represented by the value of `to`. Yes, usually we do `i < array.length`, so what is the correct length in this example? Remember, it is 6. So if we do `i<6` then it would be correct, but the current implementation uses `i<to` which is `i<5`, which is incorrect, and will exclude the final entry, the 6th entry from the returned results.
 
-One last time: 
-0,1,2,3,4,5 represents 6 entries, not 5, even though 5-0=5
-OR
-1,2,3,4,5,6 represents 6 entries, not 5, even though 6-1=5
-OR
-2,3,4,5,6,7 represents 6 entries, not 5, even though 7-2=5
+One last time: 0,1,2,3,4,5 represents 6 entries, not 5, even though 5-0=5 OR 1,2,3,4,5,6 represents 6 entries, not 5, even though 6-1=5 OR 2,3,4,5,6,7 represents 6 entries, not 5, even though 7-2=5
 
 Here's the function as its currently implemented:
+
 ```solidity
     function getTransactionIds(uint from, uint to, bool pending, bool executed)
         public
@@ -68,14 +59,12 @@ Here's the function as its currently implemented:
 
 ## Impact
 
-- local impact on the function's returned result is that it will ALWAYS exclude one valid entry, the last entry, represented by to in the defined range.
-
-- currently not sure of impact on protocol/users, as this is a constant/view only function it seems, so it only returns a value, I will need to check with the devs if there is any significant protocol dependencies that depend on the return value of this function, and if there are indeed critical dependencies, we might have to upgrade the severity level to high, depending.
+* local impact on the function's returned result is that it will ALWAYS exclude one valid entry, the last entry, represented by to in the defined range.
+* currently not sure of impact on protocol/users, as this is a constant/view only function it seems, so it only returns a value, I will need to check with the devs if there is any significant protocol dependencies that depend on the return value of this function, and if there are indeed critical dependencies, we might have to upgrade the severity level to high, depending.
 
 ## Risk Breakdown
-Difficulty to Exploit: Easy
-Weakness:
-CVSS2 Score:
+
+Difficulty to Exploit: Easy Weakness: CVSS2 Score:
 
 ## Recommendation
 
@@ -111,8 +100,8 @@ CVSS2 Score:
 
 ## References
 
-
 ## Proof of concept
+
 (Please note: My experience with foundry tests is new, so please make sure you understand my tests correctly, especially how I constructed them. I added comments in the test contract in the test functions to help you to understand my logic and method/approach. Please make sure to read those comments to avoid any confusion. Feel free to give me a shout if you need clarifications/explanations.)
 
 I added the fixed function to the multisig wallet contract temporarily so that I could run my PoC tests to test my fix too, not just the logic bug.
@@ -142,9 +131,11 @@ Here it is, and then below the fixed function is my test contract, I used foundr
     }
 ```
 
-****************
+***
+
 TEST CONTRACT:
-****************
+
+***
 
 ```solidity
 pragma solidity ^0.8.20;

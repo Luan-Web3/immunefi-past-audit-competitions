@@ -1,5 +1,6 @@
+# IOP \_ ThunderNFT 34964 - \[Smart Contract - Low] Faulty Index out of Bounds
 
-# Faulty Index out of Bounds
+## Faulty Index out of Bounds
 
 Submitted on Sun Sep 01 2024 23:14:37 GMT-0400 (Atlantic Standard Time) by @Blockian for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -9,21 +10,28 @@ Report type: Smart Contract
 
 Report severity: Low
 
-Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/asset_manager
+Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/asset\_manager
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
 
-## Description
-# Thunder Exchange
-## Faulty Index out of Bounds
+* Contract fails to deliver promised returns, but doesn't lose value
+
 ### Description
+
+## Thunder Exchange
+
+### Faulty Index out of Bounds
+
+#### Description
+
 An issue has been identified where the index out-of-bounds check is incorrectly implemented, potentially leading to incorrect error handling.
 
-## Root Cause
+### Root Cause
+
 The problem originates from the current implementation of the getter functions for vector types in both the Asset Manager and Execution Manager modules.
 
 Specifically, the checks for valid indices do not correctly account for the last index of vectors, leading to potential out-of-bound access. The problematic code is as follows:
+
 ```rs
     // execution manager
     fn get_whitelisted_strategy(index: u64) -> Option<ContractId> {
@@ -43,29 +51,33 @@ Specifically, the checks for valid indices do not correctly account for the last
         storage.assets.get(index).unwrap().try_read()
     }
 ```
+
 The current check allows indices up to and including the vector length. However, since vector indices are zero-based, the valid range is from 0 to `len - 1`. This error could result in an out-of-bounds access attempt.
 
-## Impact
-Luckily, the Fuel Storage Vector implementation includes a safeguard that verifies the index is within bounds during access.
-Therefore, the primary impact is the incorrect error log being generated, rather than any actual out-of-bound access or program failure, which is somewhere between an Insight and Low issue.
+### Impact
 
-## Proposed fix
+Luckily, the Fuel Storage Vector implementation includes a safeguard that verifies the index is within bounds during access. Therefore, the primary impact is the incorrect error log being generated, rather than any actual out-of-bound access or program failure, which is somewhere between an Insight and Low issue.
+
+### Proposed fix
+
 Check the index is `index < len`
-        
-## Proof of concept
-# Proof of Concept
+
+### Proof of concept
+
+## Proof of Concept
+
 There are some steps to follow:
 
-- Create `forc.toml` in `contracts-v1` and add the below in the `forc.toml`:
+* Create `forc.toml` in `contracts-v1` and add the below in the `forc.toml`:
 
 ```rs
 [workspace]
 members = ["tests", "asset_manager", "erc721", "execution_manager", "execution_strategies/strategy_fixed_price_sale" ,"libraries", "interfaces" , "pool", "royalty_manager", "thunder_exchange", "test_asset"]
 ```
 
-- Create 2 new folder called `tests`, and `test_asset` under the `contracts-v1` directory:
+* Create 2 new folder called `tests`, and `test_asset` under the `contracts-v1` directory:
+* In the each folder create a folder named `src` with a file called `main.sw`, and a `forc.toml` file. The folder tree will look like this:
 
-- In the each folder create a folder named `src` with a file called `main.sw`, and a `forc.toml` file. The folder tree will look like this:
 ```bash
 contracts-v1
 ├── test_asset
@@ -78,10 +90,12 @@ contracts-v1
 │       └── main.sw
 ```
 
+#### tests folder
 
-### tests folder
 In the `tests` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -112,7 +126,8 @@ strategy_fixed_price_sale = {path = "../execution_strategies/strategy_fixed_pric
 test_asset = { path = "../test_asset" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -173,9 +188,12 @@ fn test_correct_log() {
 }
 ```
 
-### test_asset folder
+#### test\_asset folder
+
 In the `test_asset` folder. The test asset is simply the Fuel Team SRC3 [example](https://github.com/FuelLabs/sway-standards/blob/master/examples/src3-mint-burn/multi_asset/src/multi_asset.sw)
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -187,8 +205,9 @@ name = "test_asset"
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
-```rs
+* Add the below in the `main.sw`:
+
+````rs
 contract;
 
 use standards::{src20::SRC20, src3::SRC3};
@@ -349,7 +368,8 @@ impl SRC20 for Contract {
         }
     }
 }
-```
+````
 
-### Run it all!
-Simply run `forc test`  in `smart-contracts/contracts-v1`.
+#### Run it all!
+
+Simply run `forc test` in `smart-contracts/contracts-v1`.

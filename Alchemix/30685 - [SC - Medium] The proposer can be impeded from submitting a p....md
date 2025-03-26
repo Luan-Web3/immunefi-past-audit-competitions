@@ -1,5 +1,4 @@
-
-# "The proposer can be impeded from submitting a proposal by an attacker who inflates the proposalThreshold."
+# 30685 - \[SC - Medium] The proposer can be impeded from submitting a p...
 
 Submitted on May 4th 2024 at 13:33:54 UTC by @OxG0P1 for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,17 +11,21 @@ Report severity: Medium
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/AlchemixGovernor.sol
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
 ## Description
+
 ## Brief/Intro
+
 The `propose` function verifies the minimum votes required for a valid proposal by checking if the number of votes obtained by `_msgSender()` within the last block timestamp is greater than or equal to the current `proposalThreshold()` value. However, it is susceptible to exploitation by an attacker who can manipulate and inflate the `proposalThreshold()` value, thereby preventing any user from successfully proposing a valid proposal.
 
-
 ## Vulnerability Details
+
 In the `propose` function, there exists a verification mechanism ensuring that the `msg.sender` possesses adequate quorum votes to initiate a proposal, denoted by the condition `getVotes(_msgSender(), block.timestamp - 1) >= proposalThreshold()`. Here, the `getVotes()` function retrieves the number of votes at `block.timestamp - 1`, while the `proposalThreshold()` is calculated as follows: `(token.getPastTotalSupply(block.timestamp) * proposalNumerator) / PROPOSAL_DENOMINATOR`. Notably, `getPastTotalSupply()` fetches the `totalSupply` at the specified `block.timestamp`.
 
 Consider the following hypothetical scenario:
+
 1. Bob intends to propose a proposal.
 2. At timestamp `x`, Bob garners 110 votes.
 3. At timestamp `x + 1`, the actual `proposalThreshold` is set at 100 votes.
@@ -32,16 +35,17 @@ Consider the following hypothetical scenario:
 This scenario underscores a vulnerability where an adversary, in this case, Alice, exploits the system by artificially inflating the `proposalThreshold`, effectively obstructing legitimate proposals such as Bob's from succeeding.
 
 ## Impact Details
+
 Opposing an user from proposing by manipulating the `totalSupply`
 
 ## References
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/AlchemixGovernor.sol#L45-L47
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/governance/L2Governor.sol#L309-L312
 
-
+https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/AlchemixGovernor.sol#L45-L47 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/governance/L2Governor.sol#L309-L312
 
 ## Proof of Concept
+
 `Test :`
+
 ```solidity
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.15;

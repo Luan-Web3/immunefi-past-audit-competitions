@@ -1,5 +1,6 @@
+# 29204 - \[SC - Critical] Direct theft of Users VestedZeroNFT by using sp...
 
-#  Direct theft of User's VestedZeroNFT by using split function to mint a new NFT to take most fraction of the theft NFT of other users 
+## Direct theft of User's VestedZeroNFT by using split function to mint a new NFT to take most fraction of the theft NFT of other users
 
 Submitted on Mar 10th 2024 at 16:23:41 UTC by @perseverance for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,19 +13,20 @@ Report severity: Critical
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
+
+* Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
+
+### Description
 
 ## Description
-# Description
 
-Direct theft of User's VestedZeroNFT by using split function to mint a new NFT to take most fraction of the theft NFT of other users 
+Direct theft of User's VestedZeroNFT by using split function to mint a new NFT to take most fraction of the theft NFT of other users
 
+### Brief/Intro
 
-## Brief/Intro
+VestedZeroNFT is a NFT based contract to hold all the user vests. NFTs can be traded on secondary marketplaces like Opensea, can be split into smaller chunks to allow for smaller otc deals to happen in secondary markets.
 
-VestedZeroNFT is a NFT based contract to hold all the user vests. NFTs can be traded on secondary marketplaces like Opensea, can be split into smaller chunks to allow for smaller otc deals to happen in secondary markets. 
-
-When mint a NFT tokenIT for a user, the function mint() can be used 
+When mint a NFT tokenIT for a user, the function mint() can be used
 
 https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L63-L72
 
@@ -42,9 +44,10 @@ function mint(
 
 ```
 
-The VestedZeroNFT has the split functionality to split a existed tokenID to mint a new tokenID 
+The VestedZeroNFT has the split functionality to split a existed tokenID to mint a new tokenID
 
 https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L230-L273
+
 ```solidity
 /// @inheritdoc IVestedZeroNFT
     function split(
@@ -92,20 +95,20 @@ https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT
         });
     }
 ```
-The intended purpose is that this allows the owner of the tokenID to split and mint a new tokenID from a fraction of the current tokenID. 
 
-## Vulnerability Details
+The intended purpose is that this allows the owner of the tokenID to split and mint a new tokenID from a fraction of the current tokenID.
 
-The vulnerability is this function does not check the msg.sender is the owner of the tokenID. 
-The only check is:  
+### Vulnerability Details
+
+The vulnerability is this function does not check the msg.sender is the owner of the tokenID. The only check is:
+
 ```solidity
  _requireOwned(tokenId); 
 ```
 
-This check is from ERC721Upgradeable contract. 
-https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/token/ERC721/ERC721Upgradeable.sol#L477-L483
+This check is from ERC721Upgradeable contract. https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/token/ERC721/ERC721Upgradeable.sol#L477-L483
 
-```solidity 
+```solidity
 /**
      * @dev Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
      * Returns the owner.
@@ -121,44 +124,43 @@ https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/c
     }
 ```
 
-So the function just checks that the owner is not zero. 
+So the function just checks that the owner is not zero.
 
-So the attacker can use this function to steal most fraction of the VestedZeroNFT tokenID. 
+So the attacker can use this function to steal most fraction of the VestedZeroNFT tokenID.
 
-The attacker can call 
+The attacker can call
+
 ```solidity
 split(tokenID,1)
 ```
-For the tokenID, the attacker can use any existed tokenID. 
 
-The fraction is 1 to steal most of current tokenID to mint a new tokenID for the attacker. 
+For the tokenID, the attacker can use any existed tokenID.
 
-For example, if Ant has a tokenID for example = 2 that: 
-pending = 10_000 * 10**18 
+The fraction is 1 to steal most of current tokenID to mint a new tokenID for the attacker.
 
-After the hack, 
-The tokenID = 2 
-pending = 1 * 10**18 
+For example, if Ant has a tokenID for example = 2 that: pending = 10\_000 \* 10\*\*18
 
-The hacker new minted tokenID has 
+After the hack, The tokenID = 2 pending = 1 \* 10\*\*18
 
-pending = 9999 * 10** 18 
+The hacker new minted tokenID has
 
-So 99.99% amount of pending of Ant's tokenID was stolen by the attacker. 
+pending = 9999 \* 10\*\* 18
 
-The attacker can steal from tokenID of any owner, including the StakingBonus contract. 
+So 99.99% amount of pending of Ant's tokenID was stolen by the attacker.
 
-# Impacts
-# About the severity assessment
+The attacker can steal from tokenID of any owner, including the StakingBonus contract.
 
-So the bug allow attackers to steal the VestedZeroNFT token of users.  
+## Impacts
+
+## About the severity assessment
+
+So the bug allow attackers to steal the VestedZeroNFT token of users.\
 So the Severity is Critical with Category: Direct theft of any user NFTs, whether at-rest or in-motion, other than unclaimed royalties
 
+## Proof of Concept
 
+Test code POC:
 
-# Proof of Concept
-
-Test code POC: 
 ```typescript
 it("Direct theft of ZeroVestedNFT", async function () {
     console.log("Create the pre-condition setup for attack: User Ant has 1 VestedZeroNFT");
@@ -218,17 +220,14 @@ it("Direct theft of ZeroVestedNFT", async function () {
   });
 ```
 
-In the above POC, to execute the attack, the hacker call the split function 
-
+In the above POC, to execute the attack, the hacker call the split function
 
 ```typescript
 await vest.connect(attacker).split(2,1) ;
 ```
 
-
-
-Test log:  
-Full Test Log:  https://drive.google.com/file/d/1uQI10CD-J9HB4KweMPAlMUj19OEzadk0/view?usp=sharing
+Test log:\
+Full Test Log: https://drive.google.com/file/d/1uQI10CD-J9HB4KweMPAlMUj19OEzadk0/view?usp=sharing
 
 ```
 Create the pre-condition setup for attack: User Ant has 1 VestedZeroNFT
@@ -286,10 +285,10 @@ tokenIdToLockDetails:  Result(10) [
 
 ```
 
-Test Log explanation: 
+Test Log explanation:
 
-So Pre-condition: Ant has 1 VestedZeroNFT with id = 2 
-The tokenIdToLockDetails information for this tokenID 
+So Pre-condition: Ant has 1 VestedZeroNFT with id = 2 The tokenIdToLockDetails information for this tokenID
+
 ```
 tokenIdToLockDetails:  Result(10) [
   0n,
@@ -305,10 +304,10 @@ tokenIdToLockDetails:  Result(10) [
 ]
 ```
 
-This means pending = 10 000 * 10 **18 
+This means pending = 10 000 \* 10 \*\*18
 
-After the attack, 
-The tokenIdToLockDetails information for this tokenID 
+After the attack, The tokenIdToLockDetails information for this tokenID
+
 ```
 tokenIdToLockDetails:  Result(10) [
   0n,
@@ -323,10 +322,10 @@ tokenIdToLockDetails:  Result(10) [
   0n
 ]
 ```
-So the pending is 1 * 10 **18 
 
+So the pending is 1 \* 10 \*\*18
 
-The attacker now has a tokenID = 3 with information 
+The attacker now has a tokenID = 3 with information
 
 ```
 tokenIdToLockDetails:  Result(10) [
@@ -342,43 +341,40 @@ tokenIdToLockDetails:  Result(10) [
   0n
 ]
 ```
-The pending = 9999 * 10 ** 18 
 
+The pending = 9999 \* 10 \*\* 18
 
+To run the POC,
 
+Step 1: First clone the governance repository:
 
-To run the POC, 
-
-Step 1: 
-First clone the governance repository: 
 ```
 git clone https://github.com/zerolend/governance.git
 ```
 
-Step2: Apply Git patch file 
+Step2: Apply Git patch file
 
-Bug5_diff.patch link: https://drive.google.com/file/d/1lsQmql7Bg4OAaSJJkK9_PD0Is1HyLqPV/view?usp=sharing
-
-
+Bug5\_diff.patch link: https://drive.google.com/file/d/1lsQmql7Bg4OAaSJJkK9\_PD0Is1HyLqPV/view?usp=sharing
 
 Apply the Patch by Git command using Git bash shell
+
 ```bash
 git apply Bug5_diff_2.patch
 ```
 
-Step 3: Input .env variables 
+Step 3: Input .env variables
 
-cd to folder governance, To run the test, you need to 
-1. rename .env.example to .env 
-2. put the test Private_key to the variable 
+cd to folder governance, To run the test, you need to
+
+1. rename .env.example to .env
+2. put the test Private\_key to the variable
 
 ```
    WALLET_PRIVATE_KEY= 
    NODE_ENV == "test" 
 ```
 
-Step 4: Install and run test 
-Run command 
+Step 4: Install and run test Run command
 
 ```
 yarn install 

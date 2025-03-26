@@ -1,5 +1,4 @@
-
-# Tokens deposit in ExchangeStargateV2Adapter::lzCompose() is not protected by a try/catch block
+# Boost \_ IDEX 34494 - \[Smart Contract - High] Tokens deposit in ExchangeStargateVAdapterlzCompose is
 
 Submitted on Tue Aug 13 2024 23:08:39 GMT-0400 (Atlantic Standard Time) by @Paludo0x for [Boost | IDEX](https://immunefi.com/bounty/boost-idex/)
 
@@ -12,10 +11,13 @@ Report severity: High
 Target: https://github.com/idexio/idex-contracts-ikon/blob/main/contracts/bridge-adapters/ExchangeStargateV2Adapter.sol
 
 Impacts:
-- Temporary freezing of funds
+
+* Temporary freezing of funds
 
 ## Description
+
 ## Brief/Intro
+
 In `ExchangeStargateV2Adapter::lzCompose()` the `IExchange(custodian.exchange()).deposit();` function is called, if this is disabled for any reason the deposit will fail.
 
 ## Vulnerability Details
@@ -49,19 +51,19 @@ This is the implementation of the `ExchangeStargateV2Adapter` contract:
 
 The call to `deposit` function is not inside a try/catch block as it is usual when tokens are transferred via a token/messagge bridge layer.
 
-An example of implementation is reported in **Stargate** docs.
-https://stargateprotocol.gitbook.io/stargate/v/v2-developer-docs/integrate-with-stargate/composability#receive-1
+An example of implementation is reported in **Stargate** docs. https://stargateprotocol.gitbook.io/stargate/v/v2-developer-docs/integrate-with-stargate/composability#receive-1
 
 The suggestion is to implement the `catch` block with a transfer to the destination wallet or to a permissioned wallet with transfering functionality implemented.
 
 ## Impact Details
+
 The impact is that the funds can be stucked if the exchange deposits are disabled permanently for any reason, even if LayerZero and Stargate implements functionalities to retry sending a message
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
-In the test provided by the contract there's the POC that demonstrates that  the call will revert if exchange deposits are disabled.
+In the test provided by the contract there's the POC that demonstrates that the call will revert if exchange deposits are disabled.
 
 ```
     it.only('should revert when deposits are disabled', async () => {

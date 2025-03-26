@@ -1,7 +1,6 @@
+# 31112 - \[SC - Critical] Bribesolwithdraw doesnt update the totalVotings...
 
-# Bribe.sol::withdraw doesn't update the totalVoting's amount accordingly to the deposited assets amount
-
-Submitted on May 12th 2024 at 23:48:52 UTC by @crazy_squirrel for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
+Submitted on May 12th 2024 at 23:48:52 UTC by @crazy\_squirrel for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
 Report ID: #31112
 
@@ -12,21 +11,19 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
 
 Impacts:
-- The totalVoting tracker can be inflated
+
+* The totalVoting tracker can be inflated
 
 ## Description
+
 ## Brief/Intro
-> Bribe.sol
-> The Bribe.sol contract distributes bribes for a given Gauge.  Each Gauge
-> had a Bribe contract attached to it, and each Bribe can accept multiple (up 
-> to 16) different tokens as bribes.  During each epoch, veALCX stakers can 
-> collect bribes for a given gauge if they voted on that gauge in the previous 
-> epoch.
-> - the total amount of bribe `b` on pool `p` claimable by a veALCX NFT with 
-> token-ID `i` during a given epoch `n` is equal to the proportion of total 
->veALCX power that that NFT used to vote on pool `p`
+
+> Bribe.sol The Bribe.sol contract distributes bribes for a given Gauge. Each Gauge had a Bribe contract attached to it, and each Bribe can accept multiple (up to 16) different tokens as bribes. During each epoch, veALCX stakers can collect bribes for a given gauge if they voted on that gauge in the previous epoch.
+>
+> * the total amount of bribe `b` on pool `p` claimable by a veALCX NFT with token-ID `i` during a given epoch `n` is equal to the proportion of total veALCX power that that NFT used to vote on pool `p`
 
 ## Vulnerability Details
+
 In the `Bribe.sol` contract, the `deposit` function increases the `totalVoting` tracker's amount. However during the `withdraw`al's execution, the `totalVoting`'s value is **NOT** decreased.
 
 This missing `totalVoting` decrease directly impacts the voting power checkpointing and calculations by writing the wrong amount:
@@ -46,11 +43,13 @@ function _writeVotingCheckpoint() internal {
 ```
 
 ## Impact Details
+
 Medium.
 
-By impacting the variable used in the voting result calculations, this 
+By impacting the variable used in the voting result calculations, this
 
 ## References
+
 ```solidity
 function deposit(uint256 amount, uint256 tokenId) external {
         require(msg.sender == voter);
@@ -81,7 +80,6 @@ function withdraw(uint256 amount, uint256 tokenId) external {
         emit Withdraw(msg.sender, tokenId, amount);
     }
 ```
-
 
 ## Proof of Concept
 

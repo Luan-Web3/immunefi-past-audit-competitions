@@ -1,5 +1,4 @@
-
-# All the funds from the DepositProxy contracts can be stolen by frontrunning initialize() tx of the proxy's implementation
+# 26110 - \[SC - Insight] All the funds from the DepositProxy contracts c...
 
 Submitted on Nov 25th 2023 at 02:03:18 UTC by @savi0ur for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,12 +11,15 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x54D7aE423Edb07282645e740C046B9373970a168#code
 
 Impacts:
-- Direct theft of funds exceeding 1,000,000 USD from the Default Deposit Contract
+
+* Direct theft of funds exceeding 1,000,000 USD from the Default Deposit Contract
 
 ## Description
+
 ## Bug Description
 
 We can see below are the **two separate transactions** that are initiated after `DepositProxy` contract deployment.
+
 1. [upgradeTo](https://etherscan.io/tx/0xb1e5bc43a9a516618be17e0075ca12b7420b5daa42e377af2906a2c8d9619bdc)
 2. [initialize](https://etherscan.io/tx/0xd263c3c19fedb4a8765b8facd6bce1d1609b940d415d460351b590edba371970)
 
@@ -26,6 +28,7 @@ As can be seen on-chain, there are two separate tx : 1) for upgrading `implement
 Due to the protocol is using proxy/implementation pattern for upgradeability support, there is always a need to have an `initialize()` in implementation contract and it needs to be called in the context of proxy to initialize implementation contract.
 
 This is the definition of `initialize()`:
+
 ```solidity
 function initialize(
     address _exchange
@@ -80,16 +83,18 @@ modifier onlyExchange()
 }
 ```
 
-For the future upgrades, proxy contract will remain same but implementation contract will be changing. Hence, proxy will need to upgrade and initialize again with new implementation address. 
+For the future upgrades, proxy contract will remain same but implementation contract will be changing. Hence, proxy will need to upgrade and initialize again with new implementation address.
 
 Since Proxy's storage will not be changing, so the token's balances. As we can see, if such future upgrades happened with two separate tx - `upgradeTo` tx and `initialize` tx. Attacker can frontrun `initialize` tx OR backrun `upgradeTo` tx to initialize proxy's implementation with an attacker controlled address and then can easily steal all the funds that are already there in proxy contract.
 
 ## Impact
 
 All the funds from the DepositProxy contracts can be stolen by frontrunning `initialize()` transaction of the proxy's implementation and transferring all the funds from proxy contract to attacker controlled address.
+
 ## Risk Breakdown
 
 Difficulty to Exploit: Very Easy
+
 ## Recommendation
 
 I recommend to initialize proxy's implementation at the time of upgrade using only `upgradeToAndCall()` instead of having two tx - 1) `upgradeTo()` and then 2) `initialize()`.
@@ -99,24 +104,24 @@ upgradeToAndCall(address implementation, bytes memory data)
 ```
 
 We should upgrade and initialize proxy contract by passing `implementation` address and `data` as `abi.encodeWithSignature("initialize(address)", exchange_address)` to `upgradeToAndCall()`.
+
 ## References
 
-DepositProxy : https://etherscan.io/address/0x54D7aE423Edb07282645e740C046B9373970a168
-DepositProxy Implementation : https://etherscan.io/address/0x8ccc06c4c3b2b06616eee1b62f558f5b9c08f973
-UpgradeTo tx - https://etherscan.io/tx/0xb1e5bc43a9a516618be17e0075ca12b7420b5daa42e377af2906a2c8d9619bdc
-Initialize tx - https://etherscan.io/tx/0xd263c3c19fedb4a8765b8facd6bce1d1609b940d415d460351b590edba371970
-
+DepositProxy : https://etherscan.io/address/0x54D7aE423Edb07282645e740C046B9373970a168 DepositProxy Implementation : https://etherscan.io/address/0x8ccc06c4c3b2b06616eee1b62f558f5b9c08f973 UpgradeTo tx - https://etherscan.io/tx/0xb1e5bc43a9a516618be17e0075ca12b7420b5daa42e377af2906a2c8d9619bdc Initialize tx - https://etherscan.io/tx/0xd263c3c19fedb4a8765b8facd6bce1d1609b940d415d460351b590edba371970
 
 ## Proof Of Concept
 
-**NOTE:** 
-- For simplicity of POC, i am doing a prank on `proxy owner` for upgradeTo transaction. 
+**NOTE:**
+
+* For simplicity of POC, i am doing a prank on `proxy owner` for upgradeTo transaction.
 
 **Steps to Run using Foundry:**
-- Install Foundry (https://book.getfoundry.sh/getting-started/installation)
-- Open terminal and run `forge init poc` and `cd poc`
-- Download implementation contract source using command `cast etherscan-source -d src --etherscan-api-key $ETHERSCAN_API_KEY 0x8CCc06C4C3B2b06616EeE1B62F558f5b9C08f973`
-- Modify `initialize()` from `DefaultDepositContract.sol` for showing an upgrade as **new implementation** as shown below (removed check `exchange == address(0)` as exchange was set in previous `initialize()`, so it cant be zero anymore).
+
+* Install Foundry (https://book.getfoundry.sh/getting-started/installation)
+* Open terminal and run `forge init poc` and `cd poc`
+* Download implementation contract source using command `cast etherscan-source -d src --etherscan-api-key $ETHERSCAN_API_KEY 0x8CCc06C4C3B2b06616EeE1B62F558f5b9C08f973`
+* Modify `initialize()` from `DefaultDepositContract.sol` for showing an upgrade as **new implementation** as shown below (removed check `exchange == address(0)` as exchange was set in previous `initialize()`, so it cant be zero anymore).
+
 ```solidity
 function initialize(
     address _exchange
@@ -131,8 +136,9 @@ function initialize(
     exchange = _exchange;
 }
 ```
-- Paste following foundry code in TestPoC.t.sol
-- Run using `forge test -vv`
+
+* Paste following foundry code in TestPoC.t.sol
+* Run using `forge test -vv`
 
 ```solidity
 // SPDX-License-Identifier: MIT

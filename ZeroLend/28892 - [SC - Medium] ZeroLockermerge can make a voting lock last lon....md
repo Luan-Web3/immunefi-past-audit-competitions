@@ -1,5 +1,4 @@
-
-# ZeroLocker:merge can make a voting lock last longer than MAXTIME and inflate voting power
+# 28892 - \[SC - Medium] ZeroLockermerge can make a voting lock last lon...
 
 Submitted on Mar 1st 2024 at 01:23:04 UTC by @jovi for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,21 +11,27 @@ Report severity: Medium
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
 ## Description
-I have previously reported an issue called  "ZeroLocker:merge can make a voting lock last longer than 4 years" as a primary medium-severity issue at Cantina's contest as there wasn't a voting power calculation function at that codebase. I am reporting it again as the impact at the codebase in Immunefi's scope is higher and presents a significance for the voting mechanics.
+
+I have previously reported an issue called "ZeroLocker:merge can make a voting lock last longer than 4 years" as a primary medium-severity issue at Cantina's contest as there wasn't a voting power calculation function at that codebase. I am reporting it again as the impact at the codebase in Immunefi's scope is higher and presents a significance for the voting mechanics.
+
 ## Brief/Intro
 
 The BaseLocker contract allows users to merge two different locks and end up with a lock that has a longer than MAXTIME difference between the end time and start time. This inflates the calculation of voting power for locks and give them an unfair advantage on governance.
 
 ## Vulnerability Details
-The merge method enables a user to bypass the MAXTIME requirement by creating two different locks that last MAXTIME, one at Time0 and the second one some time later at Time1 then merging with the first lock as the merge target (or **to** argument) at the merge call:
+
+The merge method enables a user to bypass the MAXTIME requirement by creating two different locks that last MAXTIME, one at Time0 and the second one some time later at Time1 then merging with the first lock as the merge target (or **to** argument) at the merge call:
+
 ```solidity
 function merge(uint256 _from, uint256 _to) external override {
 ```
 
 As the merge function at the BaseLocker contract does not check whether the end minus the locked0.start is not greater than MAXTIME, it enables arbitrary-sized lock durations:
+
 ```solidity
 LockedBalance memory _locked0 = locked[_from];
         LockedBalance memory _locked1 = locked[_to];
@@ -42,11 +47,13 @@ LockedBalance memory _locked0 = locked[_from];
 ```
 
 The depositFor internal method updates the lock, but it doesn't check the end timestamp and the start timestamp difference either, the only sanity check is in regards to unlockTime != 0:
+
 ```solidity
 if (_unlockTime != 0) lock.end = _unlockTime;
 ```
 
 This enables calculatePower to utilize a numerator bigger than MAXTIME, inflating locks amounts voting power:
+
 ```solidity
 function _calculatePower(
         LockedBalance memory lock
@@ -56,30 +63,38 @@ function _calculatePower(
 ```
 
 ## Impact Details
+
 The whole voting mechanics is spoofed as merging allows users to have voting powers bigger than the maximum possible for the amounts deposited. This effectively makes governance a game of merging locks at the last possible moment before a voting start in order to have ever-increasing voting powers.
+
 ## References
-Snippet in which merge doesn't check the total duration of the lock: https://github.com/zerolend/governance/blob/main/contracts/locker/BaseLocker.sol#L180C8-L185C28
-CalculatePower internal method: https://github.com/zerolend/governance/blob/main/contracts/locker/BaseLocker.sol#L112C4-L117C1
+
+Snippet in which merge doesn't check the total duration of the lock: https://github.com/zerolend/governance/blob/main/contracts/locker/BaseLocker.sol#L180C8-L185C28 CalculatePower internal method: https://github.com/zerolend/governance/blob/main/contracts/locker/BaseLocker.sol#L112C4-L117C1
 
 ## Proof of concept
+
 ### PoC
+
 Set up foundry on hardhat by placing
+
 ```solidity
 import "@nomicfoundation/hardhat-foundry";
 ```
-at the hardhat.config.ts file. Don't forget to install "@nomicfoundation/hardhat-foundry".
-Then install foundry at the contracts folder with the following command:
+
+at the hardhat.config.ts file. Don't forget to install "@nomicfoundation/hardhat-foundry". Then install foundry at the contracts folder with the following command:
+
 ```solidity
 forge init --force
 ```
 
 Install openzeppelin contracts at foundry:
+
 ```solidity
 forge install Openzeppelin/openzeppelin-contracts@v5.0.1 --no-commit
 forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit
 ```
 
 Place the following code-snippet at the Test.t.sol file inside the test folder:
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;

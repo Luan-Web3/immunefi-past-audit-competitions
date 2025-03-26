@@ -1,5 +1,6 @@
+# 29026 - \[SC - High] Hackers can steal the unclaimed yield to get th...
 
-# Hackers can steal the unclaimed yield to get the double reward from the Poolvoter contract by calling distributeEx() 2 times in the same block
+## Hackers can steal the unclaimed yield to get the double reward from the Poolvoter contract by calling distributeEx() 2 times in the same block
 
 Submitted on Mar 5th 2024 at 00:43:27 UTC by @perseverance for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,26 +13,29 @@ Report severity: High
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Theft of unclaimed yield
+
+* Theft of unclaimed yield
+
+### Description
 
 ## Description
-# Description
 
-## Brief/Intro
+### Brief/Intro
 
-Hackers can steal the unclaimed yield from the Poolvoter contract using the function distributeEx() 2 times in the same block. By doing this, the hacker can get double the reward from the protocol. Thus, steal the yield from other users. 
+Hackers can steal the unclaimed yield from the Poolvoter contract using the function distributeEx() 2 times in the same block. By doing this, the hacker can get double the reward from the protocol. Thus, steal the yield from other users.
 
-## Vulnerability Details
+### Vulnerability Details
 
-### Background Information
-The Zerolend provide the Incentive program as described in the Documentation of the protocol: https://docs.zerolend.xyz/zeronomics/token-overview 
+#### Background Information
+
+The Zerolend provide the Incentive program as described in the Documentation of the protocol: https://docs.zerolend.xyz/zeronomics/token-overview
 
 ```
 3. Incentive Programs: The protocol will conduct various incentive programs to encourage users to engage with the platform actively. These programs can offer token rewards or other benefits to participants who perform certain actions, such as providing liquidity, referring new users, or completing specific tasks within the ecosystem.
 
 ```
 
-According to the Zerolend Boost Technical Walkthrough, this is done via the Poolvoter contract https://github.com/zerolend/governance/blob/main/contracts/voter/PoolVoter.sol 
+According to the Zerolend Boost Technical Walkthrough, this is done via the Poolvoter contract https://github.com/zerolend/governance/blob/main/contracts/voter/PoolVoter.sol
 
 The contract will receive the reward via the function notifyRewardAmount
 
@@ -46,8 +50,7 @@ function notifyRewardAmount(uint256 amount) public nonReentrant {
 
 ```
 
-
-So the program will give the rewards to participants who perform actions such as providing liquidity. The contract will provide the rewards for all the pools in the list: 
+So the program will give the rewards to participants who perform actions such as providing liquidity. The contract will provide the rewards for all the pools in the list:
 
 https://github.com/zerolend/governance/blob/main/contracts/voter/PoolVoter.sol#L22
 
@@ -56,14 +59,15 @@ address[] internal _pools; // all pools viable for incentives
 
 ```
 
-The reward is distributed based on the weights[pool]/totalWeight. The formula
+The reward is distributed based on the weights\[pool]/totalWeight. The formula
 
 ```solidity
 
 uint256 _reward = (_balance * weights[_pools[x]]) /
                     _totalWeight;
 ```
-this can be seen in the function distributeEx 
+
+this can be seen in the function distributeEx
 
 https://github.com/zerolend/governance/blob/main/contracts/voter/PoolVoter.sol#L214-L235
 
@@ -92,38 +96,35 @@ function distributeEx(
 
 ```
 
-### The vulnerability 
+#### The vulnerability
 
-So the token is distributed to all the pools in the list based on the portion weights[_pools[pool]]) / _totalWeight. But the bug in the function distributeEx allows a pool to receive the reward of other pools by calling distributeEx repeatedly at least 2 times. How many times depend on the supply and borrow gauge contract. I analyzed with the current code, it is possible to call 2 times. 
+So the token is distributed to all the pools in the list based on the portion weights\[\_pools\[pool]]) / \_totalWeight. But the bug in the function distributeEx allows a pool to receive the reward of other pools by calling distributeEx repeatedly at least 2 times. How many times depend on the supply and borrow gauge contract. I analyzed with the current code, it is possible to call 2 times.
 
-If a hacker deposit or borrow into a pool (POOL_A) and can get 50% of reward of POOL_A. According to the design of the protocol, if POOL_A have weights is 10% of the total reward then the reward should be
+If a hacker deposit or borrow into a pool (POOL\_A) and can get 50% of reward of POOL\_A. According to the design of the protocol, if POOL\_A have weights is 10% of the total reward then the reward should be
 
-REWARD_AMOUNT * 0.1 * 0.5 = 0.05 * REWARD_AMOUNT 
+REWARD\_AMOUNT \* 0.1 \* 0.5 = 0.05 \* REWARD\_AMOUNT
 
+But by calling distributeEx 2 times, the hacker can get
 
-But by calling distributeEx 2 times, the hacker can get 
+REWARD\_AMOUT \* 0.2 \* 0.5 = 0.1 \* REWARD\_AMOUT = 2 times
 
-REWARD_AMOUT * 0.2 * 0.5 = 0.1 * REWARD_AMOUT = 2 times 
+So the profit can be 2 times
 
-So the profit can be 2 times 
+How:
 
-How: 
+Assume that there is 5 pools in the list of "\_pools" and the POOL\_A has index of 2
 
-Assume that there is 5 pools in the list of "_pools" and the POOL_A has index of 2 
-
-
-the Hacker call 
+the Hacker call
 
 ```solidity
 
 PoolVoter.distributeEx(reward_token,2,3); 
 ```
 
-Balance reward_token of this contract is REWARD_AMOUNT. Since POOL_A has weight of 10% then _reward = 0.1 * REWARD_AMOUNT 
+Balance reward\_token of this contract is REWARD\_AMOUNT. Since POOL\_A has weight of 10% then \_reward = 0.1 \* REWARD\_AMOUNT
 
+The pool is the contract LendingPoolGauge https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/LendingPoolGauge.sol#L20-L35
 
-The pool is the contract LendingPoolGauge 
-https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/LendingPoolGauge.sol#L20-L35
 ```
 function notifyRewardAmount(
         address token,
@@ -144,7 +145,7 @@ function notifyRewardAmount(
 
 ```
 
-So the reward is sent to supplyGauge and borrowGauge. 
+So the reward is sent to supplyGauge and borrowGauge.
 
 I analyzed the [LendingPoolGaugeFactory](https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/LendingPoolGaugeFactory.sol) , so the BorrowGauge and SupplyGauge is [GaugeIncentiveController contract](https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/GaugeIncentiveController.sol)
 
@@ -181,7 +182,8 @@ function notifyRewardAmount(
     }
 ```
 
-On the first call to this function, the transaction call will go to branch 
+On the first call to this function, the transaction call will go to branch
+
 ```solidity
  if (block.timestamp >= periodFinish[token]) {
             token.safeTransferFrom(msg.sender, address(this), amount);
@@ -192,9 +194,9 @@ On the first call to this function, the transaction call will go to branch
      periodFinish[token] = block.timestamp + DURATION;
 ```
 
-When the hacker call distributeEx() the second time, 
-the the transaction call  will go to the second branch
-```solidity 
+When the hacker call distributeEx() the second time, the the transaction call will go to the second branch
+
+```solidity
 
 else {
             uint256 _remaining = periodFinish[token] - block.timestamp;
@@ -211,21 +213,21 @@ else {
 
 ```
 
+So we can see that this bug allow the hackers to double the reward get from the protocol.
 
-So we can see that this bug allow the hackers to double the reward get from the protocol. 
+## Impacts
 
-# Impacts
-# About the severity assessment
+## About the severity assessment
 
-This bug allow the hackers to double the reward get from the protocol and thus steal yield from other users. 
+This bug allow the hackers to double the reward get from the protocol and thus steal yield from other users.
 
 This bug is high category "Theft of unclaimed yield"
 
-## Proof of concept
-#  Proof of concept
+### Proof of concept
 
-Step 1: Wait the reward token is distributed to the PoolVoter contract 
-Step 2: Deploy a contract. In this contract have the attack function 
+## Proof of concept
+
+Step 1: Wait the reward token is distributed to the PoolVoter contract Step 2: Deploy a contract. In this contract have the attack function
 
 ```solidity
 function attack() public {
@@ -244,8 +246,7 @@ PoolVoter.distributeEx(reward_token,2,3);
 
 ```
 
-Step 3: Call getReward to take the reward 
-https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/RewardBase.sol#L79 
+Step 3: Call getReward to take the reward https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/RewardBase.sol#L79
 
 ```solidity
 function getReward(
@@ -254,4 +255,4 @@ function getReward(
     ) 
 ```
 
-It seems that the contract PoolVoter not yet deployed, so I provide the above POC to demonstrate the bug. Please let me know if you need more clarification. 
+It seems that the contract PoolVoter not yet deployed, so I provide the above POC to demonstrate the bug. Please let me know if you need more clarification.

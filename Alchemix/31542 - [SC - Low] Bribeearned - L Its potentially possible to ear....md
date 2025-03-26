@@ -1,5 +1,4 @@
-
-# `Bribe::earned()` - L229: It's potentially possible to earn TWICE in an epoch due to a small logical oversight in `if (block.timestamp - _bribeStart(_startTimestamp) < DURATION) {`.
+# 31542 - \[SC - Low] Bribeearned - L Its potentially possible to ear...
 
 Submitted on May 21st 2024 at 04:19:40 UTC by @OxSCSamurai for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,33 +11,32 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+* Contract fails to deliver promised returns, but doesn't lose value
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
 ## Description
+
 ## Brief/Intro
 
 `Bribe::earned()` - L229: It's potentially possible to earn TWICE in an epoch due to a small logical oversight in `if (block.timestamp - _bribeStart(_startTimestamp) < DURATION) {`.
 
-- In `if (block.timestamp - _bribeStart(_startTimestamp) < DURATION) {` the `DURATION` represents rewards released over a voting period of 2 weeks `uint256 internal constant DURATION = 2 weeks;`.
+* In `if (block.timestamp - _bribeStart(_startTimestamp) < DURATION) {` the `DURATION` represents rewards released over a voting period of 2 weeks `uint256 internal constant DURATION = 2 weeks;`.
 
 ## Vulnerability Details
 
 ## Details:
 
-- The duration is 2 weeks, which means 14 days, which means from beginning of day 1 to end of day 14. This is the duration period, or the epoch period. Things that shouldn't happen during the epoch or shouldn't happen more than once during the epoch should only happen AFTER the end of the 14th day, and not AT the end of the 14 day because AT the end of the 14th day or AT the end of week 2 the epoch is still technically active/valid, i.e. it is not AFTER the final second of the epoch end yet. 
-Only after the epoch end should we claim rewards again, or do something for a "second" time.
-- This is a common logical "mistake" seen in many protocols...
-- Even in some of the protocol tests there is clear evidence of adding `1 seconds` to epoch durations during the testing phase, probably to bypass confusing/conflicting results. In my opinion, this due to using `<` in above line of code at L229, instead of `<=`.
+* The duration is 2 weeks, which means 14 days, which means from beginning of day 1 to end of day 14. This is the duration period, or the epoch period. Things that shouldn't happen during the epoch or shouldn't happen more than once during the epoch should only happen AFTER the end of the 14th day, and not AT the end of the 14 day because AT the end of the 14th day or AT the end of week 2 the epoch is still technically active/valid, i.e. it is not AFTER the final second of the epoch end yet. Only after the epoch end should we claim rewards again, or do something for a "second" time.
+* This is a common logical "mistake" seen in many protocols...
+* Even in some of the protocol tests there is clear evidence of adding `1 seconds` to epoch durations during the testing phase, probably to bypass confusing/conflicting results. In my opinion, this due to using `<` in above line of code at L229, instead of `<=`.
 
-Regardless, I hope to demonstrate with my PoC tests below that its actually possible to claim bribes TWICE during the same epoch, due to usage of `<` instead of `<=`.
-This is a complex topic in my opinion and I'm not insisting that I'm 100% correct, however, I am drawing attention to this matter because it requires 100% focus, attention, care and clarity to not make any mistakes. This isn't about off by 1 errors at all. 
-Due to your currently implemented logic in your function, a user could potentially claim bribes twice for the same epoch...
+Regardless, I hope to demonstrate with my PoC tests below that its actually possible to claim bribes TWICE during the same epoch, due to usage of `<` instead of `<=`. This is a complex topic in my opinion and I'm not insisting that I'm 100% correct, however, I am drawing attention to this matter because it requires 100% focus, attention, care and clarity to not make any mistakes. This isn't about off by 1 errors at all. Due to your currently implemented logic in your function, a user could potentially claim bribes twice for the same epoch...
 
 Check my PoC test results where I demonstrate this.
 
-
 ## Function in question:
+
 ```solidity
     function earned(address token, uint256 tokenId) public view returns (uint256) {
         if (numCheckpoints[tokenId] == 0) {
@@ -106,15 +104,12 @@ Check my PoC test results where I demonstrate this.
 
 ## IMPACT:
 
-- Potential impact in scope: Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
-- Alternative impact in scope: Contract fails to deliver promised returns, but doesn't lose value
+* Potential impact in scope: Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+* Alternative impact in scope: Contract fails to deliver promised returns, but doesn't lose value
 
-Likelihood: low
-  -- probably not easy to carry out, would need to use automated "attack" contract and get the timing precise down to the second...
+Likelihood: low -- probably not easy to carry out, would need to use automated "attack" contract and get the timing precise down to the second...
 
-Impact: medium - high 
-  -- malicious user/voter could leverage this to manipulate governance vote outcomes due to his unfair advantage in terms of collecting rewards...
-  -- contract "loses" reward funds unexpectedly and under invalid conditions
+Impact: medium - high -- malicious user/voter could leverage this to manipulate governance vote outcomes due to his unfair advantage in terms of collecting rewards... -- contract "loses" reward funds unexpectedly and under invalid conditions
 
 Severity: low - medium
 
@@ -122,13 +117,12 @@ Severity: low - medium
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/9e14da88d8db05794623d8ab5f449451a10c15ac/src/Bribe.sol#L229
 
-
-
 ## Proof of Concept
 
 ## PoC:
 
 Highly modified test function that I used:
+
 ```solidity
     function testBugBribeClaiming() public {
         // ------------------- Start first epoch i
@@ -188,10 +182,13 @@ Highly modified test function that I used:
         assertGt(2 weeks + 1 seconds, blockTimestamp2 - blockTimestamp1); /// @audit added for PoC/testing purposes >>> effectively demonstrating that the current timestamp is not part of the next epoch, but still part of the current epoch which started exactly 2 weeks ago...
     }
 ```
+
 ### TEST 1: testing WITH the bug, to demonstrate how the user claims bribe rewards twice in the same epoch:
-- check the assertions that I added at the end of the test function, where I attempted to prove that the second rewards claim happens DURING the same epoch as first claim...
-- make file test command used: `make test_file_debug_test FILE=Voting TEST=testBugBribeClaiming`.
-- please note that I wasnt sure how to get the "transfer amount exceeds balance" error to disappear, but I didnt need to, because this error message shows that the second attempt to claim bribe rewards was NOT prevented, otherwise this error message would not be possible...:
+
+* check the assertions that I added at the end of the test function, where I attempted to prove that the second rewards claim happens DURING the same epoch as first claim...
+* make file test command used: `make test_file_debug_test FILE=Voting TEST=testBugBribeClaiming`.
+* please note that I wasnt sure how to get the "transfer amount exceeds balance" error to disappear, but I didnt need to, because this error message shows that the second attempt to claim bribe rewards was NOT prevented, otherwise this error message would not be possible...:
+
 ```solidity
 $ make test_file_debug_test FILE=Voting TEST=testBugBribeClaiming
 FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/blahblahblah --match-path src/test/Voting.t.sol --match-test testBugBribeClaiming -vvvvv
@@ -259,21 +256,27 @@ Encountered 1 failing test in src/test/Voting.t.sol:VotingTest
 Encountered a total of 1 failing tests, 0 tests succeeded
 make: *** [Makefile:74: test_file_debug_test] Error 1
 ```
-- So it's pretty clear from the above test results that the function call tried to transfer bribe rewards to the user a SECOND time during the same epoch, but failed due to insufficient funds available. If your system checks for this worked 100% correctly, this step wouldn't even be reached...
-- (Again, I wasnt sure how to make funds available quickly, didnt want to spend time on that, but that shouldnt be necessary anyway as this should suffice more than enough already...)
-- So let me demonstrate with my bugfix that this above test result isnt even possible, the system doesnt even try to transfer bribe rewards to the user a second time during same epoch...
+
+* So it's pretty clear from the above test results that the function call tried to transfer bribe rewards to the user a SECOND time during the same epoch, but failed due to insufficient funds available. If your system checks for this worked 100% correctly, this step wouldn't even be reached...
+* (Again, I wasnt sure how to make funds available quickly, didnt want to spend time on that, but that shouldnt be necessary anyway as this should suffice more than enough already...)
+* So let me demonstrate with my bugfix that this above test result isnt even possible, the system doesnt even try to transfer bribe rewards to the user a second time during same epoch...
 
 ### TEST 2: now using the bugfix, to demonstrate that claiming of bribe rewards more than once during same epoch is now impossible / not possible:
-- commented out the buggy code and inserted the bugfix into the function:
-Removed buggy line of code:
+
+* commented out the buggy code and inserted the bugfix into the function: Removed buggy line of code:
+
 ```solidity
 if (block.timestamp - _bribeStart(_startTimestamp) < DURATION) {
 ```
+
 Inserted bugfix:
+
 ```solidity
 if (block.timestamp - _bribeStart(_startTimestamp) <= DURATION) {
 ```
+
 #### Test result:
+
 ```solidity
 $ make test_file_debug_test FILE=Voting TEST=testBugBribeClaiming
 FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/blahblahblah --match-path src/test/Voting.t.sol --match-test testBugBribeClaiming -vvvvv
@@ -334,11 +337,13 @@ Encountered 1 failing test in src/test/Voting.t.sol:VotingTest
 Encountered a total of 1 failing tests, 0 tests succeeded
 make: *** [Makefile:74: test_file_debug_test] Error 1
 ```
-- first claim was allowed, second claim attempt was blocked successfully.
+
+* first claim was allowed, second claim attempt was blocked successfully.
 
 ### Final test: with bugfix, adding 1 second to the second time warp, which is the start of the next epoch, so it should allow claiming of "second" bribe reward now:
-- `hevm.warp(blockTimestamp1 + 2 weeks + 1 seconds);`
-Test result:
+
+* `hevm.warp(blockTimestamp1 + 2 weeks + 1 seconds);` Test result:
+
 ```solidity
 $ make test_file_debug_test FILE=Voting TEST=testBugBribeClaiming
 FOUNDRY_PROFILE=default forge test --fork-url https://eth-mainnet.alchemyapi.io/v2/blahblahblah --match-path src/test/Voting.t.sol --match-test testBugBribeClaiming -vvvvv
@@ -397,7 +402,8 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 67.81s (50.45s CPU 
 
 Ran 1 test suite in 70.42s (67.81s CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
-- user able to successfully claim bribe rewards a second time but only in next epoch, as intended and expected.
+
+* user able to successfully claim bribe rewards a second time but only in next epoch, as intended and expected.
 
 ## Suggested bugfix:
 

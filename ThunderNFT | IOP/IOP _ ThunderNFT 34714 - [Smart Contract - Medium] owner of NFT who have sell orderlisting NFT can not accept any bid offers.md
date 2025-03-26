@@ -1,5 +1,4 @@
-
-# owner of NFT who have sell order(listing NFT) can not accept any bid offers.
+# IOP \_ ThunderNFT 34714 - \[Smart Contract - Medium] owner of NFT who have sell orderlisting NFT can n
 
 Submitted on Wed Aug 21 2024 22:08:06 GMT-0400 (Atlantic Standard Time) by @zeroK for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -9,22 +8,26 @@ Report type: Smart Contract
 
 Report severity: Medium
 
-Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/thunder_exchange
+Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/thunder\_exchange
 
 Impacts:
-- Smart contract unable to operate due to lack of token funds
-- Block stuffing
+
+* Smart contract unable to operate due to lack of token funds
+* Block stuffing
 
 ## Description
-## Brief/Intro
-the function `execute_order` meant to allow users to buy the NFT directly by sending the listed price for the nft and it allows seller of the NFT to accept specific bid offers. however its impossible for the seller/owner of the NFT to accept any bids because of the check that exist in the `_execute_sell_taker_order` function which checks if the msg_asset() is valid when the user calls the execute_order function, its impossible for the seller to have the asset_id(the NFT) since the `place_order` function ask the seller to transfer the NFT to the thunder exchange contract, this way its impossible for seller to accept any bids.
 
-- we believe this can be high severity report instead of medium but we will go with medium severity and let the team/immunefi decide the valid severity for this report.
+## Brief/Intro
+
+the function `execute_order` meant to allow users to buy the NFT directly by sending the listed price for the nft and it allows seller of the NFT to accept specific bid offers. however its impossible for the seller/owner of the NFT to accept any bids because of the check that exist in the `_execute_sell_taker_order` function which checks if the msg\_asset() is valid when the user calls the execute\_order function, its impossible for the seller to have the asset\_id(the NFT) since the `place_order` function ask the seller to transfer the NFT to the thunder exchange contract, this way its impossible for seller to accept any bids.
+
+* we believe this can be high severity report instead of medium but we will go with medium severity and let the team/immunefi decide the valid severity for this report.
 
 ## Vulnerability Details
+
 when NFT owner want want to list its NFT the function `place_order` should be called with Side == sell:
 
-```sway 
+```sway
     /// Places MakerOrder by calling the strategy contract
     /// Checks if the order is valid
     #[storage(read), payable] // @audit when user set sell order(listing) the function force the user to sent its NFT in checks below
@@ -59,9 +62,9 @@ when NFT owner want want to list its NFT the function `place_order` should be ca
 
 ```
 
-as shown the function place_order ask for sending the NFT when users want to list their NFT, and after that users can bid on the NFT by calling place_order with Side == Buy. when the seller decide to accept a bid, the function execute order should be called with Side == sell:
+as shown the function place\_order ask for sending the NFT when users want to list their NFT, and after that users can bid on the NFT by calling place\_order with Side == Buy. when the seller decide to accept a bid, the function execute order should be called with Side == sell:
 
-```sway 
+```sway
     /// Executes order by either
     /// filling the sell MakerOrder (e.g. purchasing NFT)
     /// or the buy MakerOrder (e.g. accepting an offer)
@@ -113,21 +116,23 @@ fn _execute_sell_taker_order(order: TakerOrder) {
 
 ```
 
-call to execute_order will revert, this is because the user is forced to call transfer function in sway which is built-in function with important checks that executes by fuelVM itself, one of these checks is checking if the caller have the determined asset_id plus the amount. 
-https://docs.fuel.network/docs/specs/fuel-vm/instruction-set/#tr-transfer-coins-to-contract
+call to execute\_order will revert, this is because the user is forced to call transfer function in sway which is built-in function with important checks that executes by fuelVM itself, one of these checks is checking if the caller have the determined asset\_id plus the amount. https://docs.fuel.network/docs/specs/fuel-vm/instruction-set/#tr-transfer-coins-to-contract
 
 this way its impossible for seller to accept any bids and should wait for someone who buy the NFT from him directly or cancel the order.
 
 ## Impact Details
+
 sellers can never accept bid offers because of incorrect logic set in the `_execute_sell_taker_order` function.
 
 ## References
-its recommended to not ask for seller if they transfered their NFT or not in the _execute_sell_taker_order function, instead storage map can be added to save/check if the caller indeed transferred the NFT or not.
-        
+
+its recommended to not ask for seller if they transfered their NFT or not in the \_execute\_sell\_taker\_order function, instead storage map can be added to save/check if the caller indeed transferred the NFT or not.
+
 ## Proof of concept
+
 ## Proof of Concept
 
-NOTE: check the report id 34567 to get better experience when running this test 
+NOTE: check the report id 34567 to get better experience when running this test
 
 ```sway
 

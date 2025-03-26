@@ -1,5 +1,6 @@
+# Attackathon \_ Fuel Network 33248 - \[Smart Contract - High] Incorrect Implementation of IFP Floor and
 
-# Incorrect Implementation of IFP Floor and Ceil Functions
+## Incorrect Implementation of IFP Floor and Ceil Functions
 
 Submitted on Mon Jul 15 2024 23:00:54 GMT-0400 (Atlantic Standard Time) by @Blockian for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,20 +13,26 @@ Report severity: High
 Target: https://github.com/FuelLabs/sway-libs/tree/0f47d33d6e5da25f782fc117d4be15b7b12d291b
 
 Impacts:
-- Temporary freezing of funds for at least 1 hour
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
-- Permanent freezing of funds
-- Incorrect math
 
-## Description
-# Fuel Network bug report
-## Incorrect Implementation of IFP Floor and Ceil Functions
+* Temporary freezing of funds for at least 1 hour
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+* Permanent freezing of funds
+* Incorrect math
+
 ### Description
-The current implementation of the floor and ceil functions in `sway-libs` for the signed Fixed Point numbers is flawed.
-The implementation returns the wrong number for every negative input.
 
-## Root Cause
+## Fuel Network bug report
+
+### Incorrect Implementation of IFP Floor and Ceil Functions
+
+#### Description
+
+The current implementation of the floor and ceil functions in `sway-libs` for the signed Fixed Point numbers is flawed. The implementation returns the wrong number for every negative input.
+
+### Root Cause
+
 The `floor` function from the `IFP64` implementation is as follows:
+
 ```rs
     pub fn floor(self) -> Self {
         if self.non_negative {
@@ -42,6 +49,7 @@ The `floor` function from the `IFP64` implementation is as follows:
 ```
 
 Similarly, the `ceil` function is implemented as:
+
 ```rs
     pub fn ceil(self) -> Self {
         let mut underlying = self.underlying;
@@ -69,24 +77,24 @@ Similarly, the `ceil` function is implemented as:
 
 Several issues exist within these implementations, as detailed below:
 
-### Issues Identified
-1. ***Incorrect Usage of `UFP32::from`***: The `from` function does not multiply the input number by the `denominator`, resulting in `UFP32::from(1u32)` being `0.0..01` instead of `1`.
+#### Issues Identified
 
-2. ***Incorrect Subtraction in floor Function***: The floor function attempts to subtract `1` even when the number is already rounded, so for negative numbers different from zero, it subtracts `0.0..01` (covered by the first issue). Regardless if it's rounded already
+1. _**Incorrect Usage of `UFP32::from`**_: The `from` function does not multiply the input number by the `denominator`, resulting in `UFP32::from(1u32)` being `0.0..01` instead of `1`.
+2. _**Incorrect Subtraction in floor Function**_: The floor function attempts to subtract `1` even when the number is already rounded, so for negative numbers different from zero, it subtracts `0.0..01` (covered by the first issue). Regardless if it's rounded already
+3. _**Unreachable Branch in ceil Function**_: The ceil function contains a branch that changes the sign of the number, which should not occur. Fortunately, this branch is unreachable.
 
-3. ***Unreachable Branch in ceil Function***: The ceil function contains a branch that changes the sign of the number, which should not occur. Fortunately, this branch is unreachable.
+_**NOTE**_: This error affects all `IFP` types.
 
-***NOTE***: This error affects all `IFP` types.
+### Impact
 
-## Impact
-This issue affects every implementation of signed fixed point numbers in the Fuel ecosystem.
-Any project utilizing these implementations will encounter incorrect calculations.
+This issue affects every implementation of signed fixed point numbers in the Fuel ecosystem. Any project utilizing these implementations will encounter incorrect calculations.
 
 In the crypto space, even minor errors, like off by one, can lead to substantial financial losses, underscoring the critical nature of this bug.
 
-## Proposed fix
-By examining the mathematical definitions of `floor` and `ceil`, we observe that for negative numbers, `ceil` acts as `floor` for positive numbers and vice versa.
-Thus, a simpler implementation can be adopted:
+### Proposed fix
+
+By examining the mathematical definitions of `floor` and `ceil`, we observe that for negative numbers, `ceil` acts as `floor` for positive numbers and vice versa. Thus, a simpler implementation can be adopted:
+
 ```rs
     pub fn floor(self) -> Self {
         if self.non_negative {
@@ -107,10 +115,10 @@ Thus, a simpler implementation can be adopted:
 
 This revised implementation ensures correct handling of both positive and negative fixed-point numbers.
 
-        
-## Proof of concept
+### Proof of concept
 
-# Proof of Concept
+## Proof of Concept
+
 Run the POC's with `forc test`
 
 ```rs

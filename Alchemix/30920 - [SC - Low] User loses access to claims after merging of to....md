@@ -1,5 +1,4 @@
-
-# User loses access to claims after merging of tokens
+# 30920 - \[SC - Low] User loses access to claims after merging of to...
 
 Submitted on May 8th 2024 at 05:28:35 UTC by @jecikpo for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,32 +11,35 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
+
 When two veALCX tokens are merged the assets and voting power is transfered from tokenA to tokenB, however claims are not. Upon merging tokenA is burned and claims that were associatied with it are lost.
 
 ## Vulnerability Details
+
 When the user calls `VotingEscrow.merge()` to merge tokenA and tokenB, the tokenA is burned and it no longer exists, however certains claims in other contracts (e.g. in `Bribe`) are still linked to the old tokenA. Those claims cannot be further accessed, because the verification of ownership of tokenA cannot be passed as it is removed from the necessary storage variables.
 
 ## Impact Details
+
 If the user does not claim explicitly his claims on tokenA before merging, they are all becoming inaccessible.
 
 ## References
-The `merge()` function:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L618
 
-The `burn()` function:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L1558
+The `merge()` function: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L618
 
-The `_isApprovedOrOwner()` function:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L826
+The `burn()` function: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L1558
 
-
+The `_isApprovedOrOwner()` function: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L826
 
 ## Proof of Concept
+
 Paste the following code into `Voting.t.sol` file:
+
 ```solidity
     function testMergeClaimsLost() public {
         uint256 tokenId1 = createVeAlcx(admin, TOKEN_1, 156 days, false);

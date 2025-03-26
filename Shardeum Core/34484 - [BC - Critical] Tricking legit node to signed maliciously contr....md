@@ -1,5 +1,4 @@
-
-# Tricking legit node to signed maliciously controlled custom payload
+# 34484 - \[BC - Critical] Tricking legit node to signed maliciously contr...
 
 Submitted on Aug 13th 2024 at 21:31:31 UTC by @ZhouWu for [Boost | Shardeum: Core](https://immunefi.com/bounty/shardeum-core-boost/)
 
@@ -12,30 +11,30 @@ Report severity: Critical
 Target: https://github.com/shardeum/shardeum/tree/dev
 
 Impacts:
-- Network not being able to confirm new transactions (total network shutdown)
-- Permanent freezing of funds (fix requires hardfork)
-- Direct loss of funds
+
+* Network not being able to confirm new transactions (total network shutdown)
+* Permanent freezing of funds (fix requires hardfork)
+* Direct loss of funds
 
 ## Description
-## Description 
-When node query certificate, it ask other node to sign the certificate. The node that is asked to sign the certificate will check if there are required field in payload and sign it to return it. 
-The problem lies within the fact that the node does not check strictly such that there are more field than what is required. This allows attacker to craft a payload that contains more field than what is required and trick the node to sign the payload.
+
+## Description
+
+When node query certificate, it ask other node to sign the certificate. The node that is asked to sign the certificate will check if there are required field in payload and sign it to return it. The problem lies within the fact that the node does not check strictly such that there are more field than what is required. This allows attacker to craft a payload that contains more field than what is required and trick the node to sign the payload.
 
 The vulnerable code: [here](https://github.com/shardeum/shardeum/blob/d7dddf01002846b77f83ebea3557e949d8c9c90f/src/index.ts#L6192)
 
 ## Background
-I've reported this before but falsely assessed and closed. This new POC does not need any debug mode to avoid confusion. 
 
-
+I've reported this before but falsely assessed and closed. This new POC does not need any debug mode to avoid confusion.
 
 ## Proof of concept
 
-The shardus-core banch at the time of this poc is at `72fba67d3a551f21368c8b0fe94f951c8f5cc4f8`.
-The shardeum branch at the time of this poc is at `d7dddf01002846b77f83ebea3557e949d8c9c90f`.
-Please use this git HEAD to reproduce the poc.
+The shardus-core banch at the time of this poc is at `72fba67d3a551f21368c8b0fe94f951c8f5cc4f8`. The shardeum branch at the time of this poc is at `d7dddf01002846b77f83ebea3557e949d8c9c90f`. Please use this git HEAD to reproduce the poc.
 
-- Start legit network of nodes
-- Apply the following patch to malicious @shardus/core
+* Start legit network of nodes
+* Apply the following patch to malicious @shardus/core
+
 ```
 diff --git a/src/shardus/index.ts b/src/shardus/index.ts
 index 06184f15..d73d8a7f 100644
@@ -60,7 +59,7 @@ index 06184f15..d73d8a7f 100644
      const injectedTimestamp = this.app.getTimestampFromTransaction(tx, appData);
 ```
 
-- Apply the following patch to malicious shardeum
+* Apply the following patch to malicious shardeum
 
 ```diff
 diff --git a/config.json b/config.json
@@ -350,17 +349,16 @@ index 8ba2251..3750d62 100644
  }
  export default Storage
 ```
-- Link @shardus/core to the shardeum and launch the malicious node
-- Launch the malicious node
-- Stake the malicious node and wait for it to go active
-- Once It is active, malicious node is ready to be used for attack
-- Make a HTTP PUT request to the malicious node you just launch `http://0.0.0.0:1337/query-certificate` with json body `{"node2kill_id": "id_of_the_node_you_want_to_kill"}`
-- This POC internally trick the legit node to sign their own apoptosis payload and give back the signature to the malicious node
-- The malcious node will then submit a apoptosis gossip to the network to kill the victim node. 
-- Oberserve the victim node being killed in the logs.
+
+* Link @shardus/core to the shardeum and launch the malicious node
+* Launch the malicious node
+* Stake the malicious node and wait for it to go active
+* Once It is active, malicious node is ready to be used for attack
+* Make a HTTP PUT request to the malicious node you just launch `http://0.0.0.0:1337/query-certificate` with json body `{"node2kill_id": "id_of_the_node_you_want_to_kill"}`
+* This POC internally trick the legit node to sign their own apoptosis payload and give back the signature to the malicious node
+* The malcious node will then submit a apoptosis gossip to the network to kill the victim node.
+* Oberserve the victim node being killed in the logs.
 
 ## Impact
+
 The POC demostrate it is possible to do targeted attack to kill a specific node in the network. But the scope of this can be used to kill a large group of node or the all entire network causing a total shutdown.
-
-
-

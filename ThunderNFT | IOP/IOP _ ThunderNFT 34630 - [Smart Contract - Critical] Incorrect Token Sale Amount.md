@@ -1,5 +1,6 @@
+# IOP \_ ThunderNFT 34630 - \[Smart Contract - Critical] Incorrect Token Sale Amount
 
-# Incorrect Token Sale Amount
+## Incorrect Token Sale Amount
 
 Submitted on Sun Aug 18 2024 18:35:30 GMT-0400 (Atlantic Standard Time) by @Blockian for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -12,21 +13,28 @@ Report severity: Critical
 Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/libraries
 
 Impacts:
-- Permanent freezing of funds
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
-## Description
-# Thunder Exchange
-## Incorrect Token Sale Amount
+* Permanent freezing of funds
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
 ### Description
+
+## Thunder Exchange
+
+### Incorrect Token Sale Amount
+
+#### Description
+
 An issue has been identified that allows a malicious actor to sell only one token, even if the Buy Order specifies a greater quantity. This vulnerability effectively bypasses the intended order amount.
 
-## Root Cause
+### Root Cause
+
 As discussed in our Discord exchange, the `Order.amount` field was introduced to accommodate ERC1155-style tokens:
+
 > Hi! Yes, amount is added in case of Erc1155 style token standard
 
-This clearly states that the `Order.amount` can be greater than 1.
-However, when executing an order, the `ExecutionResult` has a hardcoded amount of 1:
+This clearly states that the `Order.amount` can be greater than 1. However, when executing an order, the `ExecutionResult` has a hardcoded amount of 1:
+
 ```rs
     pub fn s1(maker_order: MakerOrder, taker_order: TakerOrder) -> ExecutionResult {
         ExecutionResult {
@@ -39,26 +47,32 @@ However, when executing an order, the `ExecutionResult` has a hardcoded amount o
 
 As a result, the specified amount in the Order is effectively ignored.
 
-## Impact
+### Impact
+
 This issue has two significant impacts:
 
-### Buy Order
+#### Buy Order
+
 For a Maker Order of type `Buy`, an attacker can sell a single token instead of the specified quantity, receiving full payment and effectively defrauding the buyer.
 
-### Sell Order
+#### Sell Order
+
 For a Maker Order of type `Sell`, an innocent buyer may pay the full price but only receive a single token, with the remainder of the tokens being locked away.
 
-## Proposed fix
+### Proposed fix
+
 To resolve this issue, the `maker_order.amount` should be included when crafting the `ExecutionResult`.
 
-        
-## Proof of concept
-# Proof of Concept
+### Proof of concept
+
+## Proof of Concept
+
 Due to the relatively new nature of the Sway language and the limited availability of reliable testing tools, the proof of concept (PoC) is complex.
 
 Below is a pseudo-PoC followed by a detailed actual PoC.
 
-## Pseudo POC
+### Pseudo POC
+
 1. An innocent user creates a Buy Order for an asset, specifying an amount greater than one.
 2. A malicious actor executes the Buy Order but only sells one token.
 
@@ -70,18 +84,19 @@ Below is a pseudo-PoC followed by a detailed actual PoC.
         exchange.execute_order{ asset_id: AssetId::new(order.collection, order.token_id).bits(), coins: 1 }(order); // attackers sells only 1 token although the users asked for 100
 ```
 
-## Actual POC
+### Actual POC
+
 There are some steps to follow:
 
 To create an actual PoC, some modifications to the protocol are necessary.
 
 1. The protocol currently only allows addresses to interact, which is generally fine. However, when transferring coins in the Fuel ecosystem, a Variable Output needs to be added to the transaction — this isn't supported by the current Sway testing tools.
-
 2. Since this vulnerability is unrelated to the nature of who interacts with the protocol, adjustments will be made to allow contracts to interact, enabling the PoC. These changes are strictly for testing purposes and do not affect the core issue.
 
-### Changes to the protocol for the POC
+#### Changes to the protocol for the POC
 
-- Add the following changes to the `thunder_exchange` contract:
+* Add the following changes to the `thunder_exchange` contract:
+
 ```rs
 // line 141 change from:
         let caller = get_msg_sender_address_or_panic();
@@ -136,19 +151,18 @@ To create an actual PoC, some modifications to the protocol are necessary.
 
 In addition, To make an `MakerOrderInput` Struct, we need to make the `ExtraParams` Struct public, so in the `order_types.sw` file, lets add a `pub` in line 37.
 
+#### The tests files.
 
-### The tests files.
-
-- Create `forc.toml` in `contracts-v1` and add the below in the `forc.toml`:
+* Create `forc.toml` in `contracts-v1` and add the below in the `forc.toml`:
 
 ```rs
 [workspace]
 members = ["tests", "asset_manager", "erc721", "execution_manager", "execution_strategies/strategy_fixed_price_sale" ,"libraries", "interfaces" , "pool", "royalty_manager", "thunder_exchange", "test_asset", "test_user", "test_attacker"]
 ```
 
-- Create 4 new folder called `tests`, `test_user`, `test_attacker`, and `test_asset` under the `contracts-v1` directory:
+* Create 4 new folder called `tests`, `test_user`, `test_attacker`, and `test_asset` under the `contracts-v1` directory:
+* In the each folder create a folder named `src` with a file called `main.sw`, and a `forc.toml` file. The folder tree will look like this:
 
-- In the each folder create a folder named `src` with a file called `main.sw`, and a `forc.toml` file. The folder tree will look like this:
 ```bash
 contracts-v1
 ├── test_asset
@@ -169,10 +183,12 @@ contracts-v1
 │       └── main.sw
 ```
 
+#### tests folder
 
-### tests folder
 In the `tests` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -206,7 +222,8 @@ test_user = { path = "../test_user" }
 test_attacker = { path = "../test_attacker" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -367,9 +384,12 @@ fn test_attack() {
 }
 ```
 
-### test_user folder
+#### test\_user folder
+
 In the `test_user` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -383,7 +403,8 @@ libraries = { path = "../libraries" }
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -458,9 +479,12 @@ impl TestUser for Contract {
 }
 ```
 
-### test_attacker folder
+#### test\_attacker folder
+
 In the `test_attacker` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -474,7 +498,8 @@ libraries = { path = "../libraries" }
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -535,9 +560,12 @@ impl TestAttacker for Contract {
 }
 ```
 
-### test_asset folder
+#### test\_asset folder
+
 In the `test_asset` folder. The test asset is simply the Fuel Team SRC3 [example](https://github.com/FuelLabs/sway-standards/blob/master/examples/src3-mint-burn/multi_asset/src/multi_asset.sw)
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -549,8 +577,9 @@ name = "test_asset"
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
-```rs
+* Add the below in the `main.sw`:
+
+````rs
 contract;
 
 use standards::{src20::SRC20, src3::SRC3};
@@ -711,18 +740,19 @@ impl SRC20 for Contract {
         }
     }
 }
-```
+````
 
+#### Interfaces
 
-### Interfaces
-Now we need to add the `test_user` and `test_attacker` interfaces to interact with.
-In the `interfaces/src` folder, in the `lib.sw` add the following lines:
+Now we need to add the `test_user` and `test_attacker` interfaces to interact with. In the `interfaces/src` folder, in the `lib.sw` add the following lines:
+
 ```rs
 pub mod test_user_interface;
 pub mod test_attacker_interface;
 ```
 
 Additionally, create a file called `test_user_interface.sw` in the `interfaces/src` folder and add the following:
+
 ```rs
 library;
 
@@ -744,6 +774,7 @@ abi TestUser {
 ```
 
 Create a file called `test_attacker_interface.sw` in the `interfaces/src` folder and add the following:
+
 ```rs
 library;
 
@@ -761,11 +792,12 @@ abi TestAttacker {
 
 ```
 
+#### Run it all!
 
-### Run it all!
-Simply run `forc test`  in `smart-contracts/contracts-v1`.
+Simply run `forc test` in `smart-contracts/contracts-v1`.
 
-## POC TL;DR
+### POC TL;DR
+
 1. Initializing the project contracts
 2. Minting some coins to the `test_user` and `test_attacker`
 3. Test User creates an innocent Sell Order

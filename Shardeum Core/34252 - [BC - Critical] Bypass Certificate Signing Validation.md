@@ -1,5 +1,6 @@
+# 34252 - \[BC - Critical] Bypass Certificate Signing Validation
 
-# Bypass Certificate Signing Validation
+## Bypass Certificate Signing Validation
 
 Submitted on Aug 7th 2024 at 21:12:49 UTC by @Blockian for [Boost | Shardeum: Core](https://immunefi.com/bounty/shardeum-core-boost/)
 
@@ -12,54 +13,71 @@ Report severity: Critical
 Target: https://github.com/shardeum/shardus-core/tree/dev
 
 Impacts:
-- Network not being able to confirm new transactions (total network shutdown)
-- Direct loss of funds
 
-## Description
-# Bypass Certificate Signing Validation
+* Network not being able to confirm new transactions (total network shutdown)
+* Direct loss of funds
 
-## Impact
+### Description
+
+## Bypass Certificate Signing Validation
+
+### Impact
+
 1. Bypass stake certificate validation, allowing for non-staking nodes and network take-over
 2. Bypass nodes removal validation, allowing to remove nodes from the network
-## Root Cause
+
+### Root Cause
+
 The function `validateClosestActiveNodeSignatures` counts repeated signatures as different signatures, allowing for 1 valid signature to be counted as `minRequired`. In other words - signatures are counted, instead of signers.
-## Deep Dive
+
+### Deep Dive
+
 The functions `validateClosestActiveNodeSignatures` and `validateActiveNodeSignatures` receive a parameter `minRequired` that specify what is the minimal number of nodes need to sign the appData to make it valid.
+
 1. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1780
-2. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1746
-It does so by looping over the signature list, and checking if the signature is valid. If it is, the counter is incremented.
-1. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1763
-2. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1763
-If the amount is more than the min required, `true` is returned
-1. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1769
-2. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1815
-## Suggested Fix
+2. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1746 It does so by looping over the signature list, and checking if the signature is valid. If it is, the counter is incremented.
+3. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1763
+4. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1763 If the amount is more than the min required, `true` is returned
+5. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1769
+6. https://github.com/shardeum/shardus-core/blob/4d75f797a9d67af7a94dec8860220c4e0f9ade3c/src/shardus/index.ts#L1815
+
+### Suggested Fix
+
 Remove the public key from `closestNodesByPubKey` after counting it.
-## Flow
-- Malicious node generates a fake `JoinRequest` with a fake `StakingCertificate`
-	- It brute-forces `StakingCertificate` fields to make sure its one of the closest nodes to the hash of the staking certificates. This is easy, as only 1 node is needed to be close.
-- It creates the full JoinRequest, with multiple copies of its signature, instead of signatures from many other nodes.
-- It calls gossip-join-request
-- Other nodes receive the join request, and validate it using `validateClosestActiveNodeSignatures`.
-- The validation bypasses, as they count the number of signatures and not the number of signers.
-- The new node joins the network without staking.
-## Severity
+
+### Flow
+
+* Malicious node generates a fake `JoinRequest` with a fake `StakingCertificate`
+  * It brute-forces `StakingCertificate` fields to make sure its one of the closest nodes to the hash of the staking certificates. This is easy, as only 1 node is needed to be close.
+* It creates the full JoinRequest, with multiple copies of its signature, instead of signatures from many other nodes.
+* It calls gossip-join-request
+* Other nodes receive the join request, and validate it using `validateClosestActiveNodeSignatures`.
+* The validation bypasses, as they count the number of signatures and not the number of signers.
+* The new node joins the network without staking.
+
+### Severity
+
 This allows to take over the network (by kicking nodes / adding nodes) and so it critical.
 
+### Proof of concept
 
-## Proof of concept
-## POC
-### Set-up
+### POC
+
+#### Set-up
+
 1. Clone `shardeum` (`dev` branch)
 2. Clone `json-rpc-server` (`dev` branch)
 3. Clone `simple-network-test` (`dev` branch)
 4. Run `npm i` inside all three directories
 5. Install `shardus` according to the readme in `shardeum`:
+
 ```bash
 npm install -g shardus
 npm update @shardus/archiver
 ```
+
 6. Apply the `debug-10-nodes.patch` with a 5 nodes modification:
+
 ```diff
 diff --git a/src/config/index.ts b/src/config/index.ts
 index 245e749..7549557 100644
@@ -102,7 +120,9 @@ index 245e749..7549557 100644
          disableSnapshots: true, // do not check in if set to false
 
 ```
+
 7. Apply the suggested local network changes from the docs:
+
 ```bash
 // Local Testing Adjustments
 // src/config/index.ts
@@ -112,26 +132,34 @@ cycleDuration: 30,
 // src/shardeum/shardeumFlags.ts
 blockProductionRate: 3,
 ```
+
 8. Prepare the `shardeum` project by running
+
 ```bash
 npm run prepare
 ```
+
 inside the `shardeum` directory.
 
 9. Start a local network by running
+
 ```bash
 shardus start 5
 ```
+
 inside the `shardeum` directory.
 
 10. Run a local `json-rpc-server` by running
+
 ```bash
 npm run start
 ```
+
 at the `json-rpc-server` directory.
 
 11. Wait for the network to be ready, by looking at the output from the `json-rpc-server`. We need `Current number of good nodes` to be 5.
 12. Apply the patch for package.json inside `simple-network-test`
+
 ```diff
 diff --git a/package.json b/package.json
 index f1fa89a..5b096a9 100644
@@ -150,7 +178,9 @@ index f1fa89a..5b096a9 100644
  }
 
 ```
+
 13. Create the poc file
+
 ```js
 const { Utils } = require("@shardus/types");
 const crypto = require("@shardus/crypto-utils");
@@ -301,17 +331,20 @@ const submitJoinRequest = async () => {
 submitJoinRequest();
 
 ```
+
 14. Update `nodeKeyPair` in the POC to contain the private and public keys of one of the nodes in the network
 15. Run the POC by calling
+
 ```bash
 node poc.js
 ```
+
 Inside `simple-network-test`.
 
 16. If the join fails because the cycle is post Q1, wait a few seconds and repeat, in a loop, until submitting in the first quarter of the next cycle.
-17. All nodes should have
-`validateJoinRequest success!!!`
-In their outpus
-### POC Limitations
-- As you can see, signatures can be re-used.
-- It is still required that the malicious node would be one of the 7 closest nodes of the staking certificate hash. This is easily done by brute-force, as only one malicious node need to be in the 7 closest from the network, which is very easily done with the 130K nodes currently on the network.
+17. All nodes should have `validateJoinRequest success!!!` In their outpus
+
+#### POC Limitations
+
+* As you can see, signatures can be re-used.
+* It is still required that the malicious node would be one of the 7 closest nodes of the staking certificate hash. This is easily done by brute-force, as only one malicious node need to be in the 7 closest from the network, which is very easily done with the 130K nodes currently on the network.

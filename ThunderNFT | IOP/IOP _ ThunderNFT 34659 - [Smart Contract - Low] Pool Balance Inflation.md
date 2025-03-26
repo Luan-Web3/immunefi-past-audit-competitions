@@ -1,5 +1,6 @@
+# IOP \_ ThunderNFT 34659 - \[Smart Contract - Low] Pool Balance Inflation
 
-# Pool Balance Inflation
+## Pool Balance Inflation
 
 Submitted on Mon Aug 19 2024 23:04:18 GMT-0400 (Atlantic Standard Time) by @Blockian for [IOP | ThunderNFT](https://immunefi.com/bounty/thundernft-iop/)
 
@@ -12,17 +13,24 @@ Report severity: Low
 Target: https://github.com/ThunderFuel/smart-contracts/tree/main/contracts-v1/pool
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
-## Description
-# Thunder Exchange
-## Pool Balance Inflation
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
 ### Description
+
+## Thunder Exchange
+
+### Pool Balance Inflation
+
+#### Description
+
 A issue exists where pool balances can be artificially inflated without any additional deposits. This flaw enables malicious actors to withdraw inflated funds, effectively stealing from the pool.
 
-## Root Cause
+### Root Cause
+
 The vulnerability stems from the current implementation of the transfer function, as shown below:
-```rs    
+
+```rs
 #[storage(read, write)]
 fn _transfer(from: Identity, to: Identity, asset: AssetId, amount: u64) {
     // ...
@@ -41,6 +49,7 @@ fn _transfer(from: Identity, to: Identity, asset: AssetId, amount: u64) {
     });
 }
 ```
+
 The transfer process operates as follows:
 
 1. Read the `from` balance
@@ -50,36 +59,39 @@ The transfer process operates as follows:
 
 However, if `from` and `to` are the same account, the update in step 3 is effectively overwritten by the update in step 4. As a result, the attacker retains their original balance plus the transferred amount.
 
-## Impact
+### Impact
+
 This vulnerability allows the creation of inflated balances without corresponding funds. When a user with such an inflated balance withdraws from the pool, they can deplete the pool's reserves, leaving other users unable to withdraw their legitimate funds.
 
 But, currently, the impact is classified as Low, since the `transfer` function can only be invoked by the `ThunderExchange` itself, which is not malicious.
 
-## Proposed fix
+### Proposed fix
+
 There are two primary solutions to address this issue:
 
 1. Ensure that from and to are not the same account.
 2. Adjust the order of operations as follows:
-    1. Read the `from` balance
-    2. Update the `from` balance to `from + amount`
-    3. Read the `to` balance
-    4. Update the `to` balance to `to + amount`
+   1. Read the `from` balance
+   2. Update the `from` balance to `from + amount`
+   3. Read the `to` balance
+   4. Update the `to` balance to `to + amount`
 
-        
-## Proof of concept
-# Proof of Concept
+### Proof of concept
+
+## Proof of Concept
+
 There are some steps to follow:
 
-- Create `forc.toml` in `contracts-v1` and add the below in the `forc.toml`:
+* Create `forc.toml` in `contracts-v1` and add the below in the `forc.toml`:
 
 ```rs
 [workspace]
 members = ["tests", "asset_manager", "erc721", "execution_manager", "execution_strategies/strategy_fixed_price_sale" ,"libraries", "interfaces" , "pool", "royalty_manager", "thunder_exchange", "test_asset", "test_user"]
 ```
 
-- Create 3 new folder called `tests`, `test_user`, and `test_asset` under the `contracts-v1` directory:
+* Create 3 new folder called `tests`, `test_user`, and `test_asset` under the `contracts-v1` directory:
+* In the each folder create a folder named `src` with a file called `main.sw`, and a `forc.toml` file. The folder tree will look like this:
 
-- In the each folder create a folder named `src` with a file called `main.sw`, and a `forc.toml` file. The folder tree will look like this:
 ```bash
 contracts-v1
 ├── test_asset
@@ -96,10 +108,12 @@ contracts-v1
 │       └── main.sw
 ```
 
+#### tests folder
 
-### tests folder
 In the `tests` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -132,7 +146,8 @@ test_asset = { path = "../test_asset" }
 test_user = { path = "../test_user" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -198,9 +213,12 @@ fn test_attack() {
 }
 ```
 
-### test_user folder
+#### test\_user folder
+
 In the `test_user` folder.
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -214,7 +232,8 @@ libraries = { path = "../libraries" }
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
+* Add the below in the `main.sw`:
+
 ```rs
 contract;
 
@@ -269,9 +288,12 @@ impl TestUser for Contract {
 }
 ```
 
-### test_asset folder
+#### test\_asset folder
+
 In the `test_asset` folder. The test asset is simply the Fuel Team SRC3 [example](https://github.com/FuelLabs/sway-standards/blob/master/examples/src3-mint-burn/multi_asset/src/multi_asset.sw)
-- Add the below in the `forc.toml`:
+
+* Add the below in the `forc.toml`:
+
 ```rs
 [project]
 authors = ["Blockian"]
@@ -283,8 +305,9 @@ name = "test_asset"
 standards = { git = "https://github.com/FuelLabs/sway-standards", tag = "v0.4.4" }
 ```
 
-- Add the below in the `main.sw`:
-```rs
+* Add the below in the `main.sw`:
+
+````rs
 contract;
 
 use standards::{src20::SRC20, src3::SRC3};
@@ -445,17 +468,18 @@ impl SRC20 for Contract {
         }
     }
 }
-```
+````
 
+#### Interfaces
 
-### Interfaces
-Now we need to add the `test_user` interface to interact with.
-In the `interfaces/src` folder, in the `lib.sw` add the following line:
+Now we need to add the `test_user` interface to interact with. In the `interfaces/src` folder, in the `lib.sw` add the following line:
+
 ```rs
 pub mod test_user_interface;
 ```
 
 Additionally, create a file called `test_user_interface.sw` in the `interfaces/src` folder and add the following:
+
 ```rs
 library;
 
@@ -472,6 +496,6 @@ abi TestUser {
 }
 ```
 
+#### Run it all!
 
-### Run it all!
-Simply run `forc test`  in `smart-contracts/contracts-v1`.
+Simply run `forc test` in `smart-contracts/contracts-v1`.

@@ -1,5 +1,4 @@
-
-# Missing slippage protection in functions depositWstETH(), depositStETH(), deposit() and mint()
+# 28833 - \[SC - Insight] Missing slippage protection in functions deposi...
 
 Submitted on Feb 28th 2024 at 12:35:02 UTC by @MrPotatoMagic for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,26 +11,29 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x7276925e42f9c4054afa2fad80fa79520c453d6a
 
 Impacts:
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
 ## Description
+
 ## Brief/Intro
+
 The functions `depositWstETH()` and `depositStETH()` in PufferDepositor.sol and the functions `deposit()` and `mint()` in PufferVault.sol allow users to obtain pufETH tokens. But these functions do not allow the user to pass in a `minAmountOut` parameter to specify the minimum amount of shares they want to receive. Due to this, users will be prone to intentional MEV attacks and unintentional slippage from other users., which will cause them to receive less than expected shares.
 
 **Note: This issue is different from that reported in the Blocksec report, which talks about slippage in the swap functions only (which are OOS).**
 
 ## References
 
-Blocksec report (see details of 2.3.1 for proof) - https://github.com/blocksecteam/audit-reports/blob/main/solidity/blocksec_puffer_v1.0-signed.pdf
+Blocksec report (see details of 2.3.1 for proof) - https://github.com/blocksecteam/audit-reports/blob/main/solidity/blocksec\_puffer\_v1.0-signed.pdf
 
-Additionally, the ERC4626 EIP mentions that:
-`If implementors intend to support EOA account access directly, they should consider adding an additional function call for deposit/mint/withdraw/redeem with the means to accommodate slippage loss or unexpected deposit/withdrawal limits, since they have no other means to revert the transaction if the exact output amount is not achieved.`
+Additionally, the ERC4626 EIP mentions that: `If implementors intend to support EOA account access directly, they should consider adding an additional function call for deposit/mint/withdraw/redeem with the means to accommodate slippage loss or unexpected deposit/withdrawal limits, since they have no other means to revert the transaction if the exact output amount is not achieved.`
 
-EIP4626 -  https://eips.ethereum.org/EIPS/eip-4626#security-considerations
+EIP4626 - https://eips.ethereum.org/EIPS/eip-4626#security-considerations
 
 ## Vulnerability Details
 
-1. First, let's look at the functions `depositWstETH()` and `depositStETH()`. Both functions currently only take in WstETH or StETH and provide users with pufETH, without verifying if the return value of pufETH amount received is atleast of a certain minimum amount. This is due to a lack of `minAmountOut` parameter, which checks if the `pufETHAmount` returned is greater than equal to it. If true, we should finish execution but if not then the execution should be reverted. 
+1. First, let's look at the functions `depositWstETH()` and `depositStETH()`. Both functions currently only take in WstETH or StETH and provide users with pufETH, without verifying if the return value of pufETH amount received is atleast of a certain minimum amount. This is due to a lack of `minAmountOut` parameter, which checks if the `pufETHAmount` returned is greater than equal to it. If true, we should finish execution but if not then the execution should be reverted.
+
 ```solidity
 File: PufferDepositor.sol
 158:     /**
@@ -102,19 +104,22 @@ File: PufferVault.sol
 ```
 
 ## Impact Details
+
 The issue has been marked as Medium-severity since:
-1. When a user uses functions `depositWstETH()`, `depositStETH()`  and `deposit`,  they receive lesser shares than expected due to the slippage.
+
+1. When a user uses functions `depositWstETH()`, `depositStETH()` and `deposit`, they receive lesser shares than expected due to the slippage.
 2. When a user uses function `mint()`, the slippage could cause the user to receive lesser shares or entirely revert due to enough assets not being approved.
 3. This is mentioned as a security consideration in EIP4626.
-
 
 ## Proof of Concept
 
 How to use this POC:
- - Add the POC to PufferVaultMainnet.fork.t.sol
- - At the top of the file, add { Test , console} to the namespace. The same is needed to be done in the TestHelper.sol file.
- - Add the RPC url for mainnet in setUp() in TestHelper.sol
- - Run the POC using `forge test --mt testMissingSlippageIssue -vvv`
+
+* Add the POC to PufferVaultMainnet.fork.t.sol
+* At the top of the file, add { Test , console} to the namespace. The same is needed to be done in the TestHelper.sol file.
+* Add the RPC url for mainnet in setUp() in TestHelper.sol
+* Run the POC using `forge test --mt testMissingSlippageIssue -vvv`
+
 ```solidity
 File: PufferVaultMainnet.fork.t.sol
 087:     // Actors

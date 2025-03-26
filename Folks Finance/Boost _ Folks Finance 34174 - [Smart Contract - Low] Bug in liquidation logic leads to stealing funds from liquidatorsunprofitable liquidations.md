@@ -1,7 +1,6 @@
+# Boost \_ Folks Finance 34174 - \[Smart Contract - Low] Bug in liquidation logic leads to stealing funds from liquidatorsunprofitable liquidations
 
-# Bug in liquidation logic leads to stealing funds from liquidators/unprofitable liquidations
-
-Submitted on Tue Aug 06 2024 06:09:41 GMT-0400 (Atlantic Standard Time) by @alix_40 for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
+Submitted on Tue Aug 06 2024 06:09:41 GMT-0400 (Atlantic Standard Time) by @alix\_40 for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
 Report ID: #34174
 
@@ -12,19 +11,23 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0x2cAa1315bd676FbecABFC3195000c642f503f1C9
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
-- Protocol insolvency
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+* Protocol insolvency
 
 ## Description
+
 > This report is intended to be submitted under my team account "A2Security" but I reached the report submission rate limit on the last day. Please count this report as though it were from "A2Security".
+
 ## Impact
-The bug basically leads to the liquidation bonus being taken from the liquidator instead of the violator.     
-This doesn't only leads to the fact that liquidations in certain conditions are not profitable for liquidators, violators will actually make a profit from being liquidated.    
+
+The bug basically leads to the liquidation bonus being taken from the liquidator instead of the violator.\
+This doesn't only leads to the fact that liquidations in certain conditions are not profitable for liquidators, violators will actually make a profit from being liquidated.\
 About severity, We think impact is critical, but due to the fact that the faulty part of the liquidation math only affects liquidations fulfilling the condition `seizeUnderlyingCollateralAmount > violatorUnderlingCollateralBalance` we think **High** severity is fair.
 
 ## Description
-In calcLiquidationAmount when seizeUnderlyingCollateralAmount > violatorUnderlingCollateralBalance the repayBorrowAmount is recalculated to reflect the actual seized collateral: 
-https://github.com/A2-Security/folks-finance-boost/blob/07fa4f5095d38c720d86558aaf02fc04b8e011c4/contracts/hub/logic/LiquidationLogic.sol#L180-L221
+
+In calcLiquidationAmount when seizeUnderlyingCollateralAmount > violatorUnderlingCollateralBalance the repayBorrowAmount is recalculated to reflect the actual seized collateral: https://github.com/A2-Security/folks-finance-boost/blob/07fa4f5095d38c720d86558aaf02fc04b8e011c4/contracts/hub/logic/LiquidationLogic.sol#L180-L221
 
 ```solidity
     function calcLiquidationAmounts(
@@ -45,32 +48,35 @@ https://github.com/A2-Security/folks-finance-boost/blob/07fa4f5095d38c720d86558a
 >>                    seizeUnderlyingCollateralAmount.convToRepayBorrowAmount(collPriceFeed.price, collPriceFeed.decimals, borrPriceFeed.price, borrPriceFeed.decimals, borrowLoanPool.liquidationBonus);
             }
 ```
-the calculation is incorrect , cause we should divide by 1+liquidationBonus since we are calculating back from collateralsiezed to repay amount: 
+
+the calculation is incorrect , cause we should divide by 1+liquidationBonus since we are calculating back from collateralsiezed to repay amount:
+
 ```solidity
     function convToRepayBorrowAmount(uint256 collAmount, uint256 collPrice, uint8 collDecimals, uint256 borrPrice, uint8 borrDecimals, uint256 liquidationBonus) internal pure returns (uint256) {
      >>   return Math.mulDiv(convertAssetAmount(collAmount, collPrice, collDecimals, borrPrice, borrDecimals), (MathUtils.ONE_4_DP + liquidationBonus), MathUtils.ONE_4_DP);
     }
 ```
-As it is implemented the liquidationBonus is given to the violator instead of the liquidator. To fix this we need to adjust the formula so that we augment the debt from the equivalent amount of seized coll + liquidation Bonus (and not reduce it by the liquidationBonus)
-this should be:
+
+As it is implemented the liquidationBonus is given to the violator instead of the liquidator. To fix this we need to adjust the formula so that we augment the debt from the equivalent amount of seized coll + liquidation Bonus (and not reduce it by the liquidationBonus) this should be:
+
 ```solidity
     Math.mulDiv(convertAssetAmount(collAmount, collPrice, collDecimals, borrPrice, borrDecimals), MathUtils.ONE_4_DP, (MathUtils.ONE_4_DP + liquidationBonus));
 ```
 
 ## Math
+
 This is how it is currently implemented:
 
+$\text{repayBorrowAmount} = \text{collAmount} \cdot \frac{\text{collPrice\}}{\text{borrPrice\}} \cdot (1 + \text{liquidationBonus})$
 
-$\text{repayBorrowAmount} = \text{collAmount} \cdot \frac{\text{collPrice}}{\text{borrPrice}} \cdot (1 + \text{liquidationBonus})$
+This incorrectly increases the repay amount, benefiting the **violator** instead The correct calculation should be (to benefit the liquidator):
 
-
-This incorrectly increases the repay amount, benefiting the **violator** instead 
-The correct calculation should be (to benefit the liquidator):   
-
-$\text{repayBorrowAmount} = \text{collAmount} \cdot \frac{\text{collPrice}}{\text{borrPrice}} \cdot \frac{1}{(1 + \text{liquidationBonus})}$
+$\text{repayBorrowAmount} = \text{collAmount} \cdot \frac{\text{collPrice\}}{\text{borrPrice\}} \cdot \frac{1}{(1 + \text{liquidationBonus})}$
 
 ## Recomendation
+
 To mitigate this we simply need to adjust `convToRepayBorrowAmount()`
+
 ```diff
     function convToRepayBorrowAmount(uint256 collAmount, uint256 collPrice, uint8 collDecimals, uint256 borrPrice, uint8 borrDecimals, uint256 liquidationBonus) internal pure returns (uint256) {
 --     return Math.mulDiv(convertAssetAmount(collAmount, collPrice, collDecimals, borrPrice, borrDecimals), (MathUtils.ONE_4_DP + liquidationBonus), MathUtils.ONE_4_DP);
@@ -78,11 +84,12 @@ To mitigate this we simply need to adjust `convToRepayBorrowAmount()`
     }
 ```
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
-Result of runing poc:    
+Result of runing poc:
+
 ```log
 Ran 1 test for test/pocs/pocs.sol:Pocs
 [PASS] test_poc_04() (gas: 2486946)
@@ -101,9 +108,8 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 651.55ms (21.81ms C
 
 Ran 1 test suite in 654.22ms (651.55ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
-To run the test please make sure to use `--via-ir` option
-please run this command `forge test --mt test_poc_04 --via-ir -vv`
 
+To run the test please make sure to use `--via-ir` option please run this command `forge test --mt test_poc_04 --via-ir -vv`
 
 add the following file `test/pocs/pocs.sol`
 
@@ -219,6 +225,7 @@ contract Pocs is baseTest {
 }
 
 ```
+
 please add the testbase to `test/pocs/base_test.sol`
 
 ```solidity

@@ -1,5 +1,4 @@
-
-# Contract `uint delay` variable cannot be set to its minimum value
+# 28991 - \[SC - Insight] Contract uint delay variable cannot be set to i...
 
 Submitted on Mar 4th 2024 at 04:53:59 UTC by @Obin for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,12 +11,15 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x3C28B7c7Ba1A1f55c9Ce66b263B33B204f2126eA#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
-The Timelock contract intends to alter its `uint delay` variable via the `setDelay()` which take an input of a predefined  range of numbers.
-However, the implementation in this `setDelay()` is not accurate and doesn't allow to set the minimum acceptable value.
+
+The Timelock contract intends to alter its `uint delay` variable via the `setDelay()` which take an input of a predefined range of numbers. However, the implementation in this `setDelay()` is not accurate and doesn't allow to set the minimum acceptable value.
+
 ```
 function _setDelay(uint256 newDelay) internal {
         if (newDelay <= MINIMUM_DELAY) {
@@ -28,11 +30,12 @@ function _setDelay(uint256 newDelay) internal {
     }
 ```
 
-
 ## Impact Details
+
 `uint delay` variable cannot be set to its minimum acceptable value `uint256 public constant MINIMUM_DELAY = 7 days;`
 
 ## Mitigation
+
 ```diff
 function _setDelay(uint256 newDelay) internal {
 -       if (newDelay <= MINIMUM_DELAY) {
@@ -44,10 +47,9 @@ function _setDelay(uint256 newDelay) internal {
     }
 ```
 
-
-
 ## Proof of Concept
-```// SPDX-License-Identifier: GPL-3.0
+
+```//
 pragma solidity >=0.8.0 <0.9.0;
 
 import { Test } from "forge-std/Test.sol";

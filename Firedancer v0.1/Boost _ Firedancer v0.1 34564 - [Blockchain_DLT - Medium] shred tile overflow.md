@@ -1,5 +1,4 @@
-
-# shred tile overflow
+# Boost \_ Firedancer v0.1 34564 - \[Blockchain\_DLT - Medium] shred tile overflow
 
 Submitted on Thu Aug 15 2024 21:52:58 GMT-0400 (Atlantic Standard Time) by @gln for [Boost | Firedancer v0.1](https://immunefi.com/bounty/firedancer-boost/)
 
@@ -12,17 +11,18 @@ Report severity: Medium
 Target: https://github.com/firedancer-io/firedancer/tree/e60d9a6206efaceac65a5a2c3a9e387a79d1d096
 
 Impacts:
-- Any bug leading to loss of funds or acceptance of forged / invalid signatures
+
+* Any bug leading to loss of funds or acceptance of forged / invalid signatures
 
 ## Description
+
 ## Brief/Intro
 
-To process incoming shreds from network, shred tile calls fd_fec_resolver_add_shred() which is vulnerable to heap overflow.
-
+To process incoming shreds from network, shred tile calls fd\_fec\_resolver\_add\_shred() which is vulnerable to heap overflow.
 
 ## Vulnerability Details
 
-Let's look at the code https://github.com/firedancer-io/firedancer/blob/main/src/app/fdctl/run/tiles/fd_shred.c#L298
+Let's look at the code https://github.com/firedancer-io/firedancer/blob/main/src/app/fdctl/run/tiles/fd\_shred.c#L298
 
 ```
 
@@ -62,10 +62,9 @@ during_frag( void * _ctx,
 }
 ```
 
-1) The only check here is that packet size should be larger than FD_NET_MTU, which is 2048
+1. The only check here is that packet size should be larger than FD\_NET\_MTU, which is 2048
 
-
-Now let's look at function after_frag(), which processes incoming shreds:
+Now let's look at function after\_frag(), which processes incoming shreds:
 
 ```
 static void
@@ -136,13 +135,13 @@ after_frag( void *             _ctx,
 
 ```
 
-1) The shred is parsed by calling fd_shred_parse().
+1. The shred is parsed by calling fd\_shred\_parse().
 
-Note that fd_shred_parse() basically does not have any upper bounds limits on incoming shreds.
+Note that fd\_shred\_parse() basically does not have any upper bounds limits on incoming shreds.
 
-As a result, shred could have any size between FD_SHRED_MAX_SZ (which is 1228 bytes) and FD_NET_MTU.
+As a result, shred could have any size between FD\_SHRED\_MAX\_SZ (which is 1228 bytes) and FD\_NET\_MTU.
 
-2) To add parsed shred to FEC set, the function fd_fec_resolver_add_shred() is called
+2. To add parsed shred to FEC set, the function fd\_fec\_resolver\_add\_shred() is called
 
 Let's look at this function:
 
@@ -238,9 +237,9 @@ int fd_fec_resolver_add_shred( fd_fec_resolver_t    * resolver,
 
 ```
 
-Note fd_memcpy() on line #3.
+Note fd\_memcpy() on line #3.
 
-We also need to see, how ctx->set->data_shreds and ctx->set->parity_shreds are allocated:
+We also need to see, how ctx->set->data\_shreds and ctx->set->parity\_shreds are allocated:
 
 ```
 static void
@@ -271,8 +270,7 @@ unprivileged_init( fd_topo_t *      topo,
 
 ```
 
-And we also need the declaration of fd_shred34_t structure:
-
+And we also need the declaration of fd\_shred34\_t structure:
 
 ```
 struct __attribute__((aligned(FD_CHUNK_ALIGN))) fd_shred34 {
@@ -290,48 +288,40 @@ typedef struct fd_shred34 fd_shred34_t;
 
 ```
 
-So, ctx->set->data_shreds are adjacent to each other in FEC set.
+So, ctx->set->data\_shreds are adjacent to each other in FEC set.
 
-Thus fd_memcpy() on line #3 will copy incoming shred to data_shreds[] array which is 1228 bytes in size.
+Thus fd\_memcpy() on line #3 will copy incoming shred to data\_shreds\[] array which is 1228 bytes in size.
 
 If the size of incoming shred is larger than 1228, next shred in FEC set will be overwritten.
 
-Also if shreds are coming out of order, that is -  first shred comes with in_type_idx 1, than second shred with in_type_idx 0, it is possible to overwrite parts of first shred in FEC set. 
+Also if shreds are coming out of order, that is - first shred comes with in\_type\_idx 1, than second shred with in\_type\_idx 0, it is possible to overwrite parts of first shred in FEC set.
 
 Such overflow will invalidates first shred (already added) in FEC set, because it has been validated and its signature was checked before.
 
 Note that Agave apparently discards such malformed shreds.
 
-I see the  following scenarios how  it could be exploited:
+I see the following scenarios how it could be exploited:
 
-1) slashing of FD node for producing bad blocks
-
-2) consensus split between FD and Agave nodes as FD nodes will accept and parse such shreds, Agave will not
-
-3) In case incoming shred is the last shred in pkts[] array, heap overflow will occur.
+1. slashing of FD node for producing bad blocks
+2. consensus split between FD and Agave nodes as FD nodes will accept and parse such shreds, Agave will not
+3. In case incoming shred is the last shred in pkts\[] array, heap overflow will occur.
 
 This could be potentially be a promising remote code execution vulnerability, as shreds are coming from network.
 
-Currently, looke like RCE vector is not possible to exploit, as fd_shred34 structure lays in the middle of huge mapped region of 3GB in size.
-
-
-
+Currently, looke like RCE vector is not possible to exploit, as fd\_shred34 structure lays in the middle of huge mapped region of 3GB in size.
 
 ## Impact Details
 
-Consensus split between FD and Agave nodes.
-Possibility of RCE.
+Consensus split between FD and Agave nodes. Possibility of RCE.
 
-
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 How to reproduce:
 
-1) get archive by using provided gist link
-
-2) unpack it:
+1. get archive by using provided gist link
+2. unpack it:
 
 ```
 $ base64 -d arch.txt > arch.tgz
@@ -339,14 +329,14 @@ $ tar zxf arch.tgz
 
 ```
 
-3) copy provided test_fec_resolver.c over src/disco/shred/test_fec_resolver.c
+3. copy provided test\_fec\_resolver.c over src/disco/shred/test\_fec\_resolver.c
+4. build FD with:
 
-4) build FD with:
 ```
 EXTRAS="asan" make -j unit-test
 ```
 
-5) run test_fec_resolver unit-test:
+5. run test\_fec\_resolver unit-test:
 
 ```
 $ ...test_fec_resolver test1.bin
@@ -368,34 +358,33 @@ SUMMARY: AddressSanitizer: heap-buffer-overflow (/build/linux/clang/x86_64/unit-
 
 ```
 
+6. proof of concept script t1.py should be tested against live FD, but before we need a few modifictions to the code (to simplify the testing):
 
-6) proof of concept script t1.py should be tested against live FD, but before we need a few modifictions to the code (to simplify the testing):
+6.1) comment out lines 548-552 https://github.com/firedancer-io/firedancer/blob/main/src/app/fdctl/run/tiles/fd\_shred.c#L548
 
-6.1) comment out lines 548-552 https://github.com/firedancer-io/firedancer/blob/main/src/app/fdctl/run/tiles/fd_shred.c#L548
+6.2) comment out lines 439-442 https://github.com/firedancer-io/firedancer/blob/main/src/disco/shred/fd\_fec\_resolver.c#L439
 
-6.2) comment out lines 439-442 https://github.com/firedancer-io/firedancer/blob/main/src/disco/shred/fd_fec_resolver.c#L439
-
-6.3) after fd_memcpy() https://github.com/firedancer-io/firedancer/blob/main/src/disco/shred/fd_fec_resolver.c#L497 add the following code (we are checking if next shred in FEC set has been overwritten):
+6.3) after fd\_memcpy() https://github.com/firedancer-io/firedancer/blob/main/src/disco/shred/fd\_fec\_resolver.c#L497 add the following code (we are checking if next shred in FEC set has been overwritten):
 
 ```
  ulong *ptr = (ulong * ) ctx->set->data_shreds[in_type_idx + 1];
  FD_TEST( *ptr != 0x7878787878787878);
-``` 
+```
 
-7) run FD:
+7. run FD:
 
 ```
 #./build/linux/clang/x86_64/bin/fdctl run --config config.toml
 
 ```
 
-8) run t1.py:
+8. run t1.py:
 
 ```
 $ ./t1.py host
 ```
 
-9) notice that shred tile crashes with message, which means adjacent shred in FEC set has been overwritten:
+9. notice that shred tile crashes with message, which means adjacent shred in FEC set has been overwritten:
 
 ```
  ... shred:0 src/disco/shred/fd_fec_resolver.c(521): FAIL: *ptr != 0x7878787878787878

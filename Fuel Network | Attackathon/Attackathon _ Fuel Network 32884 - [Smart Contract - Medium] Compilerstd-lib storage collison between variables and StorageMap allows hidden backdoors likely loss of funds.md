@@ -1,5 +1,4 @@
-
-# Compiler/std-lib: storage collison between variables and StorageMap, allows hidden backdoors, likely loss of funds
+# Attackathon \_ Fuel Network 32884 - \[Smart Contract - Medium] Compilerstd-lib storage collison betwee
 
 Submitted on Sat Jul 06 2024 03:21:08 GMT-0400 (Atlantic Standard Time) by @LonelySloth for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,10 +11,12 @@ Report severity: Medium
 Target: https://github.com/FuelLabs/sway/tree/v0.61.2
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
-- Ability to create contracts with undetectable back doors
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+* Ability to create contracts with undetectable back doors
 
 ## Description
+
 ## Brief/Intro
 
 Storage layout is a critical component of a smart contract language such as Sway. Unfortunately the language uses different schemes for defining storage slots for simple variables and storage containers, that can lead to different storage variables accessing the same storage. This can lead to malicious users crafting contracts with undetectable backdoors and luring users to interacting with them -- with consequent loss of funds.
@@ -26,7 +27,7 @@ I would like to start by stating that mixing different strategies for allocating
 
 For both securely developing smart contracts, and trusting smart contracts developed by others, users need to be sure the behavior of contracts compiled using the Sway Language is predictable.
 
-**In particular use of the various *standard* features of the Language, or *standard* libraries shouldn't cause storage collisions with unpredictable consequences. An auditor looking at a contract that only uses *standard* elements should have the ability tell whether a backdoor exists in the contract based on information contained in the source code.**
+**In particular use of the various&#x20;**_**standard**_**&#x20;features of the Language, or&#x20;**_**standard**_**&#x20;libraries shouldn't cause storage collisions with unpredictable consequences. An auditor looking at a contract that only uses&#x20;**_**standard**_**&#x20;elements should have the ability tell whether a backdoor exists in the contract based on information contained in the source code.**
 
 Unfortunately, the mixing of different strategies for allocating storage slots, as we will see, makes it in many cases impossible to tell a contract containing a secret backdoor introduced by the developer. Conversely introducing such a backdoor is easy for a malicious user.
 
@@ -36,7 +37,7 @@ Currently, the Sway Language uses various different schemes for allocating slots
 2. For simple variables by hashing the fully qualified name. E.g. `sha256("storage::namespace.variable")`.
 3. For `StorageVector`'s length by hashing the field id obtained in (2).
 4. For `StorageVector`'s elements, by adding an offset to the field id obtained in (2). E.g. `sha256("storage.my_vector") + 100u64`.
-5. For `StorageVector`'s *nested storage containers* by hashing the field id prefixed by the index. E.g. `sha256(1u64, sha256("storage.my_vector"))`.
+5. For `StorageVector`'s _nested storage containers_ by hashing the field id prefixed by the index. E.g. `sha256(1u64, sha256("storage.my_vector"))`.
 6. For `StorageMap`'s elements, by hashing the field id prefixed by the key. E.g. `sha256(1u64, sha256("storage.my_map"))`.
 7. For `admin` (`sway-lib`) by using directly the bits of the address/contract id as the slot.
 8. For `owner` (`sway-lib`) by using `sha256("owner")`.
@@ -57,7 +58,7 @@ Note that it is not at all obvious that the various schemes above don't produce 
 
 Let's write as an equation the relationship between the slots used in (2) for a simple variable and in (6) for a map element.
 
-*sha256(variableName) = sha256(key ++ field_id)*
+_sha256(variableName) = sha256(key ++ field\_id)_
 
 It's quite clear that if the variable name and the concatenation of key and field id have the same byte representation, then the two hashes above will be the same and consequently produce a collision of storage slots.
 
@@ -67,9 +68,9 @@ It's quite clear that if the variable name and the concatenation of key and fiel
 
 In the storage map, the key can be made to be freely chosen by a caller, while the field id is necessarily produced by either (2), (5), (6) -- that is, it's always a hash `sha256(pre_image)`.
 
-*However, the variable name is mostly freely chosen by the developer, except for the "storage." prefix, and rules about valid characters.*
+_However, the variable name is mostly freely chosen by the developer, except for the "storage." prefix, and rules about valid characters._
 
-To obtain *variableName = key ++ sha256(pre_image)*  it is thus sufficient to have a variable name of 32 bytes in length at least (excluding the prefix), selecting a key to match the "storage." prefix, **and finding a pre-image that produces a hash composed of characters valid for a Sway identifier.**
+To obtain _variableName = key ++ sha256(pre\_image)_ it is thus sufficient to have a variable name of 32 bytes in length at least (excluding the prefix), selecting a key to match the "storage." prefix, **and finding a pre-image that produces a hash composed of characters valid for a Sway identifier.**
 
 While finding such pre-images requires some work (in the sense of performing large numbers of hashes) it's very possible.
 
@@ -85,17 +86,17 @@ storage {
 
 The slot location for an item with key = `key1, key2` is
 
-*sha256(key2 ++ sha256(key1 ++ sha256("storage.myMap"))*
+_sha256(key2 ++ sha256(key1 ++ sha256("storage.myMap"))_
 
-If you find a value of `key1` such that *sha256(key1 ++ sha256("storage.myMap"))* corresponds to the name of another variable **that fact can't be known to anyone reading the code, without knowledge of the secret `key1`**.
+If you find a value of `key1` such that _sha256(key1 ++ sha256("storage.myMap"))_ corresponds to the name of another variable **that fact can't be known to anyone reading the code, without knowledge of the secret `key1`**.
 
 The attacker only has to reveal the key in precise transaction the backdoor is exploited.
 
 ### Estimating cost of finding the pre-image
 
-Finding a pre-image that produces a hash that only  contains valid characters for a Sway identifier requires some effort, however my experiments show it's feasible.
+Finding a pre-image that produces a hash that only contains valid characters for a Sway identifier requires some effort, however my experiments show it's feasible.
 
-I was able to find an *almost* valid string (contains just one invalid characters) in just a few hours using a consumer-grade laptop **using CPU-mining**:
+I was able to find an _almost_ valid string (contains just one invalid characters) in just a few hours using a consumer-grade laptop **using CPU-mining**:
 
 ```
     "XƏŞLQ9�JdvHozvoe1ۣxӁCЧݝ4g" = sha256(3377787503696190u64 ++ sha256("storage.myDummyMap"))
@@ -105,7 +106,7 @@ While this isn't enough to craft a backdoored contract, presumably doing such wo
 
 **As ASIC's are several orders of magnitude more efficient (100,000x at least) than CPUs, it's likely possible to achieve such amount of work within seconds in an entry level ASIC Bitcoin mining rig.**
 
-Obtaining a *believable* string -- that is one that might pass as an actual variable name, will likely require a 3 to 4 orders of magnitude more work. *Though naming practices in DeFi aren't exactly famous for making sense, and with multiple languages being used, it might actually be a lot easier than that*.
+Obtaining a _believable_ string -- that is one that might pass as an actual variable name, will likely require a 3 to 4 orders of magnitude more work. _Though naming practices in DeFi aren't exactly famous for making sense, and with multiple languages being used, it might actually be a lot easier than that_.
 
 (also note that the variable might be hidden within structures in such way to make detection less likely, or a "weird" name more believable, since only the last 32 bytes of the name must match a hash)
 
@@ -120,13 +121,12 @@ With improvement in hash technology this will become even easier to achieve.
 The best known and most battle-hardened smart contract language -- Solidity -- has a very different approach to allocating slots.
 
 1. For simple variables the slot is a small number (not larger than the size of all storage variables in the contract).
-2. For indexed variables the slot is obtained as the hash of the key, prefixed by the map's original slot *which is always a small number*.
+2. For indexed variables the slot is obtained as the hash of the key, prefixed by the map's original slot _which is always a small number_.
 3. For nested maps, the slot obtained in (2) is used as a prefix for the hash.
 
 Note that there isn't any Solidity feature that allows to either:
 
-a. Freely choose the slot used for a variable.
-b. Freely choose the pre-image used to obtain the slot.
+a. Freely choose the slot used for a variable. b. Freely choose the pre-image used to obtain the slot.
 
 **Sway has both such features built-in, which makes collisions possible.**
 
@@ -138,10 +138,9 @@ Even then, the most used such standard, EIP-1967 (https://eips.ethereum.org/EIPS
 assert(_IMPLEMENTATION_SLOT == bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1));
 ```
 
-Note that such modification makes a collision impossible (except with 1/2^128 probability) -- even if the string used coincided with a pre-image from (3), the variable would be stored in the *next slot* after the one used for the implementation.
+Note that such modification makes a collision impossible (except with 1/2^128 probability) -- even if the string used coincided with a pre-image from (3), the variable would be stored in the _next slot_ after the one used for the implementation.
 
 **The same trick can't be used for variables of arbitrarily large sizes, and can't be used directly in Sway**.
-
 
 ## Impact Details
 
@@ -149,23 +148,19 @@ This issue allows a malicious user to craft a contract containing a "backdoor" f
 
 **In fact, if the issue is not solved, it is impossible to ascertain any reasonably complex smart contract doesn't have such backdoor.**
 
-
 ## Recommendation
 
-1. Implement strict domain separation between the hashes used for the various schemes, making it impossible to have the same pre-image used in two different situations. For example use *sha256(0x00 ++ variable_name)* for simple variables and *sha256(0x01 ++ key ++ field_id)* for map items.
-
+1. Implement strict domain separation between the hashes used for the various schemes, making it impossible to have the same pre-image used in two different situations. For example use _sha256(0x00 ++ variable\_name)_ for simple variables and _sha256(0x01 ++ key ++ field\_id)_ for map items.
 2. Remove the keyword `in` as used for defining directly storage slots. If not removed, make it abundantly clear this is a "there be monsters" unsafe feature.
 
 ## References
 
 https://eips.ethereum.org/EIPS/eip-1967
 
-
 https://www.nicehash.com/pricing
 
-
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 ### Sway contract
@@ -233,7 +228,6 @@ fn test_storage() {
 }
 
 ```
-
 
 ### Rust code to find the pre-image
 

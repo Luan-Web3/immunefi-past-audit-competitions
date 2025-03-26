@@ -1,5 +1,4 @@
-
-# DoS in startCooldown() when users want start coold down before lock is expired
+# 31080 - \[SC - Insight] DoS in startCooldown when users want start cool...
 
 Submitted on May 12th 2024 at 11:24:32 UTC by @Lastc0de for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,30 +11,33 @@ Report severity: Insight
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
 
 Impacts:
-- Permanent freezing of unclaimed yield
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
-- Temporary freezing of funds for 12 hours
+
+* Permanent freezing of unclaimed yield
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+* Temporary freezing of funds for 12 hours
 
 ## Description
+
 ## Brief/Intro
-There will be a one-epoch `cooldown` period between unlocked tokens and being able to claim them to the user’s wallet. Locked tokens can become eligible for unlocks by burning Flux tokens.
-When the user wants to withdraw his/here locked tokens, he/she must start the `cooldDown` mechanism before withdrawing, otherwise he will not be able to withdraw.
+
+There will be a one-epoch `cooldown` period between unlocked tokens and being able to claim them to the user’s wallet. Locked tokens can become eligible for unlocks by burning Flux tokens. When the user wants to withdraw his/here locked tokens, he/she must start the `cooldDown` mechanism before withdrawing, otherwise he will not be able to withdraw.
 
 Activating this process is possible in two ways:
+
 * 1- lock period is expired
 * 2- lock period is not expired
 
 There is a vulnerability in model 2 that allows a malicious user to freeze the activation of this process for a short or long time for users who want to use the second method ( Denial-of-Service).
 
 ## Vulnerability Details
+
 * Vulnerable contract is `VotingEscrow.sol`:
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
 
-* Vulnerable function is `startCooldown()` :
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L778C1-L804C6
+* Vulnerable function is `startCooldown()` : https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L778C1-L804C6
 
-~~~
+```
     function startCooldown(uint256 _tokenId) external {
 //...
 
@@ -55,18 +57,15 @@ https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4
 
         emit CooldownStarted(msg.sender, _tokenId, _locked.cooldown);
     }
-~~~
+```
 
-When a user want withdraw his/here locked amounts before do that should start coold down process.
-Above we can see the function that activates this process.
-When a user  who wish to unlock their veALCX early, should burn Flux Tokens this means that should buy Flux Token of other users
+When a user want withdraw his/here locked amounts before do that should start coold down process. Above we can see the function that activates this process. When a user who wish to unlock their veALCX early, should burn Flux Tokens this means that should buy Flux Token of other users
 
 ## Deep dive
 
-* AUDIT-1
-For this, the `VotingEscrow.sol` first calculates Amount of FLUX required to `ragequit` by calling the `amountToRagequit()` function:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L345C1-L356C6
-~~~
+* AUDIT-1 For this, the `VotingEscrow.sol` first calculates Amount of FLUX required to `ragequit` by calling the `amountToRagequit()` function: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L345C1-L356C6
+
+```
     /// @inheritdoc IVotingEscrow
     function amountToRagequit(uint256 _tokenId) public view returns (uint256) {
         // amount of flux earned in one epoch
@@ -75,11 +74,11 @@ https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4
 //..
     }
 
-~~~
-* AUDIT-1-A
-In the first line of this function, the amount of flux earned in one epoch is obtained by calling the `claimableFlux` function:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L377C1-L385C6
-~~~
+```
+
+* AUDIT-1-A In the first line of this function, the amount of flux earned in one epoch is obtained by calling the `claimableFlux` function: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L377C1-L385C6
+
+```
     function claimableFlux(uint256 _tokenId) public view returns (uint256) {
         // If the lock is expired, no flux is claimable at the current epoch
         if (block.timestamp > locked[_tokenId].end) {
@@ -89,22 +88,19 @@ https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4
         // Amount of flux claimable is <fluxPerVeALCX> percent of the balance
         return (_balanceOfTokenAt(_tokenId, block.timestamp) * fluxPerVeALCX) / BPS; // @AUDIT-1-A-a
     }
-~~~
-* AUDIT-1-A-a
-This line calculate and return Amount of flux claimable is <fluxPerVeALCX> percent of the balance
-* as you can see this function calculate returned value by percent of the balance so by deposit  for a `tokenId` can manipulate this value.
+```
 
+* AUDIT-1-A-a This line calculate and return Amount of flux claimable is percent of the balance
+* as you can see this function calculate returned value by percent of the balance so by deposit for a `tokenId` can manipulate this value.
 
-We can do this by calling the `depositFor()` function:
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L667C1-L678C1
+We can do this by calling the `depositFor()` function: https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L667C1-L678C1
 
-~~~
+```
     function depositFor(uint256 _tokenId, uint256 _value) external nonreentrant {
 //...
     }
 
-~~~
-
+```
 
 ## but what is the problem?
 
@@ -112,7 +108,7 @@ So we go to the beginning of the report to see `AUDIT-2`:
 
 * AUDIT-2 : `require(IFluxToken(FLUX).balanceOf(msg.sender) >= fluxToRagequit, "insufficient FLUX balance");`
 
-If the balance of the  Flux Token for user is less than the calculated value meaning `fluxToRagequit`, the user cannot call this function for a while, so the user must increase the balance of Flux tokens in his wallet, and this is only possible by buying tokens from other users.
+If the balance of the Flux Token for user is less than the calculated value meaning `fluxToRagequit`, the user cannot call this function for a while, so the user must increase the balance of Flux tokens in his wallet, and this is only possible by buying tokens from other users.
 
 ## Secnario
 
@@ -133,18 +129,18 @@ For example, Bob wants to withdraw his tokens before the lock time done.
 7- A malicious user can do this for a long time and prevent the withdrawal of other users' tokens
 
 ## Impact Details
+
 Attacker can Freeze this function for users so users for short -or long time cant withdraw his/here locked tokens
 
 ## References
 
 https://alchemixfi.medium.com/vealcx-update-272e8900ac5a
 
-
-
 ## Proof of Concept
+
 1- Add this function in `VotingEscrow.t.sol` file :
 
-~~~
+```
     function test_AmountToRagequit_Fuzzing() public {
         uint256 tokenId = createVeAlcx(admin, TOKEN_1, THREE_WEEKS, false);
 
@@ -181,9 +177,10 @@ https://alchemixfi.medium.com/vealcx-update-272e8900ac5a
         hevm.prank(admin);
         veALCX.startCooldown(tokenId);
     }
-~~~
+```
 
 2- Runing test
-~~~
+
+```
 forge test --match-test "test_AmountToRagequit_Fuzzing" --fork-url https://eth-mainnet.public.blastapi.io -vvvv
-~~~
+```

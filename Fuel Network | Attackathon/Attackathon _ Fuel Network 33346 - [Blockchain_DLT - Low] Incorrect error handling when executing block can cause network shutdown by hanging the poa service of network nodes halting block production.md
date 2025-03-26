@@ -1,5 +1,4 @@
-
-# Incorrect error handling when executing block can cause network shutdown by hanging the `poa` service of network nodes, halting block production
+# Attackathon \_ Fuel Network 33346 - \[Blockchain\_DLT - Low] Incorrect error handling when executing bl
 
 Submitted on Thu Jul 18 2024 10:41:31 GMT-0400 (Atlantic Standard Time) by @n4nika for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,15 +11,18 @@ Report severity: Low
 Target: https://github.com/FuelLabs/fuel-core/tree/v0.31.0
 
 Impacts:
-- Shutdown of greater than or equal to 30% of network processing nodes without brute force actions, but does not shut down the network
-- Network not being able to confirm new transactions (total network shutdown)
+
+* Shutdown of greater than or equal to 30% of network processing nodes without brute force actions, but does not shut down the network
+* Network not being able to confirm new transactions (total network shutdown)
 
 ## Description
+
 ## Brief/Intro
-The `poa` service of Fuel's network processing nodes handles block production of that node. When producing blocks, the service implements multiple checks during the call stack, finally leading to execution and inclusion of transaction into a block. If at any point, the execution of a block fails, the system handles that error gracefully and continues on with the next block. This means that, even if we fail somewhere along the callstack, the node's block production should just continue.
-The problem is, that the error handling is done incorrectly in the `poa` service located at `fuel-core/crates/services/consensus_module/poa/src/service.rs`. Leading to halting the block production when an error occurs during block execution.
+
+The `poa` service of Fuel's network processing nodes handles block production of that node. When producing blocks, the service implements multiple checks during the call stack, finally leading to execution and inclusion of transaction into a block. If at any point, the execution of a block fails, the system handles that error gracefully and continues on with the next block. This means that, even if we fail somewhere along the callstack, the node's block production should just continue. The problem is, that the error handling is done incorrectly in the `poa` service located at `fuel-core/crates/services/consensus_module/poa/src/service.rs`. Leading to halting the block production when an error occurs during block execution.
 
 ## Vulnerability Details
+
 Currently block production is handled in the `produce_block` function like this:
 
 ```Rust
@@ -82,11 +84,9 @@ async fn produce_block(
         Ok(())
 }
 ```
-`signal_produce_block` is called which after a deep callstack, executes transactions from the `txpool` and includes them in a new block.
-Now at the end of `produce_block` we can see, that, if the node's trigger is set to `Trigger::Interval`, its timer's `deadline` is set to trigger when a new `block_time` has elapsed.
-The problem is, that the `deadline` is updated `AFTER` the block has been produced. Now this is fine if block execution succeeds, as the timer will be updated correctly and triggered on the next block time.
-But this is not fine if `signal_produce_block` fails (at `[1]`) as `produce_block` will just directly return an error without updating the timer's deadline.
-  
+
+`signal_produce_block` is called which after a deep callstack, executes transactions from the `txpool` and includes them in a new block. Now at the end of `produce_block` we can see, that, if the node's trigger is set to `Trigger::Interval`, its timer's `deadline` is set to trigger when a new `block_time` has elapsed. The problem is, that the `deadline` is updated `AFTER` the block has been produced. Now this is fine if block execution succeeds, as the timer will be updated correctly and triggered on the next block time. But this is not fine if `signal_produce_block` fails (at `[1]`) as `produce_block` will just directly return an error without updating the timer's deadline.
+
 If we now look at the `run` function in the same file:
 
 ```Rust
@@ -129,21 +129,22 @@ async fn run(&mut self, watcher: &mut StateWatcher) -> anyhow::Result<bool> {
         Ok(should_continue)
 }
 ```
+
 If now the block execution fails for whatever reason, the timer at `[2]` will wait indefinitely as no new timeout has been set, causing block production to stop.
 
-
 ## Impact Details
+
 The impact of this finding is, that nodes will stop working if a single block execution fails at any point in time. The likelihood of that happening is not high but it may happen, possibly causing a complete network shutdown if all nodes try to execute the same block and fail.
 
-
 ## Recommendation
+
 In order to fix this, I suggest moving the `match` statement in the first codeblock in front of the call to `signal_produce_block` in order to ensure a new deadline is set even if block execution fails.
 
-        
 ## Proof of concept
+
 ## Proof of Concept
-This vulnerability specifically gets triggered when block execution fails. Therefore, for this PoC I modified the `executor` of fuel-core in order to trigger an error during block production, showcasing the vulnerability.
-In order to demonstrate the issue, please modify the function `execute_transaction_and_commit` in `fuel-core/crates/services/executor/src/executor.rs` by adding the marked lines ([1] - [3]):
+
+This vulnerability specifically gets triggered when block execution fails. Therefore, for this PoC I modified the `executor` of fuel-core in order to trigger an error during block production, showcasing the vulnerability. In order to demonstrate the issue, please modify the function `execute_transaction_and_commit` in `fuel-core/crates/services/executor/src/executor.rs` by adding the marked lines (\[1] - \[3]):
 
 ```rust
     fn execute_transaction_and_commit<'a, W>(
@@ -191,19 +192,23 @@ In order to demonstrate the issue, please modify the function `execute_transacti
         Ok(())
     }
 ```
+
 This will simulate execution failing.
 
 After these modifications please run the fuel node with the `--poa-interval-period 5sec` parameter, ensuring an activated timer.
 
 With the local node running, execute the following script which does the following:
+
 * create and compile a typescript file `poc_halting.sh` containing the PoC
 * run the typescript script which submits two transactions, causing block production to stop completely
 
 In order to ensure a working PoC please ensure the following:
+
 * have `tsc` installed in order to compile typescript
 * have `node` installed in order to run the resulting `.js` file
 
 `PoC`:
+
 ```sh
 echo """
 import { JsonAbi, Script, Provider, WalletUnlocked, Account, Predicate, Wallet, CoinQuantityLike, coinQuantityfy, EstimatedTxParams, BN, Coin, AbstractAddress, Address, Contract, ScriptTransactionRequest } from 'fuels';

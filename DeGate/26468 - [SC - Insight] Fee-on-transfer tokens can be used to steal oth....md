@@ -1,5 +1,4 @@
-
-# Fee-on-transfer tokens can be used to steal other depositor's funds
+# 26468 - \[SC - Insight] Fee-on-transfer tokens can be used to steal oth...
 
 Submitted on Dec 3rd 2023 at 15:57:51 UTC by @xBentley for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,24 +11,31 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x54D7aE423Edb07282645e740C046B9373970a168#code
 
 Impacts:
-- Direct theft of user funds from the Default Deposit Contract that is less than 1,000,000 USD.
+
+* Direct theft of user funds from the Default Deposit Contract that is less than 1,000,000 USD.
 
 ## Description
+
 ## Bug Description
-The protocol has implemented a function that is supposed to handle fee-on-transfer tokens called setCheckBalance on the DefaultDepositContract. However, this function can be easily bypassed since it requires contract admin to set correct params BEFORE a deposit transaction. This is not practical since it requires the admin to front-run every deposit, check that the token applies fees to transfers and then set the correct settings. 
+
+The protocol has implemented a function that is supposed to handle fee-on-transfer tokens called setCheckBalance on the DefaultDepositContract. However, this function can be easily bypassed since it requires contract admin to set correct params BEFORE a deposit transaction. This is not practical since it requires the admin to front-run every deposit, check that the token applies fees to transfers and then set the correct settings.
+
 ## Impact
+
 When withdraing, users can steal other depositor tokens and drain the pool.
+
 ## Risk Breakdown
-Difficulty to Exploit: Easy
-Weakness:
-CVSS2 Score:
+
+Difficulty to Exploit: Easy Weakness: CVSS2 Score:
 
 ## Recommendation
+
 It is recommended that the contract instead should rely on ACTUAL balances before and after a deposit to determine if the token applies fees on transfers.
+
 ## References
 
-
 ## Proof of concept
+
 I have provided this test as a POC:
 
 ```

@@ -1,5 +1,4 @@
-
-# Smart contract cannot be accessed during the normal liquidation process that involves fully acquiring the borrower's balance
+# Boost \_ Folks Finance 34124 - \[Smart Contract - Low] Smart contract cannot be accessed during the normal liquidation process that involves fully acquiring the borrowers balance
 
 Submitted on Mon Aug 05 2024 17:37:39 GMT-0400 (Atlantic Standard Time) by @ICP for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,15 +11,18 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0xf8E94c5Da5f5F23b39399F6679b2eAb29FE3071e
 
 Impacts:
-- Smart contract unable to operate due to lack of token funds
+
+* Smart contract unable to operate due to lack of token funds
 
 ## Description
+
 ## Brief/Intro
+
 Liquidator will ended with underflow exception while normal liquidation process acquiring the borrow balance of the violator
 
 ## Vulnerability Details
 
-Liquidation is normal process in market when loan went to underCollateralized normally liquidator acquire the assets by calling `executeLiquidate()` function in LoanManagerLogic from hub. But inside this this function which calls the `updateLiquidationBorrows()` to transfer the funds from the Violator to liquidator here it calls the `transferBorrowFromViolator()`  function in order to repay and decrease the balance of the violator . Below code snippet we can see :-
+Liquidation is normal process in market when loan went to underCollateralized normally liquidator acquire the assets by calling `executeLiquidate()` function in LoanManagerLogic from hub. But inside this this function which calls the `updateLiquidationBorrows()` to transfer the funds from the Violator to liquidator here it calls the `transferBorrowFromViolator()` function in order to repay and decrease the balance of the violator . Below code snippet we can see :-
 
 ```solidity
     /// @dev Calc the borrow balance and amount to repay and decrease them from violator borrow
@@ -48,11 +50,11 @@ Liquidation is normal process in market when loan went to underCollateralized no
         if (loanBorrow.balance == 0) clearBorrow(loan, poolId);
     }
 ```
-In above we see that balance will be decreased by the liquidator parameter `repayAmount`.
-[https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/Hub.sol#L118]
-Which will directly subtract with violator borrow balance after that if the borrow balance is zero then it will clear the borrow here is main issue without validation the user input it will directly subtracts with loanBorrow.
+
+In above we see that balance will be decreased by the liquidator parameter `repayAmount`. \[https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/Hub.sol#L118] Which will directly subtract with violator borrow balance after that if the borrow balance is zero then it will clear the borrow here is main issue without validation the user input it will directly subtracts with loanBorrow.
 
 For Scenario We look below numbers :-
+
 ```
 
  Violator Borrow Balance Before Liquidation 1000000000n
@@ -65,24 +67,24 @@ Liquidator Collateral Balance Before Liquidation 1000000000n
 
 Repay Amount 965000000n
 ```
-In above we  can see the balances of violator and liquidator before liquidation which is fetch from the user defined functions.
 
-Violator have borrow 1000 USDC and underCollateralized 
-Liquidator tries to acquire by paying 965 USDC but it will halt the process by panic code 0x11 underFlow or overflow Vm exception. Liquidator by seeing the violator borrow balance and try to acquire by lesser amount than the borrow balance it will landed in halted in hub chain.
+In above we can see the balances of violator and liquidator before liquidation which is fetch from the user defined functions.
+
+Violator have borrow 1000 USDC and underCollateralized Liquidator tries to acquire by paying 965 USDC but it will halt the process by panic code 0x11 underFlow or overflow Vm exception. Liquidator by seeing the violator borrow balance and try to acquire by lesser amount than the borrow balance it will landed in halted in hub chain.
 
 ## Impact Details
 
 1 . Temporary blocks the liquidation process and liquidator funds.
 
-2 . Liquidator doesn't allow to acquire the default loans ended with exception which will cause halt of normal process in VM because it not handle with try catch. 
+2 . Liquidator doesn't allow to acquire the default loans ended with exception which will cause halt of normal process in VM because it not handle with try catch.
 
-3 . Smart contracts which is associated with Liquidation Logic will not be able to access due to the error while acquiring the borrow balance. 
+3 . Smart contracts which is associated with Liquidation Logic will not be able to access due to the error while acquiring the borrow balance.
 
 The above impact assessed with protocol, if any query please ping me.
 
 ## code Snippet
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LoanManagerLogic.sol#L477C1-L483C10
-https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/UserLoanLogic.sol#L127C1-L128C51
+
+https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/LoanManagerLogic.sol#L477C1-L483C10 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/main/contracts/hub/logic/UserLoanLogic.sol#L127C1-L128C51
 
 ## Recommendation
 
@@ -93,11 +95,13 @@ if( loanBorrow.balance > repaidBorrowBalance) {
 loanBorrow.balance -= repaidBorrowBalance;
 }
 ```
+
 Then we can clear the balance.
 
 2 . Add mechanism that how much can liquidator can repay to acquire full borrow balance to prevent the panic code error.
-        
+
 ## Proof of concept
+
 ## Proof of Concept
 
 ```solidity
@@ -906,8 +910,8 @@ describe("Liquidate the Just Borrowed loan", () => {
 });
 ```
 
-
 Output :-
+
 ```
   LoanManager (unit tests)
     Deployment

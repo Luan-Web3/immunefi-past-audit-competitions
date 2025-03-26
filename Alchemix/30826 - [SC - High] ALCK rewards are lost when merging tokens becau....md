@@ -1,5 +1,4 @@
-
-# ALCK rewards are lost when merging tokens because the rewards are not claimed before burning the token.
+# 30826 - \[SC - High] ALCK rewards are lost when merging tokens becau...
 
 Submitted on May 6th 2024 at 22:25:53 UTC by @Jonnes for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,15 +11,18 @@ Report severity: High
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/VotingEscrow.sol
 
 Impacts:
-- Permanent freezing of unclaimed yield
+
+* Permanent freezing of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-ALCK rewards are lost when merging tokens because the rewards are not claimed before burning the token. 
+
+ALCK rewards are lost when merging tokens because the rewards are not claimed before burning the token.
 
 ## Vulnerability Details
-Merging or withdrawing tokens require burning the token.  When merging tokens, unclaimed rewards must be claimed before burning the token. This prevents users from losing their rewards when the tokens are burnt. This isn't the case however as unclaimed rewards are not claimed before burning the token. This makes the user's unclaimed 
-ALCX rewards to become lost and unclaimable when the tokens are burnt.
+
+Merging or withdrawing tokens require burning the token. When merging tokens, unclaimed rewards must be claimed before burning the token. This prevents users from losing their rewards when the tokens are burnt. This isn't the case however as unclaimed rewards are not claimed before burning the token. This makes the user's unclaimed ALCX rewards to become lost and unclaimable when the tokens are burnt.
 
 ```
         _checkpoint(_from, _locked0, LockedBalance(0, 0, false, 0));
@@ -30,6 +32,7 @@ ALCX rewards to become lost and unclaimable when the tokens are burnt.
 ```
 
 In contrast to the merge function, the withdraw function first claims all unclaimed rewards before burning the token. This prevents users from losing their rewards when the tokens are burnt.
+
 ```
         // Claim any unclaimed ALCX rewards and FLUX
         IRewardsDistributor(distributor).claim(_tokenId, false);
@@ -38,16 +41,18 @@ In contrast to the merge function, the withdraw function first claims all unclai
         // Burn the token
         _burn(_tokenId, value);
 ```
-Hence, users will lose their ALCX rewards when merging tokens because the ALCX  rewards are not claimed before burning the token. This leads to a permanent freezing of unclaimed rewards as the ALCX rewards are lost and unclaimable. 
+
+Hence, users will lose their ALCX rewards when merging tokens because the ALCX rewards are not claimed before burning the token. This leads to a permanent freezing of unclaimed rewards as the ALCX rewards are lost and unclaimable.
 
 ## Impact Details
+
 Permanent freezing of unclaimed rewards
 
 ## References
+
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L649
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/VotingEscrow.sol#L767C1-L772C32
-
 
 ## Proof of Concept
 

@@ -1,5 +1,4 @@
-
-# Function HubPoolLogic::updateWithWithdraw() doesn't round up in favour of protocol if isFAmount == false
+# Boost \_ Folks Finance 33923 - \[Smart Contract - Low] Function HubPoolLogicupdateWithWithdraw doesnt round up in favour of protocol if isFAmount false
 
 Submitted on Thu Aug 01 2024 20:25:45 GMT-0400 (Atlantic Standard Time) by @Paludo0x for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,17 +11,21 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0x96e957bF63B5361C5A2F45C97C46B8090f2745C2
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
-Function `HubPoolLogic::updateWithWithdraw()` doesn't round up in favour of protocol if `isFAmount` == false.
-This implies that users will receive more underlying tokens than they should due to rounding errors.
+
+Function `HubPoolLogic::updateWithWithdraw()` doesn't round up in favour of protocol if `isFAmount` == false. This implies that users will receive more underlying tokens than they should due to rounding errors.
 
 ## Vulnerability Details
+
 Function `HubPoolLogic::updateWithWithdraw()` is called by `LoanManager::executeWithdraw()` to calculate underlying and fAmount to be withdrawn.
 
 This is the function snippet
+
 ```
     function updateWithWithdraw(
         HubPoolState.PoolData storage pool,
@@ -45,6 +48,7 @@ This is the function snippet
         pool.updateInterestRates();
     }
 ```
+
 In case `isFAmount` == false the `fAmount` is calculated as follows:
 
 ```
@@ -57,21 +61,19 @@ Since `depositInterestIndexAtT` is always grater than `ONE_18_DP` the fAmount wi
 
 That means `pool.depositData.totalAmount -= withdrawPoolParams.underlingAmount;` will be decreased by the amount required by the user while `loan.collaterals[poolId].balance -= fAmount;` will be decreased by a smaller amount.
 
-
 ## Impact Details
 
 This bug can be exploited by a malicious user by withdrawing 1 wei in a `for` loop, or even in the long run by all users which carry out multiple withdrawals of deposited funds.
-        
+
 ## Proof of concept
+
 ## POC
-The following POC shall be run in Forge. 
-The aim is to check the user and pool balances after withdrawal of 1 wei.
 
-This test forks mainnet, and starts from a withdrawal onchain transaction.
-This is the transaction https://testnet.snowtrace.io/tx/0xbc7c3f5d5447d7a40c741f92a8e789c8ad588b618d699cffea29e091955e81a4?chainid=43113
+The following POC shall be run in Forge. The aim is to check the user and pool balances after withdrawal of 1 wei.
 
-The POC shall be run with the following command:
-`forge test --match-test test_withdraw_1_wei --fork-url https://api.avax-test.network/ext/bc/C/rpc --fork-block-number 35147412 -vv --via-ir --optimizer-runs 10000`
+This test forks mainnet, and starts from a withdrawal onchain transaction. This is the transaction https://testnet.snowtrace.io/tx/0xbc7c3f5d5447d7a40c741f92a8e789c8ad588b618d699cffea29e091955e81a4?chainid=43113
+
+The POC shall be run with the following command: `forge test --match-test test_withdraw_1_wei --fork-url https://api.avax-test.network/ext/bc/C/rpc --fork-block-number 35147412 -vv --via-ir --optimizer-runs 10000`
 
 ```
 
@@ -159,8 +161,7 @@ contract WithdrawTest is Test {
 
 ```
 
-This is the console output. 
-The amount of underlying token received back by user increases, the pool amount decreases, while the user fToken amount doesn't change.
+This is the console output. The amount of underlying token received back by user increases, the pool amount decreases, while the user fToken amount doesn't change.
 
 ```
 
@@ -174,5 +175,3 @@ Logs:
   Pool final deposit total amount 2.029690866072611413037e21
 
 ```
-
-

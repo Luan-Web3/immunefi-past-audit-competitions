@@ -1,5 +1,4 @@
-
-# Boolean return value of `address.call()` function not check for successful contract call
+# 29015 - \[SC - Low] Boolean return value of addresscall function no...
 
 Submitted on Mar 4th 2024 at 19:36:27 UTC by @kaysoft for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,16 +11,19 @@ Report severity: Low
 Target: https://etherscan.io/address/0x3C28B7c7Ba1A1f55c9Ce66b263B33B204f2126eA#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
+
 The Timelock.sol contract's `executeTransfaction(...)` function implements a `target.call()` function without checking the return value for the success of the transaction.
 
-When an `address.call` is made to a function of  a contract and it reverts, the error is not bubbled up but instead returns a `false` return value. Not checking the boolean return value causes the sender of the transaction to assume the call is successful until the user checks manually because the whole transaction will be successful.
-
+When an `address.call` is made to a function of a contract and it reverts, the error is not bubbled up but instead returns a `false` return value. Not checking the boolean return value causes the sender of the transaction to assume the call is successful until the user checks manually because the whole transaction will be successful.
 
 ## Vulnerability Details
+
 When exceptions happen in an `address.call()`, they do not "bubble up" but instead return a false boolean value.
 
 That should be checked with a `require()` statement.
@@ -37,6 +39,7 @@ function _executeTransaction(address target, bytes calldata callData) internal r
         return target.call(callData);
     }
 ```
+
 ```
 File: Timelock.sol
 function executeTransaction(address target, bytes calldata callData, uint256 operationId)
@@ -74,7 +77,9 @@ function executeTransaction(address target, bytes calldata callData, uint256 ope
     }
 
 ```
+
 ## Impact Details
+
 Failure of `target.call()` not validated which will make the user assume success of the `target.call()` unless the transaction and the contract is manually checked.
 
 ```diff
@@ -87,20 +92,19 @@ function _executeTransaction(address target, bytes calldata callData) internal r
 ++        return (success, data);
     }
 ```
-##Recommendation
-Consider adding a check for `target.call()` and also add a contract existence check for `target` contract.
 
+\##Recommendation Consider adding a check for `target.call()` and also add a contract existence check for `target` contract.
 
 ## References
-- https://github.com/PufferFinance/pufETH/blob/2768d69196717e9f77a6837153b426e06e15c51f/src/Timelock.sol#L265
-- https://docs.soliditylang.org/en/latest/control-structures.html#error-handling-assert-require-revert-and-exceptions
 
-
+* https://github.com/PufferFinance/pufETH/blob/2768d69196717e9f77a6837153b426e06e15c51f/src/Timelock.sol#L265
+* https://docs.soliditylang.org/en/latest/control-structures.html#error-handling-assert-require-revert-and-exceptions
 
 ## Proof of Concept
+
 This POC can be added to the Timelock.t.sol file
 
-This transaction sets the `newPauser` as zero address which should normally revert due to the require statement in the `setPauser` function  but it does not revert because the boolean return value is not checked. This creates a successful transaction which can make the user think the new pauser is set.
+This transaction sets the `newPauser` as zero address which should normally revert due to the require statement in the `setPauser` function but it does not revert because the boolean return value is not checked. This creates a successful transaction which can make the user think the new pauser is set.
 
 ```
 function test_change_pauser() public {

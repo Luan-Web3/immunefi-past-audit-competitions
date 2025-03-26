@@ -1,5 +1,4 @@
-
-# `stableBorrowRates` are manipulatable through flashloan attacks
+# Boost \_ Folks Finance 33694 - \[Smart Contract - Medium] stableBorrowRates are manipulatable through flashloan attacks
 
 Submitted on Fri Jul 26 2024 15:07:59 GMT-0400 (Atlantic Standard Time) by @A2Security for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,15 +11,16 @@ Report severity: Medium
 Target: https://testnet.snowtrace.io/address/0xa9491a1f4f058832e5742b76eE3f1F1fD7bb6837
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Title
 
 ## Description
 
 We are going to focus on the simplest path. When a user wants to create a stable loan, he automatically recieves the stableInterestRate of the pool
-
 
 ```solidity
     function initLoanBorrowInterests(
@@ -57,7 +57,6 @@ The stableInterestRate is set to the pool stable interest rate. see `prepareForB
 
 This value is only updated when the function `HubPoolLogic.updateInterestRates()` is called generally at the end of each transaction that changes the state of a pool. For the example that is interesting for us it is called at the end of `updateWithDeposi()`
 
-
 ```solidity
     function updateWithDeposit(
         HubPoolState.PoolData storage pool,
@@ -79,8 +78,8 @@ This value is only updated when the function `HubPoolLogic.updateInterestRates()
 @>        pool.updateInterestRates();
     }
 ```
-The stable rate is calculated using the curent **utilization rate, which could be lowered simply through depositing large amounts of collateral** or inflated **by increasing debt** (this could be used to force stable borrower to pay more rates by calling rebalanceUp() after attack to gain more yield as depositors)
 
+The stable rate is calculated using the curent **utilization rate, which could be lowered simply through depositing large amounts of collateral** or inflated **by increasing debt** (this could be used to force stable borrower to pay more rates by calling rebalanceUp() after attack to gain more yield as depositors)
 
 ```solidity
     function updateInterestRates(HubPoolState.PoolData storage poolData) internal {
@@ -109,27 +108,27 @@ The stable rate is calculated using the curent **utilization rate, which could b
             poolData.stableBorrowData.optimalStableToTotalDebtRatio
         );
 ```
-As we can see the new calculation relays heavily on the current utilization ratio that relies on current total deposited amounts.
-This opens up the attack vectors for users to manipulating the utilization through large deposits right before  locking themselves into a stable position
+
+As we can see the new calculation relays heavily on the current utilization ratio that relies on current total deposited amounts. This opens up the attack vectors for users to manipulating the utilization through large deposits right before locking themselves into a stable position
+
 > please also note, the attackers could also simply manipulate the borrowrate to near the **rebalanceUpThreshold** or **rebalanceDownThreshold** so no one could call it and even if position get's rebalanced. Attackers could repeat same attack to get the desired lower borrow rate.
 
 ## Impact
+
 We have found two major impacts, that caused by either manipulating rates up or down:
-- Attackers could manipulate the stable borrow rate, to pay less interest rates which leads to a loss of yield for the protocol and the liquidity providers (lenders) and allow lenders to borrow at a disavantageous rate then the current market conditions
-- Attackers could flashloan assets then borrow a large percentage, use the inflated stableRate to call rebalanceUp() on stableborrows, to force borrowers into inflated rates. This could be abused if the attacker has enough liquidity there to benefit from increase yield
+
+* Attackers could manipulate the stable borrow rate, to pay less interest rates which leads to a loss of yield for the protocol and the liquidity providers (lenders) and allow lenders to borrow at a disavantageous rate then the current market conditions
+* Attackers could flashloan assets then borrow a large percentage, use the inflated stableRate to call rebalanceUp() on stableborrows, to force borrowers into inflated rates. This could be abused if the attacker has enough liquidity there to benefit from increase yield
 
 ## Recomendation
-To mitigate this issue, similar protocols that offer both variable and stable rates rely on time averaged total deposits  + total debts in order to calculate the stable rates. Another possible fix is to block same block deposits and withdrawals, this however wouldn't protect against the case when the liquidity used for the manipulation is bootstrapped by a whale account
 
+To mitigate this issue, similar protocols that offer both variable and stable rates rely on time averaged total deposits + total debts in order to calculate the stable rates. Another possible fix is to block same block deposits and withdrawals, this however wouldn't protect against the case when the liquidity used for the manipulation is bootstrapped by a whale account
 
-
-        
 ## Proof of concept
 
-
 ### Proof Of Concept
-We have provide a coded proof of concept for the first scenario, the second scenario is also the same because it has same root cause (**stable rate calculation relies on spot data, which is manipulatable through flash actions**)
-The attacker wants to borrow USDC at a lowered intersest rate:
+
+We have provide a coded proof of concept for the first scenario, the second scenario is also the same because it has same root cause (**stable rate calculation relies on spot data, which is manipulatable through flash actions**) The attacker wants to borrow USDC at a lowered intersest rate:
 
 • Attacker prepares a large amount of collateral tokens for his intended borrow
 
@@ -145,8 +144,8 @@ The attacker wants to borrow USDC at a lowered intersest rate:
 
 • Attacker can repeat this process to continually refinance at artificially low rates (if after some time he gets rebalanced)
 
-For the coded Poc, please follow the following steps:
-first create the first file: `test/pocs/base_test.sol`
+For the coded Poc, please follow the following steps: first create the first file: `test/pocs/base_test.sol`
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
@@ -422,8 +421,7 @@ contract Pocs is baseTest {
 
 ```
 
-to execute the poc, please run `forge test --mt test_ManipulateStableBorrowRateThrough -vvv`
-This is the expected result, after running the poc, in a terminal
+to execute the poc, please run `forge test --mt test_ManipulateStableBorrowRateThrough -vvv` This is the expected result, after running the poc, in a terminal
 
 ```log
 Ran 1 test for test/pocs/manipulateStableRatePoC.sol:Pocs

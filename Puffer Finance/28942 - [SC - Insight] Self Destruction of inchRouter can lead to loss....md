@@ -1,5 +1,4 @@
-
-# Self Destruction of 1inchRouter can lead to loss of 50% functionality of the puffer depositor
+# 28942 - \[SC - Insight] Self Destruction of inchRouter can lead to loss...
 
 Submitted on Mar 2nd 2024 at 14:39:01 UTC by @oxumarkhatab for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,23 +11,27 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x7276925e42f9c4054afa2fad80fa79520c453d6a
 
 Impacts:
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
 ## Description
+
 ## Brief/Intro
-Due to having a hardcoded address of 1inch AggregatorRouterV5 in the Puffer Depositor contract,  and AggregatorRouterV5 having a self-destruct function in its implementation, the protocol's 1inch Swap's functionality will be broken. 
+
+Due to having a hardcoded address of 1inch AggregatorRouterV5 in the Puffer Depositor contract, and AggregatorRouterV5 having a self-destruct function in its implementation, the protocol's 1inch Swap's functionality will be broken.
 
 Having a hardcoded immutable address of the Router escalates the issue because the immutable variables are part of the bytecode and will never get updated.
 
 ## Why I have chosen the selected impact
-I was not able to find an impact that suits my needs of the impact 
-because this vulnerability greatly affects the entire protocol, so griefing was the closest one not due to its impact, because the impact of this vulnerability is High severity in my opinion.
 
+I was not able to find an impact that suits my needs of the impact because this vulnerability greatly affects the entire protocol, so griefing was the closest one not due to its impact, because the impact of this vulnerability is High severity in my opinion.
 
 ## Vulnerability Details
+
 Offer a detailed explanation of the vulnerability itself. Do not leave out any relevant information. Code snippets should be supplied whenever helpful, as long as they don’t overcrowd the report with unnecessary details. This section should make it obvious that you understand exactly what you’re talking about, and more importantly, it should be clear by this point that the vulnerability does exist.
 
 ## Impact Details
+
 The Puffer depositor smart contract relies on AggregatorV5 Router for doing 1Inch Swaps.
 
 ```solidity
@@ -67,14 +70,12 @@ In this function , take a look at this line :
 ```solidity
 _1INCH_ROUTER.call{ value: msg.value }(callData);
 ```
-The `_1INCH_ROUTER` is an immutable variable having the 1InchRouter address 
 
-`address internal constant _1INCH_ROUTER = 0x1111111254EEB25477B68fb85Ed929f73A960582;
-    `
+The `_1INCH_ROUTER` is an immutable variable having the 1InchRouter address
 
-which means it can not be changed later .
-Things are alright since here but
-The problem arises when we look at the code of 1InchRouter's implementation.
+`address internal constant _1INCH_ROUTER = 0x1111111254EEB25477B68fb85Ed929f73A960582;`
+
+which means it can not be changed later . Things are alright since here but The problem arises when we look at the code of 1InchRouter's implementation.
 
 ```solidity
 
@@ -127,17 +128,11 @@ contract AggregationRouterV5 is EIP712("1inch Aggregation Router", "5"), Ownable
 
 Take a look at `destroy` method:
 
-`
-  function destroy() external onlyOwner {
-        selfdestruct(payable(msg.sender));
-    }
-`
+`function destroy() external onlyOwner { selfdestruct(payable(msg.sender)); }`
 
-although it is owner-only there is a chance that the protocol is attacked 
-where `damage from the exploit is greater than from just an urgent contract change.` as stated in its NetSpec.
+although it is owner-only there is a chance that the protocol is attacked where `damage from the exploit is greater than from just an urgent contract change.` as stated in its NetSpec.
 
 When the protocol is self-destructed, the calls to the 1inchRouter will always fail due to which the entire functionality of the Puffer depositor will be jammed and protocol will not work as intended
-
 
 ## References
 
@@ -145,10 +140,8 @@ When the protocol is self-destructed, the calls to the 1inchRouter will always f
 
 https://etherscan.io/address/0x1111111254EEB25477B68fb85Ed929f73A960582#code
 
-
-
 ## Proof of Concept
+
 Even the biggest protocols like `kyberswap` are hacked due to the `0.0000001%` chance of it being exploited so there is a chance that 1InchRouter is also hacked, `self-destructed` to prevent potentially greater damages, and be `deployed at a new address` which now new users can use. However, our current implementation does not allow to change the deployed address of 1inchRouter without revamping and re-deploying the entire depositor contract and other contracts that are harcodedly connected with the address of the puffer depositor.
 
-This Vulnerability is clear that self-destruct can remove the 1inchRouter from the blockchain which will make all the forwarded calls to it, fail. 
-Hence I was not able to practically self-destruct the 1inchRouter to show my PoC : )
+This Vulnerability is clear that self-destruct can remove the 1inchRouter from the blockchain which will make all the forwarded calls to it, fail. Hence I was not able to practically self-destruct the 1inchRouter to show my PoC : )

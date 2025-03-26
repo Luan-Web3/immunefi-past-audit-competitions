@@ -1,5 +1,4 @@
-
-# DoS in shreds validation
+# Boost \_ Firedancer v0.1 34501 - \[Blockchain\_DLT - Medium] DoS in shreds validation
 
 Submitted on Wed Aug 14 2024 01:10:30 GMT-0400 (Atlantic Standard Time) by @Swift77057 for [Boost | Firedancer v0.1](https://immunefi.com/bounty/firedancer-boost/)
 
@@ -12,16 +11,18 @@ Report severity: Medium
 Target: https://github.com/firedancer-io/firedancer/tree/e60d9a6206efaceac65a5a2c3a9e387a79d1d096
 
 Impacts:
-- Liveness issues that cause Firedancer v0.1 validators to crash or be unavailable
+
+* Liveness issues that cause Firedancer v0.1 validators to crash or be unavailable
 
 ## Description
 
 ## Summary
+
 Due to differences in solana's and fd's shred validation, a malicious shred can pass fd's checks while causing a panic in the solana backend.
 
 ## Description
-Frankendancer's shred tile handles receiving and verifying shreds.
-When a full FEC set is constructed, the shred tile sends it to the store tile, which contains a simple wrapper around solana's blockstore.
+
+Frankendancer's shred tile handles receiving and verifying shreds. When a full FEC set is constructed, the shred tile sends it to the store tile, which contains a simple wrapper around solana's blockstore.
 
 ```
 pub extern "C" fn fd_ext_blockstore_insert_shreds(blockstore: *const std::ffi::c_void, shred_cnt: u64, shred_bytes: *const u8, shred_sz: u64, stride: u64, is_trusted: i32) {
@@ -41,15 +42,11 @@ pub extern "C" fn fd_ext_blockstore_insert_shreds(blockstore: *const std::ffi::c
 
 This is the function on the solana side, that is called by the store tile to insert the validated shreds into the blockstore.
 
-Note the comment about the `unwrap()` of the insertion function's return value.
-Any error here would cause the tile to crash due to panic, which should never happen.
+Note the comment about the `unwrap()` of the insertion function's return value. Any error here would cause the tile to crash due to panic, which should never happen.
 
-This means that all the checks that the blockstore performs on the shreds, must also be performed by the shred tile.
-Otherwise, a shred might pass all of fd's checks, but later on cause an error (and thus, crash) in the blockstore code.
+This means that all the checks that the blockstore performs on the shreds, must also be performed by the shred tile. Otherwise, a shred might pass all of fd's checks, but later on cause an error (and thus, crash) in the blockstore code.
 
-I found a shred (through fuzzing) that violates this constraint.
-It triggers an error in the blockstore code, because some flags in the shred are not set properly.
-The error is triggered in solana's data shred sanitization function:
+I found a shred (through fuzzing) that violates this constraint. It triggers an error in the blockstore code, because some flags in the shred are not set properly. The error is triggered in solana's data shred sanitization function:
 
 ```
 let flags = data_header.flags;
@@ -73,23 +70,20 @@ ERR     08-13 21:23:56.708283 167849 f0   pidns src/app/fdctl/run/run.c(368): ti
 
 Especially note that the header's flags are never checked by fd at all.
 
-In a real world scenario, to trigger this bug, one would need a real signature on the shred.
-This constraint was removed for the PoC, to ease fuzzing/testing.
+In a real world scenario, to trigger this bug, one would need a real signature on the shred. This constraint was removed for the PoC, to ease fuzzing/testing.
 
 Finally, please note the solana code itself is not vulnerable. The vulnerability manifests in how fd uses solana's code with this external function and the lack of proper validation of the flags field.
 
 ## PoC
 
-For the PoC, apply the .diff included in this report.
-The patch basically disables signature/merkle tree hash verification, as well as sending the shred to other network participants, for convenience.
-Note that these changes do not affect the actual shred validation, and a properly signed and constructed shred will trigger this bug in a real environment (also remember the absence of any checks on the flags value in fd).
-Use the script to send the shred to your fddev instance.
+For the PoC, apply the .diff included in this report. The patch basically disables signature/merkle tree hash verification, as well as sending the shred to other network participants, for convenience. Note that these changes do not affect the actual shred validation, and a properly signed and constructed shred will trigger this bug in a real environment (also remember the absence of any checks on the flags value in fd). Use the script to send the shred to your fddev instance.
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 `patch.diff`
+
 ```
 diff --git a/src/app/fdctl/run/tiles/fd_shred.c b/src/app/fdctl/run/tiles/fd_shred.c
 index 193a4b3d9..a3a214a60 100644
@@ -374,6 +368,7 @@ index b2b9b55b8..2ffa1e1d2 100644
 ```
 
 `send_shred.py`
+
 ```
 import socket
 import os
@@ -392,6 +387,7 @@ with open('shred_sol_crash.bin', mode='rb') as f:
 ```
 
 xxd `shred_sol_crash.bin`
+
 ```
 00000000: 0200 0000 0000 0000 0000 0000 0000 0000  ................
 00000010: 0000 0000 0000 0000 0000 0000 0000 0000  ................

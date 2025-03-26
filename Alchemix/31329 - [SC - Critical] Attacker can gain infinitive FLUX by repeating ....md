@@ -1,5 +1,4 @@
-
-# Attacker can gain infinitive FLUX by repeating this attack!
+# 31329 - \[SC - Critical] Attacker can gain infinitive FLUX by repeating ...
 
 Submitted on May 17th 2024 at 07:32:47 UTC by @Minato7namikazi for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,22 +11,22 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Unauthorized minting of NFTs
+
+* Unauthorized minting of NFTs
 
 ## Description
+
 ## Brief/Intro
 
 Attacker can gain infinitive FLUX by repeating this attack!
-
-
 
 ## Vulnerability Details
 
 in the reset function in Voter contract which could be used only once per epoch , it accrueFlux for the tokenID and add the accrued amount in the unclaimed Flux balance , using the following scenario a malicious attacker could accrueFlux for tokenID already accrued previously in the same epoch.
 
-### an example scenario 
+### an example scenario
 
-an attaker have 3 locks each one with 100k token 
+an attaker have 3 locks each one with 100k token
 
 **ID1**
 
@@ -39,35 +38,29 @@ an attaker have 3 locks each one with 100k token
 
 he vote with the three tokenIDs
 
-#### in the next epoch 
+#### in the next epoch
 
-he reset the voting for ID1 & ID2 
-and accrue their Flux ratio
+he reset the voting for ID1 & ID2 and accrue their Flux ratio
 
 fortunately here for the attacker ... the reset function abstain the voting status for the token id so it will be !VOTED
 
-and the attacker will be able to merge into token voted in the previous epoch and didn't use reset in the new epoch yet 
+and the attacker will be able to merge into token voted in the previous epoch and didn't use reset in the new epoch yet
 
-because merge() only require   ```   require(!voted[_from], "voting in progress for token");   ```
+because merge() only require `require(!voted[_from], "voting in progress for token");`
 
-it doesn't require the merged "to" token to be not voted .. only the first token 
+it doesn't require the merged "to" token to be not voted .. only the first token
 
-the attacker now could merge ID1 & ID2  to  ID3 
+the attacker now could merge ID1 & ID2 to ID3
 
-and use the reset function with the new total balance .. 
-and accrue flux even if the same IDs tokens balance accrued flux previously in the same epoch!
-
-
-
+and use the reset function with the new total balance .. and accrue flux even if the same IDs tokens balance accrued flux previously in the same epoch!
 
 ## Impact Details
 
-the suitable in-scope impact is **Unauthorized minting of NFTs**
-because this will enable an attacker to gain infinitive FLUX by repeating this tricky scenario  
-
+the suitable in-scope impact is **Unauthorized minting of NFTs** because this will enable an attacker to gain infinitive FLUX by repeating this tricky scenario
 
 ## Proof of concept
-``` 
+
+```
 
 /*
        █▀█  ▀▄▀  █▀▄▀█ █ █▄░█ ▄▀█ ▀█▀ █▀█ 
@@ -288,13 +281,7 @@ uint256 maxDuration = ((block.timestamp + MAXTIME) / ONE_WEEK) * ONE_WEEK;
 }
 ```
 
-
-
-
 #### the result should be :
-
-
-
 
 ```
 Ran 2 tests for src/test/poc.t.sol:MyTest

@@ -1,5 +1,4 @@
-
-# incorrect lidoLockedETH value can block full redeeming of puffETH in vault 
+# 28689 - \[SC - Medium] incorrect lidoLockedETH value can block full re...
 
 Submitted on Feb 24th 2024 at 00:39:16 UTC by @MahdiKarimi for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,33 +11,29 @@ Report severity: Medium
 Target: https://etherscan.io/address/0xd9a442856c234a39a81a089c06451ebaa4306a72
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
+
 since the claimed withdrawal amount from Lido is lower than the requested amount ( and lidoLockedETH ), it creates a situation in which lidoLockedETH is increased over time and leading to over-calculation of the vault share price.
 
 ## Vulnerability Details
-In most cases stETH is always cheaper than ETH, when a withdrawal request is initiated, the requested withdrawal amount is added to lidoLockedETH and claim withdrawal would subtract the claimed amount from lidoLockedETH, however since the claim amount is less than the requested withdrawal, so lidoLockedETH won't be cleared, lidoLockedETH is increased over time and since it's used to calculate total assets it would lead to over calculation of vault shares (puffETH), and would block full redeeming of vault shares since total assets > balance ( assuming there is no stake in eigen layer or withdraw queue ). 
-## Impact Details
-It has two impacts : 
-since lidoLockedETH would increase over time with each withdrawal request it can effect contract calculations. 
-1 - full redeeming of puffETH gets blocked 
-2 - over calculation of total assets  which inflates share price without backup reserve
 
+In most cases stETH is always cheaper than ETH, when a withdrawal request is initiated, the requested withdrawal amount is added to lidoLockedETH and claim withdrawal would subtract the claimed amount from lidoLockedETH, however since the claim amount is less than the requested withdrawal, so lidoLockedETH won't be cleared, lidoLockedETH is increased over time and since it's used to calculate total assets it would lead to over calculation of vault shares (puffETH), and would block full redeeming of vault shares since total assets > balance ( assuming there is no stake in eigen layer or withdraw queue ).
+
+## Impact Details
+
+It has two impacts : since lidoLockedETH would increase over time with each withdrawal request it can effect contract calculations. 1 - full redeeming of puffETH gets blocked 2 - over calculation of total assets which inflates share price without backup reserve
 
 ## References
-Scenario : 
-1 - Alice deposits 10 ETH and receives 10 puffETH (considering she is the only depositor ) 
-2 - 10 ETH is staked on lido and after a time we have 11 stETH balance in the vault 
-3 - a withdraw request is initiated and 11 stETH is added to LidoLockedETH 
-4 - The lido withdrawal request is claimed and 10.999 ETH will be added to the contract balance and gets subtracted from LidoLockedETH 
-5 - now total assets = 10.999 ETH + 0.0001 lidoLockedETH = 11 ETH but contract balance is 10.999 ETH 
-6 - now if Alice decides to withdraw 10 puffETh, 10 vault shares = 11 ETH 
-7 - since contact doesn't have 11 ETH balance it can't fully repay Alice so she needs to redeem lower shares. 
 
+Scenario : 1 - Alice deposits 10 ETH and receives 10 puffETH (considering she is the only depositor ) 2 - 10 ETH is staked on lido and after a time we have 11 stETH balance in the vault 3 - a withdraw request is initiated and 11 stETH is added to LidoLockedETH 4 - The lido withdrawal request is claimed and 10.999 ETH will be added to the contract balance and gets subtracted from LidoLockedETH 5 - now total assets = 10.999 ETH + 0.0001 lidoLockedETH = 11 ETH but contract balance is 10.999 ETH 6 - now if Alice decides to withdraw 10 puffETh, 10 vault shares = 11 ETH 7 - since contact doesn't have 11 ETH balance it can't fully repay Alice so she needs to redeem lower shares.
 
 ## Proof of Concept
+
 ```
 function test_lido_withdrawal_lidoLockedETH()
         public

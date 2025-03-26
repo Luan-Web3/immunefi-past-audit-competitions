@@ -1,5 +1,4 @@
-
-# Incorrect accounting of `totalVoting` leads to permanent freeze of funds in Bribe contract and incorrect bribe distribution.
+# 31520 - \[SC - Critical] Incorrect accounting of totalVoting leads to pe...
 
 Submitted on May 21st 2024 at 00:33:37 UTC by @hulkvision for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,19 +11,21 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
 
 Impacts:
-- Permanent freezing of funds
+
+* Permanent freezing of funds
 
 ## Description
+
 ## Brief/Intro
+
 Incorrect accounting of `totalVoting` leads to permanent freeze of funds in Bribe contract and incorrect bribe distribution.
 
 ## Vulnerability Details
 
-In `Voter.sol` In an epoch user can vote by calling `vote` function or poke by calling `poke` function if user has already voted in that epoch or previous epoch. 
-User is also allowed to call `poke` function multiple times in an epoch, calling `poke` function multiple times does not changes the vote and does not inflate voting power. 
-When vote or poke is called in an epoch, user becomes eligible for claiming bribes in next epoch. When user calls `vote` or `poke` function two external calls are made to bribe contract `withdraw` and `deposit` functions respectively . when voting power is zero call to `withdraw` function is skipped.
+In `Voter.sol` In an epoch user can vote by calling `vote` function or poke by calling `poke` function if user has already voted in that epoch or previous epoch. User is also allowed to call `poke` function multiple times in an epoch, calling `poke` function multiple times does not changes the vote and does not inflate voting power. When vote or poke is called in an epoch, user becomes eligible for claiming bribes in next epoch. When user calls `vote` or `poke` function two external calls are made to bribe contract `withdraw` and `deposit` functions respectively . when voting power is zero call to `withdraw` function is skipped.
 
 In `Bribe.sol`
+
 ```solidity
 function deposit(uint256 amount, uint256 tokenId) external {
         require(msg.sender == voter);
@@ -41,9 +42,11 @@ function deposit(uint256 amount, uint256 tokenId) external {
         emit Deposit(msg.sender, tokenId, amount);
     }
 ```
+
 When `deposit` is called these state variables `totalSupply`,`balanceOf[tokenId]` and `totalVoting` are updated with voting power of user.
 
 In `Bribe.sol`
+
 ```
 function withdraw(uint256 amount, uint256 tokenId) external {
         require(msg.sender == voter);
@@ -57,6 +60,7 @@ function withdraw(uint256 amount, uint256 tokenId) external {
         emit Withdraw(msg.sender, tokenId, amount);
     }
 ```
+
 But when `withdraw` is called only `totalSupply` and `balanceOf[tokenId]` state variables are updated.
 
 ```
@@ -79,29 +83,29 @@ function earned(address token, uint256 tokenId) public view returns (uint256) {
 
 The issue is when poke is called by a user multiple times `totalVoting` is inflated which causes incorrect calculation of bribe reward for all the participating users.
 
-  > The POC steps are as follows
+> The POC steps are as follows
+
 * User A and User B(BlackHat) create two token with same amount and maxLock enabled.
 * In Epoch 1 user A votes in `Voter.sol` contract by calling `vote` function .
-* User B (BlackHat) votes  in `Voter.sol` contract by calling `vote` function
+* User B (BlackHat) votes in `Voter.sol` contract by calling `vote` function
 * User B calls `poke` function multiple times from `Voter.sol` contract and inflating `totalVoting` variable of Bribe contract.
-* Epoch 2 starts and now both user claims their bribes but because of BlackHat   both user gets incorrect bribes less than what they should have gotten , they should have received  half of total token balance of Bribe contract each.
+* Epoch 2 starts and now both user claims their bribes but because of BlackHat both user gets incorrect bribes less than what they should have gotten , they should have received half of total token balance of Bribe contract each.
 * The bribe contract is left with remaining token balance which cannot be claimed later.
 
-
 ## Impact Details
+
 * The vulnerability leads to incorrect bribe distribution , all voter receives less bribe reward than they should have received.
 * The remaining bribe reward is forever locked in the bribe contract.
 * Funds are lost for protocol and participating users.
 
 ## References
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L303-329
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L221-280
 
-
+https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L303-329 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L221-280
 
 ## Proof of Concept
-* Add this test to `src/test/Voting.t.sol` and run with
-`forge test --mt testPocBribeAccountingErrorwithPoke  --rpc-url $RPC_URL -vvvv`
+
+* Add this test to `src/test/Voting.t.sol` and run with `forge test --mt testPocBribeAccountingErrorwithPoke --rpc-url $RPC_URL -vvvv`
+
 ```solidity
     function testPocBribeAccountingErrorwithPoke() public {
 

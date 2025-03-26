@@ -1,5 +1,4 @@
-
-# initiateETHWithdrawalsFromLido decreases totalAssets()
+# 29060 - \[SC - Medium] initiateETHWithdrawalsFromLido decreases totalA...
 
 Submitted on Mar 6th 2024 at 02:04:33 UTC by @OxDEADBEEF for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,25 +11,26 @@ Report severity: Medium
 Target: https://etherscan.io/address/0xd9a442856c234a39a81a089c06451ebaa4306a72
 
 Impacts:
-- Permanent freezing of funds
+
+* Permanent freezing of funds
 
 ## Description
+
 ## Brief/Intro
 
 When a user deposits stETH into the PufferVault - he will receive shares based on the total assets the vault holds.
 
-The assets amount calculation adds all the floating eth values that are deposited into other platforms for yield and current stETH and eth balance. 
+The assets amount calculation adds all the floating eth values that are deposited into other platforms for yield and current stETH and eth balance.
 
-When an operator calls `initiateETHWithdrawalsFromLido` - the vault transfers stETH to LIDO and increases an internal counter (`lidoLockedETH`). 
+When an operator calls `initiateETHWithdrawalsFromLido` - the vault transfers stETH to LIDO and increases an internal counter (`lidoLockedETH`).
 
 However - the amount transferred and the amount the counter is increment can be different.
 
 ## Vulnerability Details
 
-The main issue is with how `stETH` balance is calculated. 
-There is a known 1-2 wei corner case (https://docs.lido.fi/guides/lido-tokens-integration-guide/#1-2-wei-corner-case) which impacts the exact number of tokens moved.
+The main issue is with how `stETH` balance is calculated. There is a known 1-2 wei corner case (https://docs.lido.fi/guides/lido-tokens-integration-guide/#1-2-wei-corner-case) which impacts the exact number of tokens moved.
 
-Therefore when `initiateETHWithdrawalsFromLido` is called  `lidoLockedETH` can be incremented to a higher value then the actual amount of `stETH` moved.
+Therefore when `initiateETHWithdrawalsFromLido` is called `lidoLockedETH` can be incremented to a higher value then the actual amount of `stETH` moved.
 
 ```solidity
     function initiateETHWithdrawalsFromLido(uint256[] calldata amounts)
@@ -57,13 +57,12 @@ Therefore when `initiateETHWithdrawalsFromLido` is called  `lidoLockedETH` can b
         return requestIds;
     }
 ```
+
 ## Impact Details
 
 the call to `initiateETHWithdrawalsFromLido` will decrease totalAssets().
 
 Depositors that deposit before `initiateETHWithdrawalsFromLido` will receive more shares then depositors that deposit after `initiateETHWithdrawalsFromLido`
-
-
 
 ## Proof of Concept
 

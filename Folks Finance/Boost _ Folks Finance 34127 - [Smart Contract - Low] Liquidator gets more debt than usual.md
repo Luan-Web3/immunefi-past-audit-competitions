@@ -1,5 +1,4 @@
-
-# Liquidator gets more debt than usual
+# Boost \_ Folks Finance 34127 - \[Smart Contract - Low] Liquidator gets more debt than usual
 
 Submitted on Mon Aug 05 2024 19:22:47 GMT-0400 (Atlantic Standard Time) by @Nyksx for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,13 +11,17 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0xc1FBF54B25816B60ADF322d8A1eaCA37D9A50317
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Brief/Intro
+
 Liquidator gets more borrow balance because of the liquidaton bonus.
 
 ## Vulnerability Details
+
 In the liquidation process, the calcLiquidationAmounts function calculates the borrow amount to repay and the collateral amount to seize based on the violator's liquidity.
 
 When the seizeUnderlyingCollateralAmount is greater than the violatorUnderlingCollateralBalance, the function calculates the repayBorrowAmount again with the updated seizeUnderlyingCollateralAmount.
@@ -35,26 +38,25 @@ if (seizeUnderlyingCollateralAmount > violatorUnderlingCollateralBalance) {
                 ); 
             }
 ```
-The problem is that when recalculating the repayBorrowAmount, the function uses a liquidation bonus. This can cause liquidators to take on more debt than usual, and because of that liquidators may not liquidate loans. 
 
-For example, the violator has 1 ETH collateral and 1000 USDC borrow.
-(Let's assume 1 ETH 500$)
+The problem is that when recalculating the repayBorrowAmount, the function uses a liquidation bonus. This can cause liquidators to take on more debt than usual, and because of that liquidators may not liquidate loans.
 
-In this example, if the liquidator liquidates the violator, the liquidator gets 1 ETH, which is equal to $500$, and also gets 520 USDC debt, which means the liquidator is at a loss.
-(liquidatorBonus: 0.04e4
-500e6 * (1e4 + 0.04e4) / 1e4 = 520e6
-) 
+For example, the violator has 1 ETH collateral and 1000 USDC borrow. (Let's assume 1 ETH 500$)
+
+In this example, if the liquidator liquidates the violator, the liquidator gets 1 ETH, which is equal to $500$, and also gets 520 USDC debt, which means the liquidator is at a loss. (liquidatorBonus: 0.04e4 500e6 \* (1e4 + 0.04e4) / 1e4 = 520e6 )
 
 But if the liquidation bonus is not used when the seizeUnderlyingCollateralAmount is greater than the violatorUnderlingCollateralBalance, Liquidators do not lose anything.
+
 ## Impact Details
+
 Liquidators won't liquidate loans in these situations, which can lead to more bad debt for the protocol.
 
 ## References
 
-
-        
 ## Proof of concept
+
 ## Proof of Concept
+
 LoanManager.test.ts
 
 ```

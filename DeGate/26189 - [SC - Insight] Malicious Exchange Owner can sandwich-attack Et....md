@@ -1,5 +1,4 @@
-
-# Malicious Exchange Owner can sandwich-attack Ether deposits to steal arbitrarily large user funds
+# 26189 - \[SC - Insight] Malicious Exchange Owner can sandwich-attack Et...
 
 Submitted on Nov 28th 2023 at 00:54:00 UTC by @peterm for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,47 +11,56 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x9C07A72177c5A05410cA338823e790876E79D73B#code
 
 Impacts:
-- Theft of funds from the Default Deposit Contract that requires malicious actions from the DeGate Operator.
+
+* Theft of funds from the Default Deposit Contract that requires malicious actions from the DeGate Operator.
 
 ## Description
+
 ## Bug Description
+
 Because there is no value limit on deposit fees on the ExchangeV3 contract and because adjusting these fees has no rate-limit, a malicious exchange owner can front-run users who have their `msg.value` set higher than `amount` on Ether deposits. This difference in value could be due to user mistake, or a malicious front-end.
 
 Normally a user who deposits Ether with `msg.value` greater than `amount` will simply be refunded the difference (assuming no deposit fee), however a malicious exchange owner can steal this value for themselves instead of user refund or revert.
 
 A malicious owner can scan the mempool for any Ether deposit transaction where `msg.value` is greater than `amount`. The amount `x = msg.value - amount` can be directly stolen by the malicious owner by a sandwich attack:
 
-- Spot victim transaction and front-run
-- Temporarily set deposit fee equal to `msg.value - amount`
-- Front-run user victim deposits `amount` instead of intended `msg.value`
-- Malicious owner withdraws difference stolen and sets fee back to normal
+* Spot victim transaction and front-run
+* Temporarily set deposit fee equal to `msg.value - amount`
+* Front-run user victim deposits `amount` instead of intended `msg.value`
+* Malicious owner withdraws difference stolen and sets fee back to normal
 
 ## Impact
+
 Users who interact with a malicious front-end or just mistakenly set `amount` less than `msg.value` in Ether deposits can have the arbitrarily large difference between these two stolen by a malicious exchange owner. This sandwich attack is trivial for a malicious owner to execute, at very little cost and potentially great profit. The financial impact is unbounded to the upside and can go undetected for a long period of time (given the deposit fees can be toggled between `[0, unbounded]` with no rate-limit).
 
 ## Risk Breakdown
-Difficulty to Exploit: Easy
-Weakness: No value limit or rate-limit on deposit fee
-CVSS2 Score: 8
+
+Difficulty to Exploit: Easy Weakness: No value limit or rate-limit on deposit fee CVSS2 Score: 8
 
 ## Recommendation
+
 Add hard-limit to deposit fee to bound attack vector or otherwise rate-limit how often/fast the deposit fee can be changed by owner.
 
 ## Reference
+
 Contracts in scope, Foundry
 
 ## Proof of concept
+
 1. Create empty Foundry project:
+
 ```shell
 forge init
 ```
 
 2. Start local anvil fork of mainnet:
+
 ```shell
 anvil --fork-url <mainnet rpc url>
 ```
 
 3. Add the following test suite instead of template:
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.20;
@@ -150,11 +158,13 @@ contract PoC is Test {
 ```
 
 4. Run the following forge test:
+
 ```shell
 forge test --match-test testMaliciousOwnerFrontrunUsers  --fork-url http://127.0.0.1:8545 -vv --via-ir
 ```
 
 5. Output is:
+
 ```txt
 Running 1 test for test/Counter.t.sol:PoC
 [32m[PASS][0m testMaliciousOwnerFrontrunUsers() (gas: 276125)

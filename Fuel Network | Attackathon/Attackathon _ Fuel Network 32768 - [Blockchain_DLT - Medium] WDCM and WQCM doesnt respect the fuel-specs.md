@@ -1,5 +1,4 @@
-
-# `WDCM` and `WQCM` doesn't respect the fuel-specs
+# Attackathon \_ Fuel Network 32768 - \[Blockchain\_DLT - Medium] WDCM and WQCM doesnt respect the fuel-s
 
 Submitted on Tue Jul 02 2024 01:29:30 GMT-0400 (Atlantic Standard Time) by @jasonxiale for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,14 +11,19 @@ Report severity: Medium
 Target: https://github.com/FuelLabs/fuel-vm/tree/0e46d324da460f2db8bcef51920fb9246ac2143b
 
 Impacts:
-- A bug in the respective layer 0/1/2 network code that results in unintended smart contract behavior with no concrete funds at direct risk
+
+* A bug in the respective layer 0/1/2 network code that results in unintended smart contract behavior with no concrete funds at direct risk
 
 ## Description
+
 ## Brief/Intro
+
 According to the fuel-specs, both [WDCM](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#wdcm-128-bit-integer-comparison) and [WQCM](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#wqcm-256-bit-integer-comparison) should clears $of and $err registers, but those two instruction don't clear these regs.
 
 ## Vulnerability Details
-I will take WDCM as example: In [WDCM](https://github.com/FuelLabs/fuel-vm/blob/0e46d324da460f2db8bcef51920fb9246ac2143b/fuel-vm/src/interpreter/executors/instruction.rs#L196-L202), self.alu_wideint_cmp_u256 will be called, and self.alu_wideint_cmp_u256 is defined as a [macro](https://github.com/FuelLabs/fuel-vm/blob/0e46d324da460f2db8bcef51920fb9246ac2143b/fuel-vm/src/interpreter/alu/wideint.rs#L71-L95)
+
+I will take WDCM as example: In [WDCM](https://github.com/FuelLabs/fuel-vm/blob/0e46d324da460f2db8bcef51920fb9246ac2143b/fuel-vm/src/interpreter/executors/instruction.rs#L196-L202), self.alu\_wideint\_cmp\_u256 will be called, and self.alu\_wideint\_cmp\_u256 is defined as a [macro](https://github.com/FuelLabs/fuel-vm/blob/0e46d324da460f2db8bcef51920fb9246ac2143b/fuel-vm/src/interpreter/alu/wideint.rs#L71-L95)
+
 ```rust
  73                 pub(crate) fn [<alu_wideint_cmp_ $t:lower>](
  74                     &mut self,
@@ -51,22 +55,25 @@ I will take WDCM as example: In [WDCM](https://github.com/FuelLabs/fuel-vm/blob/
 As above code shows, only $pc is increased, both $err and $of are not cleared.
 
 ## Impact Details
+
 Quoting from [reg spec](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#semantics)
+
 > $err is used to store `Error codes for particular operations.`
 
-If there are instructions after WDCM that check if $err is zero, and if the $err is not zero, the code flow will end early, the tx logic will be incorrect.
-For example, the pseudocode like:
+If there are instructions after WDCM that check if $err is zero, and if the $err is not zero, the code flow will end early, the tx logic will be incorrect. For example, the pseudocode like:
+
 1. $err is set by instructions like div, with `UNSAFEMATH`
 2. `WDCM` is executed
 3. $err is checked to see if its value is ZERO, if not, revert/return the tx logic
 
-
 ## References
+
 Add any relevant links to documentation or code
 
-        
 ## Proof of concept
+
 ## Proof of Concept
+
 please add the following code in `fuel-vm/src/tests/wideint.rs` and run `cargo test tests::wideint::cmp_u128_one -- --nocapture`
 
 ```bash
@@ -84,7 +91,7 @@ err: 1
 test tests::wideint::cmp_u128_one ... ok
 ```
 
-As we can see from above, err is __1__, which means $err reg isn't cleared after `WDCM`
+As we can see from above, err is **1**, which means $err reg isn't cleared after `WDCM`
 
 ```diff
 diff --git a/fuel-vm/src/tests/wideint.rs b/fuel-vm/src/tests/wideint.rs

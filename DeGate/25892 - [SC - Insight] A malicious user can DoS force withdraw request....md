@@ -1,5 +1,4 @@
-
-# A malicious user can DoS force withdraw request for any legitimate user
+# 25892 - \[SC - Insight] A malicious user can DoS force withdraw request...
 
 Submitted on Nov 20th 2023 at 22:59:01 UTC by @CanYeRest298751 for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,28 +11,31 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x9C07A72177c5A05410cA338823e790876E79D73B#code
 
 Impacts:
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
 ## Description
+
 ## Bug Description
+
 A malicious user can request a `forceWithdraw` request on behalf of another `accountID`. This is correctly handled by the prover, and the request will be invalidated when processed by the operator. However in the meantime, the user with the account `accountID` cannot request a forceWithdraw, since only one `forceWithdraw` can be requested at a time.
 
 ## Impact
-A malicious user can prevent a legitimate one to request `forceWithdraw` for her funds. Thereby denying the access to funds if operator is also malicious.
-This can be used to keep big accounts inside the platform, and is a big centralization risk 
+
+A malicious user can prevent a legitimate one to request `forceWithdraw` for her funds. Thereby denying the access to funds if operator is also malicious. This can be used to keep big accounts inside the platform, and is a big centralization risk
 
 ## Risk Breakdown
-Difficulty to Exploit: Easy
-Weakness:
-CVSS2 Score:
+
+Difficulty to Exploit: Easy Weakness: CVSS2 Score:
 
 ## Recommendation
+
 Also include the `from` variable in the mapping to check if forceWithdraw has been requested, since `from` can be invalid at request time.
 
 ## References
 
-
 ## Proof of concept
+
 import as a test in a forge project and run `forge test -vvvv`
 
 ```

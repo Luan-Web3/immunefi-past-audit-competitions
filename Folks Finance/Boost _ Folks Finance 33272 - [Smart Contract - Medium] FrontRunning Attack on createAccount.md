@@ -1,5 +1,4 @@
-
-# FrontRunning Attack on createAccount
+# Boost \_ Folks Finance 33272 - \[Smart Contract - Medium] FrontRunning Attack on createAccount
 
 Submitted on Tue Jul 16 2024 18:19:37 GMT-0400 (Atlantic Standard Time) by @cryptoticky for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,27 +11,30 @@ Report severity: Medium
 Target: https://sepolia.etherscan.io/address/0x16Eecb8CeB2CE4Ec542634d7525191dfce587C85
 
 Impacts:
-- Unbounded gas consumption
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Unbounded gas consumption
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
 ## Description
+
 ## Brief/Intro
+
 An attacker can cause a user's message to fail by creating an account with the same accountId while the createAccount message is in transit through the bridge. As a result, the user loses the gas fees incurred for the transaction and the additional gas fees used for the bridge.
 
 ## Vulnerability Details
-AccountId is not validated in any format in SpokeCommon.createAccount and AccountManager.createAccount.
-AccountId is any value created by user.
-So attacker can copy the account id from the Ethereum network's transaction history and use it to create an account on the HubChain (Avalanche network).
-This is possible because there is a delay while the message through the bridge.
+
+AccountId is not validated in any format in SpokeCommon.createAccount and AccountManager.createAccount. AccountId is any value created by user. So attacker can copy the account id from the Ethereum network's transaction history and use it to create an account on the HubChain (Avalanche network). This is possible because there is a delay while the message through the bridge.
 
 ## Impact Details
+
 Gas costs on the Ethereum network are significantly higher than on the Avalanche network. While an attacker may incur less than $0.1 in costs to carry out the attack, the user could suffer losses between $5 and $10.
 
 ## Recommendation
+
 It is advisable to set the accountId as the hash value of the userAddress and nonce.
 
-        
 ## Proof of concept
+
 ## Proof of Concept
 
 ```

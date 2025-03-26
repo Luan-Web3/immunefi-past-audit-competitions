@@ -1,5 +1,4 @@
-
-# Lack of Access control in poke() function allows  in unlimited minting of flux token
+# 31375 - \[SC - Critical] Lack of Access control in poke function allows ...
 
 Submitted on May 17th 2024 at 17:45:04 UTC by @hulkvision for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,18 +11,21 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- A user can mint unlimited flux token breaking the invariant `A user should never be able to claim more rewards than they have earned`
+
+* A user can mint unlimited flux token breaking the invariant `A user should never be able to claim more rewards than they have earned`
 
 ## Description
+
 ## Brief/Intro
-Lack of Access control in `poke()` function allows unlimited accrual of flux token thus breaking assumed invariants set by the team. 
+
+Lack of Access control in `poke()` function allows unlimited accrual of flux token thus breaking assumed invariants set by the team.
 
 ## Vulnerability Details
-In `Voter.sol` users can perform action like vote, reset or poke , when these actions are performed an external call to `FluxToken.sol` `accrueFlux` function is called which accrue unclaimed flux for a given veALCX . While `vote` and `reset` function had modifier called `onlyNewEpoch`  which prevented calling `accrueFlux` function multiple times in an epoch. 
-`poke` function was also calling `accrueFlux` function but in this function no access control modifier `onlyNewEpoch` was  used which allowed this function to be called multiple time in an epoch.
 
+In `Voter.sol` users can perform action like vote, reset or poke , when these actions are performed an external call to `FluxToken.sol` `accrueFlux` function is called which accrue unclaimed flux for a given veALCX . While `vote` and `reset` function had modifier called `onlyNewEpoch` which prevented calling `accrueFlux` function multiple times in an epoch. `poke` function was also calling `accrueFlux` function but in this function no access control modifier `onlyNewEpoch` was used which allowed this function to be called multiple time in an epoch.
 
 In `Voter.sol`
+
 ```solidity
 function poke(uint256 _tokenId) public {
     //...//
@@ -37,16 +39,20 @@ function _vote(uint256 _tokenId, address[] memory _poolVote, uint256[] memory _w
 ```
 
 ## Impact Details
-* This vulnerability is breaking a  invariant set by the team , as a user can accrue unlimited flux, they can use the accrued  flux to boost their voting power each epoch thus getting more voting power than they should have.
-> A user should never be able to vote with more power than they have 
-* A user  can mint unlimited flux token and can unlock their escrowed position at any time they want even before then are supposed to unlock or can sell those flux token in the marketplace
+
+* This vulnerability is breaking a invariant set by the team , as a user can accrue unlimited flux, they can use the accrued flux to boost their voting power each epoch thus getting more voting power than they should have.
+
+> A user should never be able to vote with more power than they have
+
+* A user can mint unlimited flux token and can unlock their escrowed position at any time they want even before then are supposed to unlock or can sell those flux token in the marketplace
 * Due to unlimited supply of flux token the value of flux token will drop significantly.
 
 ## References
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L195-211
-https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L423
+
+https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L195-211 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Voter.sol#L423
 
 ## Possible fix
+
 ```diff
 + bool public hasPoked; // create a state variable
 function poke(uint256 _tokenId) public {
@@ -67,11 +73,10 @@ function _vote(uint256 _tokenId, address[] memory _poolVote, uint256[] memory _w
 }
 ```
 
-
-
 ## Proof of Concept
-* Add this function to `src/test/Voting.t.sol` and run the test 
-`forge test --mt testPocAccrueFluxMultipleTimes  --rpc-url $RPC_URL -vvvv`
+
+* Add this function to `src/test/Voting.t.sol` and run the test `forge test --mt testPocAccrueFluxMultipleTimes --rpc-url $RPC_URL -vvvv`
+
 ```
 function testPocAccrueFluxMultipleTimes() public {
         uint256 tokenId = createVeAlcx(admin, TOKEN_1, MAXTIME, true);

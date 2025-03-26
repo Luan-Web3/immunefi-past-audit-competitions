@@ -1,5 +1,4 @@
-
-# Actual amount of stETH deposited is less than the specified amount parameter to be deposited
+# 29099 - \[SC - Insight] Actual amount of stETH deposited is less than t...
 
 Submitted on Mar 7th 2024 at 02:56:41 UTC by @kaysoft for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,18 +11,21 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x7276925e42f9c4054afa2fad80fa79520c453d6a
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
+
 Due to stETH's [1-2 corner case](https://docs.lido.fi/guides/lido-tokens-integration-guide/#1-2-wei-corner-case) the actual amount transfered from user is when the `depositStETH()` function is less than the specified amount in the parameter.
 
- 
-
 ## Vulnerability Details
-In the function below, `permitData.amount` of `stETH` is transfered from the `msg.sender` to the the `PufferDepositor` contract. The issue is that the actual amount transferred  from msg.sender to the contract is less than the specified `permitData.amount`.
+
+In the function below, `permitData.amount` of `stETH` is transfered from the `msg.sender` to the the `PufferDepositor` contract. The issue is that the actual amount transferred from msg.sender to the contract is less than the specified `permitData.amount`.
 
 The reason for this is described in [1-2 wei stETH corner case](https://docs.lido.fi/guides/lido-tokens-integration-guide/#1-2-wei-corner-case)
+
 ```
 File: PufferDeposit.sol
 function depositStETH(Permit calldata permitData) external restricted returns (uint256 pufETHAmount) {
@@ -43,38 +45,38 @@ function depositStETH(Permit calldata permitData) external restricted returns (u
     }
 ```
 
-For example is you specify `permitData.amount` as `1000000000000000000001` the actual amount that will be pulled from the user is `1000000000000000000000`. 
+For example is you specify `permitData.amount` as `1000000000000000000001` the actual amount that will be pulled from the user is `1000000000000000000000`.
 
 This leaves 1 wei of stETH that is not pulled from msg.sender.
 
 Why this is an issue is that there are 2 transfers:
+
 1. First from msg.sender to the `PufferDepositor` contract
 2. And secondly from the `PufferDepositor` to the PufferVault contract.
 
 1 wei of stETH difference may seem small but the [doc](https://docs.lido.fi/guides/lido-tokens-integration-guide/#1-2-wei-corner-case) further stated that:
 
->The same thing can actually happen at any transfer or deposit transaction. >In the future, when the stETH/share rate will be greater, the error can >become a bit bigger.
+> The same thing can actually happen at any transfer or deposit transaction. >In the future, when the stETH/share rate will be greater, the error can >become a bit bigger.
 
 ## Impact Details
+
 Possible Denial of service due to transfer amount difference.
 
-
 ## Recommendation
-Short Term: 
-Consider using the `transferShares()` function to transfer stETH as recommended by [Lido docs](https://docs.lido.fi/guides/lido-tokens-integration-guide/#1-2-wei-corner-case)
 
-Long Term:
-Instead of `stEth`, consider integration the non-rebasable value-accruing counterpart `wstETH` as recommeded by the [Lido docs](https://docs.lido.fi/guides/lido-tokens-integration-guide/#wsteth)
+Short Term: Consider using the `transferShares()` function to transfer stETH as recommended by [Lido docs](https://docs.lido.fi/guides/lido-tokens-integration-guide/#1-2-wei-corner-case)
+
+Long Term: Instead of `stEth`, consider integration the non-rebasable value-accruing counterpart `wstETH` as recommeded by the [Lido docs](https://docs.lido.fi/guides/lido-tokens-integration-guide/#wsteth)
 
 ## References
+
 https://docs.lido.fi/guides/lido-tokens-integration-guide/#1-2-wei-corner-case
 
-
-
 ## Proof of Concept
+
 1. Create a file in the `test/integration` directory and name is `POC.t.sol`
 2. Copy and paste the code below to the new file: `POC.t.sol`.
-3. Run `forge test --match-path test/Integration/POC.t.sol  -vvv`
+3. Run `forge test --match-path test/Integration/POC.t.sol -vvv`
 4. The test should fail with some `logs` of amounts
 5. This fails because `depositAmount` is not equal to `actualAmount`.
 

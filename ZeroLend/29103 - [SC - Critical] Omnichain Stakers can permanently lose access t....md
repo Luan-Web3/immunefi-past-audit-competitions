@@ -1,5 +1,4 @@
-
-# Omnichain Stakers can permanently lose access to their funds
+# 29103 - \[SC - Critical] Omnichain Stakers can permanently lose access t...
 
 Submitted on Mar 7th 2024 at 03:49:33 UTC by @Trust for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,28 +11,32 @@ Report severity: Critical
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Permanent freezing of funds
+
+* Permanent freezing of funds
 
 ## Description
+
 ## Brief/Intro
-The OmnichainStaking faciliates staking of Locker NFTs. When Locker NFT arrive to Staking, it credits the beneficiary with equivalent `lpPower` or `tokenPower` for the `power` of the sent NFT.
-Users can later redeem their NFTs by passing their tokenID to `unstakeLP()` or `unstakeToken()`. They will burn the power minted, and get access back to their NFT.
+
+The OmnichainStaking faciliates staking of Locker NFTs. When Locker NFT arrive to Staking, it credits the beneficiary with equivalent `lpPower` or `tokenPower` for the `power` of the sent NFT. Users can later redeem their NFTs by passing their tokenID to `unstakeLP()` or `unstakeToken()`. They will burn the power minted, and get access back to their NFT.
 
 ## Vulnerability Details
+
 The following two facts result in potential permanent freezing of tokens
-- There is a lack of check that the tokenID being unstaked is the original one deposited by the user.
-- A user with power P will not be able to fetch other user's tokenID unless they have a lower P. This means the lowest P will not be able to fetch any tokenID as compensation.
+
+* There is a lack of check that the tokenID being unstaked is the original one deposited by the user.
+* A user with power P will not be able to fetch other user's tokenID unless they have a lower P. This means the lowest P will not be able to fetch any tokenID as compensation.
 
 Another critical impact is that someone may cash out another user's tokenID to get premature access to their funds. The two tokens may have identical power, but one is almost expired while the other just started.
 
-
 ## Impact Details
-Users can permanently lose access to their underlying Zero tokens. 
 
-
+Users can permanently lose access to their underlying Zero tokens.
 
 ## Proof of Concept
+
 The single file POC below shows staker s2 has access to s1's NFT. Simple deploy the contract and run `showBrokenStaking()` of BaseLockerPOC.
+
 ```
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;

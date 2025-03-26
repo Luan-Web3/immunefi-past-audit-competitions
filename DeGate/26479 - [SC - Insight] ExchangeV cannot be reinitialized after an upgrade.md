@@ -1,5 +1,4 @@
-
-# ExchangeV3 cannot be reinitialized after an upgrade
+# 26479 - \[SC - Insight] ExchangeV cannot be reinitialized after an upgrade
 
 Submitted on Dec 3rd 2023 at 21:46:50 UTC by @Paludo0x for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,12 +11,14 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x9C07A72177c5A05410cA338823e790876E79D73B#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Bug Description
-In the event of an upgrade of the ExchangeV3 contract via a proxy, it is not possible to re-initialize the new implementation. 
-This is because the initialize function uses the `onlyWhenUninitialized` modifier. 
+
+In the event of an upgrade of the ExchangeV3 contract via a proxy, it is not possible to re-initialize the new implementation. This is because the initialize function uses the `onlyWhenUninitialized` modifier.
 
 ```
     modifier onlyWhenUninitialized()
@@ -30,27 +31,26 @@ This is because the initialize function uses the `onlyWhenUninitialized` modifie
     }
 
 ```
-Before initialization the modifier checks that `address(state.loopring) == address(0) && state.merkleRoot == bytes32(0);` otherwise, the contract has already been initialized. 
-That means that by calling `initialization` after an upgrade of **ExchangeV3** with a contract that uses the same storage slots, the call will fail because these two storage slots values are not empty.
- 
-The `initialize` function updates the owner of the implementation, the **Loopring** contract address, the **Merkle trees roots** and the **DOMAIN_SEPARATOR**.
+
+Before initialization the modifier checks that `address(state.loopring) == address(0) && state.merkleRoot == bytes32(0);` otherwise, the contract has already been initialized. That means that by calling `initialization` after an upgrade of **ExchangeV3** with a contract that uses the same storage slots, the call will fail because these two storage slots values are not empty.
+
+The `initialize` function updates the owner of the implementation, the **Loopring** contract address, the **Merkle trees roots** and the **DOMAIN\_SEPARATOR**.
+
 1. Regarding the owner, there are already dedicated functions in the claimable contract that allows address to be updated.
 2. As for Loopring, I cannot find dedicated functions for updating the address. Therefore it is not changeable in case an updated is needed after ExchangeV3 update. This issue should be easily overcome by implementing dedicated functions as per owner updating.
 3. Regarding the Merkle roots, I am not able to say whether a reinitialization is ever required after an upgrade, I can't figure out a scenario that the merkle roots need to be reinizialaized.
-4. As for the DOMAIN_SEPARATOR, this depends on the version of the implementation and there are no functions that allow modifying it. DOMAIN_SEPARATOR hash should be updated once the **Exchange** contract is updated. 
+4. As for the DOMAIN\_SEPARATOR, this depends on the version of the implementation and there are no functions that allow modifying it. DOMAIN\_SEPARATOR hash should be updated once the **Exchange** contract is updated.
 
 ## Impact
+
 I believe this is an issuewith a medium impact because the upgradability of ExchangeV3 through a proxy was recently implemented, but this is limited by the bug just described.
 
 ## Recommendation
-Suggestion is that modifier `onlyWhenUninitialized` checks the **INITIALIZED** state by means of a variable `initialized`. 
-This variable could be reset by a function callable by proxy owner only before calling the initialize function and of course in the same transaction to avoid initialization front running.
-Alternative is to implement a permissioned functions to upgrade **DOMAIN_SEPARATOR** hash value (and **Loopring** contract address)
 
-
-
+Suggestion is that modifier `onlyWhenUninitialized` checks the **INITIALIZED** state by means of a variable `initialized`. This variable could be reset by a function callable by proxy owner only before calling the initialize function and of course in the same transaction to avoid initialization front running. Alternative is to implement a permissioned functions to upgrade **DOMAIN\_SEPARATOR** hash value (and **Loopring** contract address)
 
 ## Proof of concept
+
 The purpose of the Proof of Concept (POC) is to demonstrate whether the initialize function works or not if it is called after an upgrade of implementation contract.
 
 ```

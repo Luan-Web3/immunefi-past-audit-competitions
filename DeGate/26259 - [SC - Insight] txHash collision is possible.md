@@ -1,5 +1,4 @@
-
-# `txHash` collision is possible
+# 26259 - \[SC - Insight] txHash collision is possible
 
 Submitted on Nov 29th 2023 at 18:23:56 UTC by @Madalad for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,27 +11,31 @@ Report severity: Insight
 Target: https://etherscan.io/address/0xf2991507952d9594e71a44a54fb19f3109d213a5#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Bug Description
+
 If the admin wishes to make the same call more than once with the same eta, this is impossible due to the fact they would share the same `txHash`. The admin would have to queue the transaction, wait at least 45 days, execute it, then queue it again and wait a further 45 days.
 
 ## Impact
+
 Queueing two similar transactions causes the first to be overwritten, potentially deceiving the admin and/or users.
 
 ## Risk Breakdown
-Difficulty to Exploit: Easy
-Weakness:
-CVSS2 Score:
+
+Difficulty to Exploit: Easy Weakness: CVSS2 Score:
 
 ## Recommendation
+
 While it is possible to workaround this issue fairly simply, e.g. altering the `eta` to differ by one second, implementing some form of nonce in the hash calculation is conventional and provides the least amount of confusion/inconvenience.
 
 ## References
 
-
 ## Proof of concept
+
 See below the proof of concept in the form of a foundry test file.
 
 ```solidity
@@ -85,6 +88,7 @@ contract CollisionTest is Test {
 ```
 
 Output:
+
 ```
 Running 1 test for test/timelock/PoCs/Collision.t.sol:CollisionTest
 [PASS] testCollision() (gas: 57777)

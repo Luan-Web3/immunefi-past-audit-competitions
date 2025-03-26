@@ -1,5 +1,4 @@
-
-# depositData.interestRate is not correct
+# Boost \_ Folks Finance 33533 - \[Smart Contract - Critical] depositDatainterestRate is not correct
 
 Submitted on Mon Jul 22 2024 16:32:36 GMT-0400 (Atlantic Standard Time) by @ethprotector for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,14 +11,17 @@ Report severity: Critical
 Target: https://testnet.snowtrace.io/address/0x96e957bF63B5361C5A2F45C97C46B8090f2745C2
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
+
 ## Brief/Intro
-In `HubPoolLogic.updateInterestRates` function
-`depositData.interestRate` is not calculated correctly.
+
+In `HubPoolLogic.updateInterestRates` function `depositData.interestRate` is not calculated correctly.
 
 ## Vulnerability Details
+
 ```
 function updateInterestRates(HubPoolState.PoolData storage poolData) internal {
         HubPoolState.PoolAmountDataCache memory poolAmountDataCache = getPoolAmountDataCache(poolData);
@@ -78,18 +80,18 @@ uint256 depositInterestRate = MathUtils.calcDepositInterestRate(
             poolData.feeData.retentionRate
         );
 ```
-poolData.variableBorrowData.interestRate is not current value.
-That is for last updates.
-So if the attacker uses flashloan, when the tx is complated, depositData.interestRate is changed.
+
+poolData.variableBorrowData.interestRate is not current value. That is for last updates. So if the attacker uses flashloan, when the tx is complated, depositData.interestRate is changed.
 
 ## Impact Details
-- Attacker can make the depositData.interestRate more than actual value.
-So when users (and the attacker) can get more collateral tokens than expected and others loss the money.
 
-- Attacker can make the depositData.interestRate smaller than actual value and liquidate some loans.
+* Attacker can make the depositData.interestRate more than actual value. So when users (and the attacker) can get more collateral tokens than expected and others loss the money.
+* Attacker can make the depositData.interestRate smaller than actual value and liquidate some loans.
 
 ## To fix it
+
 use `variableBorrowInterestRate` instead of `poolData.variableBorrowData.interestRate,`
+
 ```
 uint256 depositInterestRate = MathUtils.calcDepositInterestRate(
             utilisationRatio,
@@ -102,12 +104,15 @@ uint256 depositInterestRate = MathUtils.calcDepositInterestRate(
             poolData.feeData.retentionRate
         );
 ```
-        
+
 ## Proof of concept
+
 ## Proof of Concept
+
 In this PoC, I am going to show the first case (make the value more).
 
 ### Create `oracleManager.sol`
+
 ```
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
@@ -121,10 +126,11 @@ contract OracleManager is IOracleManager{
     }
 }
 ```
-After a year, the contract is break in the testnet.
-So I used fixed price oracleManager for this test.
+
+After a year, the contract is break in the testnet. So I used fixed price oracleManager for this test.
 
 ### Create `FlashloanContract.sol`
+
 ```
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
@@ -426,6 +432,7 @@ contract FolksFinance is PoC {
 ```
 
 ### Output
+
 ```
 Logs:
   depositData.interestRate 9233535301192619

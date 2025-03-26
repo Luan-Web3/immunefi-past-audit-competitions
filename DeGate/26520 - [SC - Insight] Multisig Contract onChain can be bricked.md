@@ -1,5 +1,4 @@
-
-# Multisig Contract onChain can be bricked
+# 26520 - \[SC - Insight] Multisig Contract onChain can be bricked
 
 Submitted on Dec 4th 2023 at 12:26:36 UTC by @copperscrewer for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
@@ -12,44 +11,44 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x2028834B2c0A36A918c10937EeA71BE4f932da52#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Bug Description
+
 The Multisig contract, on a series of actions can be bricked. As it cannot execute anymore actions and fails to satisfy an Invariant ( length of owners is equal or greater than required signatures)
 
 ## Impact
+
 Multisig cannot execute any transaction, cannot add, remove Owners as the contract becomes unusable
 
 ## Risk Breakdown
-Difficulty to Exploit: Easy
-Weakness:
-CVSS2 Score:6.9
+
+Difficulty to Exploit: Easy Weakness: CVSS2 Score:6.9
 
 ## Recommendation
+
 Add a notNull modifier to replaceOwner
 
-
-
 ## Proof of concept
-steps to reproduce
-As we are testing the Gnosis Multisig, that works independently to the L2 contracts, we can test just this contract while replicating the Owners and required state.
+
+steps to reproduce As we are testing the Gnosis Multisig, that works independently to the L2 contracts, we can test just this contract while replicating the Owners and required state.
 
 Create an empty folder.
 
 npx hardhat init
 
-
 To create a project with directories like contracts, test
 
-copy paste contract code from https://etherscan.io/address/0x2028834B2c0A36A918c10937EeA71BE4f932da52?utm_source=immunefi#code
+copy paste contract code from https://etherscan.io/address/0x2028834B2c0A36A918c10937EeA71BE4f932da52?utm\_source=immunefi#code
 
 to gnosis.sol in contracts folder
 
-change compiler version or directly paste this in module exports in hardhat config.js This is done since the Gnosis multisig contract uses an old version of solidity  solidity: { compilers: [ { version: "0.4.22", }, { version: "0.8.19", settings: {}, }, ], },
+change compiler version or directly paste this in module exports in hardhat config.js This is done since the Gnosis multisig contract uses an old version of solidity solidity: { compilers: \[ { version: "0.4.22", }, { version: "0.8.19", settings: {}, }, ], },
 
-paste following test script in test folder and run 
-npx hardhat test test/gnosis.js\
+paste following test script in test folder and run npx hardhat test test/gnosis.js\\
 
 ```
 const {ethers} = require("hardhat")

@@ -1,5 +1,6 @@
+# 28660 - \[SC - Insight] pufETHsrcTimelock\_setDelay - L State constant M...
 
-# `pufETH/src/Timelock::_setDelay()` - L256: State constant `MINIMUM_DELAY` is incorrectly treated as an invalid minimum delay value, as can be seen here where `newDelay <= MINIMUM_DELAY` is used instead of `newDelay < MINIMUM_DELAY`.
+## `pufETH/src/Timelock::_setDelay()` - L256: State constant `MINIMUM_DELAY` is incorrectly treated as an invalid minimum delay value, as can be seen here where `newDelay <= MINIMUM_DELAY` is used instead of `newDelay < MINIMUM_DELAY`.
 
 Submitted on Feb 23rd 2024 at 08:47:31 UTC by @OxSCSamurai for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,21 +13,26 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x3C28B7c7Ba1A1f55c9Ce66b263B33B204f2126eA#code
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
 
-## Description
-## Brief/Intro
+* Contract fails to deliver promised returns, but doesn't lose value
 
-# Summary:
-- The hardcoded constant value for timelock minimum delay is *incorrectly* treated as an *invalid* timelock delay value.
+### Description
 
-# Impact in scope: 
-- Contract fails to deliver promised returns, but doesn't lose value
-- In this context the promised "return" is related to the hardcoded minimum timelock delay value of `7 days`.
+### Brief/Intro
 
-## Vulnerability Details
+## Summary:
+
+* The hardcoded constant value for timelock minimum delay is _incorrectly_ treated as an _invalid_ timelock delay value.
+
+## Impact in scope:
+
+* Contract fails to deliver promised returns, but doesn't lose value
+* In this context the promised "return" is related to the hardcoded minimum timelock delay value of `7 days`.
+
+### Vulnerability Details
 
 Buggy function:
+
 ```solidity
     function _setDelay(uint256 newDelay) internal {
         if (newDelay <= MINIMUM_DELAY) {
@@ -36,30 +42,33 @@ Buggy function:
         delay = newDelay;
     }
 ```
+
 If for any reason it's not clear yet what the bug is, let me clarify for you:
+
 ```solidity
     /**
      * @notice Minimum delay enforced by the contract
      */
     uint256 public constant MINIMUM_DELAY = 7 days;
 ```
-It should be clear enough from the above that the value for `MINIMUM_DELAY` is a VALID minimum value for the timelock delay period.
-Therefore the `<=` in `newDelay <= MINIMUM_DELAY` should be `<`, because a `newDelay` value of 7 days should be 100% valid, but anything LESS than 7 days is INVALID, therefore we should use `newDelay < MINIMUM_DELAY` instead, so that it translates to all values of `newDelay` where `newDelay >= MINIMUM_DELAY`, are all VALID values.
 
-## Impact Details
+It should be clear enough from the above that the value for `MINIMUM_DELAY` is a VALID minimum value for the timelock delay period. Therefore the `<=` in `newDelay <= MINIMUM_DELAY` should be `<`, because a `newDelay` value of 7 days should be 100% valid, but anything LESS than 7 days is INVALID, therefore we should use `newDelay < MINIMUM_DELAY` instead, so that it translates to all values of `newDelay` where `newDelay >= MINIMUM_DELAY`, are all VALID values.
 
-- Can never change the timelock delay value to the hardcoded VALID minimum delay period of 7 days as is intended protocol functionality because the buggy function was called during constructor/deployment time, as well as called whenever they want to change the delay again after deployment.
-- The lowest possible value(in days) for the timelock delay is 8 days, contrary to the "promised" minimum delay of 7 days.
-- Investors/VCs, regulators, users, protocol DAO/governance, multisigs, external integrating projects and external devs will all expect the timelock's minimum possible delay to be 7 days(as promised by the hardcoded `MINIMUM_DELAY` constant), but this is not the case. Anyone who plans/strategizes or builds according to this expectation, will be disappointed to learn that a delay of 7 days is not possible.
-- it seems there might have been some confusion during protocol tests and test setup and especially during deployment contract setup & testing as to "weird" behaviour when a minimum delay of 7 days was selected, so the response was to modify it to `7 days + 1` in order to bypass the "weird"/revert behaviour... when in fact it was simply the bug in the internal `_setDelay()` function.
+### Impact Details
 
-# Recommendations:
+* Can never change the timelock delay value to the hardcoded VALID minimum delay period of 7 days as is intended protocol functionality because the buggy function was called during constructor/deployment time, as well as called whenever they want to change the delay again after deployment.
+* The lowest possible value(in days) for the timelock delay is 8 days, contrary to the "promised" minimum delay of 7 days.
+* Investors/VCs, regulators, users, protocol DAO/governance, multisigs, external integrating projects and external devs will all expect the timelock's minimum possible delay to be 7 days(as promised by the hardcoded `MINIMUM_DELAY` constant), but this is not the case. Anyone who plans/strategizes or builds according to this expectation, will be disappointed to learn that a delay of 7 days is not possible.
+* it seems there might have been some confusion during protocol tests and test setup and especially during deployment contract setup & testing as to "weird" behaviour when a minimum delay of 7 days was selected, so the response was to modify it to `7 days + 1` in order to bypass the "weird"/revert behaviour... when in fact it was simply the bug in the internal `_setDelay()` function.
 
-- Ensure that the hardcoded value of constant `MINIMUM_DELAY` is treated correctly throughout the codebase. Here correctly means that `7 days` timelock delay is still a valid value to be used in the protocol and that only anything strictly less than `7 days` is invalid.
-- Ensure that during tests setup & testing that assumptions are properly validated. It seems the intention here was to deploy with `7 days` as the initial timelock delay value, but your tests/deployment transactions reverted, due to this bug. The tests/deploy script was then modified to bypass this revert, by using a modified initial timelock delay value of `7 days + 1`. 
-- Correct understanding of minimum & maximum boundaries in terms of valid vs invalid values is crucial, and the implementation of this correct understanding must be consistently applied throughout the codebase.
+## Recommendations:
 
-# BUGFIX:
+* Ensure that the hardcoded value of constant `MINIMUM_DELAY` is treated correctly throughout the codebase. Here correctly means that `7 days` timelock delay is still a valid value to be used in the protocol and that only anything strictly less than `7 days` is invalid.
+* Ensure that during tests setup & testing that assumptions are properly validated. It seems the intention here was to deploy with `7 days` as the initial timelock delay value, but your tests/deployment transactions reverted, due to this bug. The tests/deploy script was then modified to bypass this revert, by using a modified initial timelock delay value of `7 days + 1`.
+* Correct understanding of minimum & maximum boundaries in terms of valid vs invalid values is crucial, and the implementation of this correct understanding must be consistently applied throughout the codebase.
+
+## BUGFIX:
+
 ```diff
     function _setDelay(uint256 newDelay) internal {
 -       if (newDelay <= MINIMUM_DELAY) {
@@ -71,25 +80,28 @@ Therefore the `<=` in `newDelay <= MINIMUM_DELAY` should be `<`, because a `newD
     }
 ```
 
-## References
+### References
 
-https://github.com/PufferFinance/pufETH/blob/3e76d02c7b54323d347c8277327d3877bab591f5/src/Timelock.sol#L255-L262
-https://github.com/PufferFinance/pufETH/blob/3e76d02c7b54323d347c8277327d3877bab591f5/src/Timelock.sol#L256
+https://github.com/PufferFinance/pufETH/blob/3e76d02c7b54323d347c8277327d3877bab591f5/src/Timelock.sol#L255-L262 https://github.com/PufferFinance/pufETH/blob/3e76d02c7b54323d347c8277327d3877bab591f5/src/Timelock.sol#L256
 
+### Proof of Concept
 
+## TEST1:
 
-## Proof of Concept
-
-# TEST1:
 https://github.com/PufferFinance/pufETH/blob/3a9f943b3a9133cb2ee9bbf8c39e876c4170ead7/script/DeployPuffETH.s.sol#L95
+
 ```solidity
 initialDelay: 7 days
 ```
+
 https://github.com/PufferFinance/pufETH/blob/3a9f943b3a9133cb2ee9bbf8c39e876c4170ead7/script/DeployPuffETH.s.sol#L190
+
 ```solidity
 uint256 delayInSeconds = 7 days;
 ```
-With the bug *not yet fixed*(`newDelay <= MINIMUM_DELAY`) and the protocol tests modified to use `7 days` instead of (`0` or `7 days + 1`) as per above code snippets, we get an `InvalidDelay` error/revert in the test results using forge command `ETH_RPC_URL=https://mainnet.infura.io/v3/YOUR_KEY forge test --contracts script/DeployPuffETH.s.sol -vvvvv`:
+
+With the bug _not yet fixed_(`newDelay <= MINIMUM_DELAY`) and the protocol tests modified to use `7 days` instead of (`0` or `7 days + 1`) as per above code snippets, we get an `InvalidDelay` error/revert in the test results using forge command `ETH_RPC_URL=https://mainnet.infura.io/v3/YOUR_KEY forge test --contracts script/DeployPuffETH.s.sol -vvvvv`:
+
 ```solidity
     ├─ [2801070] DeployPuffETH::run()
     │   ├─ [0] VM::startBroadcast(<pk>)
@@ -130,10 +142,13 @@ Encountered 1 failing test in test/unit/Timelock.t.sol:TimelockTest
 
 Encountered a total of 3 failing tests, 9 tests succeeded
 ```
-> Result: Function reverts & test fails. Timelock delay of `7 days` is *not accepted*.
 
-# TEST2:
-Same test as above, but now with the bug *fixed*(`newDelay < MINIMUM_DELAY`) and using a valid `7 days` for the timelock delay duration:
+> Result: Function reverts & test fails. Timelock delay of `7 days` is _not accepted_.
+
+## TEST2:
+
+Same test as above, but now with the bug _fixed_(`newDelay < MINIMUM_DELAY`) and using a valid `7 days` for the timelock delay duration:
+
 ```solidity
     ├─ [3539] PufferVault::totalAssets() [staticcall]
     │   ├─ [3155] PufferVaultImplementation::totalAssets() [delegatecall]
@@ -156,10 +171,13 @@ Test result: ok. 28 passed; 0 failed; 0 skipped; finished in 4.34s
 
 Ran 5 test suites in 10.91s: 73 tests passed, 0 failed, 0 skipped (73 total tests)
 ```
-> Result: Function does not revert & test passes. Timelock delay of `7 days` is *accepted*.
 
-# TEST3 (control test): 
-Same test as above with the bug *fixed*, but now using an invalid `6 days` for the timelock delay duration:
+> Result: Function does not revert & test passes. Timelock delay of `7 days` is _accepted_.
+
+## TEST3 (control test):
+
+Same test as above with the bug _fixed_, but now using an invalid `6 days` for the timelock delay duration:
+
 ```solidity
     ├─ [2801073] DeployPuffETH::run()
     │   ├─ [0] VM::startBroadcast(<pk>)
@@ -200,11 +218,15 @@ Encountered 1 failing test in test/unit/Timelock.t.sol:TimelockTest
 
 Encountered a total of 3 failing tests, 9 tests succeeded
 ```
-> Result: Function reverts & test fails. Timelock delay of `6 days` is *not accepted*.
+
+> Result: Function reverts & test fails. Timelock delay of `6 days` is _not accepted_.
 
 One final control test:
-# TEST4 (control test): 
-Same test as above with the bug *fixed*, but now using a valid `8 days` for the timelock delay duration:
+
+## TEST4 (control test):
+
+Same test as above with the bug _fixed_, but now using a valid `8 days` for the timelock delay duration:
+
 ```solidity
 [PASS] test_withdraw((address[4],uint256[4],uint256[4],int256),uint256,uint256) (runs: 256, μ: 2369, ~: 2369)
 Traces:
@@ -215,4 +237,5 @@ Test result: ok. 28 passed; 0 failed; 0 skipped; finished in 3.97s
 
 Ran 5 test suites in 11.91s: 73 tests passed, 0 failed, 0 skipped (73 total tests)
 ```
-> Result: Function does not revert & test passes. Timelock delay of `8 days` is *accepted*.
+
+> Result: Function does not revert & test passes. Timelock delay of `8 days` is _accepted_.

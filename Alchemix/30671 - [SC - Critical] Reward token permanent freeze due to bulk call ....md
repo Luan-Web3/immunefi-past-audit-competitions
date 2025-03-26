@@ -1,5 +1,4 @@
-
-# Reward token permanent freeze due to bulk call of Poke function
+# 30671 - \[SC - Critical] Reward token permanent freeze due to bulk call ...
 
 Submitted on May 4th 2024 at 00:49:59 UTC by @cryptoticky for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,15 +11,20 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
-- Permanent freezing of unclaimed yield
+
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+* Permanent freezing of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 The poke function facilitates users to vote with the same weight for each pool in each epoch easily. The problem is that this function does not use a onlyNewEpoch modifier. As a result, an attacker could potentially call this function hundreds of times within a single epoch, and the totalVoting of bribe contract does not accurately track such actions.
 
 ## Vulnerability Details
+
 Voting.poke function doesn't use onlyNewEpoch modifier
+
 ```
     /// @inheritdoc IVoter
     function poke(uint256 _tokenId) public {
@@ -42,7 +46,8 @@ Voting.poke function doesn't use onlyNewEpoch modifier
         _vote(_tokenId, _poolVote, _weights, _boost);
     }
 ```
-_vote function call _reset function and the _reset function call withdraw of Bribe contract.
+
+\_vote function call \_reset function and the \_reset function call withdraw of Bribe contract.
 
 ```
 /// @inheritdoc IBribe
@@ -74,10 +79,11 @@ _vote function call _reset function and the _reset function call withdraw of Bri
         emit Withdraw(msg.sender, tokenId, amount);
     }
 ```
-As you can see, in Bribe.withdraw function, totalVoting is not calcutated.
-In the end, totalVoting only keeps increasing.
+
+As you can see, in Bribe.withdraw function, totalVoting is not calcutated. In the end, totalVoting only keeps increasing.
 
 The totalVoting is used to calculate reward amount of a tokenId.
+
 ```
 /// @inheritdoc IBribe
     function earned(address token, uint256 tokenId) public view returns (uint256) {
@@ -141,13 +147,13 @@ The totalVoting is used to calculate reward amount of a tokenId.
         return reward;
     }
 ```
+
 ## Impact Details
-- Users end up receiving less rewards than what the actual voting results would entitle them to.
-- The remaining reward amount is locked forever.
+
+* Users end up receiving less rewards than what the actual voting results would entitle them to.
+* The remaining reward amount is locked forever.
 
 Unfortunately, the bribe contract does not have a function to withdraw this remaining amount.
-
-
 
 ## Proof of Concept
 

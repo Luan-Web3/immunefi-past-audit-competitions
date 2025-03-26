@@ -1,5 +1,6 @@
+# 29198 - \[SC - Medium] Griefing attack to cause the rewards of a user ...
 
-# Griefing attack to cause the rewards of a user to be locked and when users claim the reward after maturity date, user will suffer the penalty. 
+## Griefing attack to cause the rewards of a user to be locked and when users claim the reward after maturity date, user will suffer the penalty.
 
 Submitted on Mar 10th 2024 at 11:49:33 UTC by @perseverance for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,19 +13,20 @@ Report severity: Medium
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+### Description
 
 ## Description
-# Description
 
-Griefing attack to cause the rewards of a user to be locked and when users claim the reward after maturity date, user will suffer the penalty. 
+Griefing attack to cause the rewards of a user to be locked and when users claim the reward after maturity date, user will suffer the penalty.
 
+### Brief/Intro
 
-## Brief/Intro
+VestedZeroNFT is a NFT based contract to hold all the user vests. NFTs can be traded on secondary marketplaces like Opensea, can be split into smaller chunks to allow for smaller otc deals to happen in secondary markets.
 
-VestedZeroNFT is a NFT based contract to hold all the user vests. NFTs can be traded on secondary marketplaces like Opensea, can be split into smaller chunks to allow for smaller otc deals to happen in secondary markets. 
-
-When mint a NFT tokenIT for a user, the function mint() can be used 
+When mint a NFT tokenIT for a user, the function mint() can be used
 
 https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L63-L72
 
@@ -42,17 +44,18 @@ function mint(
 
 ```
 
-If the _hasPenalty is true, then when users claim, the the zero token of the ownerOf(id) is deducted and amount is toClaim
+If the \_hasPenalty is true, then when users claim, the the zero token of the ownerOf(id) is deducted and amount is toClaim
 
 https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L170-L171
+
 ```solidity
  uint256 _penalty = penalty(id);
 toClaim += lock.pending - _penalty;
 
 ```
 
-The _penalty is
-https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L207-L212 
+The \_penalty is https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L207-L212
+
 ```solidity
 /// @inheritdoc IVestedZeroNFT
     function penalty(uint256 tokenId) public view returns (uint256) {
@@ -63,7 +66,6 @@ https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT
     }
 
 ```
-
 
 https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L159-L198
 
@@ -110,10 +112,10 @@ function claim(
     }
 ```
 
-So the design of the protocol is, if users  claim after the maturity date (unlockDate + LinearDuration), then users can claim without the penalty. 
-This can be seen in the comment in line
+So the design of the protocol is, if users claim after the maturity date (unlockDate + LinearDuration), then users can claim without the penalty. This can be seen in the comment in line
 
-https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/RewardBase.sol#L86-L98 
+https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/RewardBase.sol#L86-L98
+
 ```
 if (token == zero) {
             // if the token is ZERO; then vest it linearly for 3 months with a pentalty for
@@ -131,9 +133,9 @@ if (token == zero) {
         } else token.safeTransfer(account, _reward);
 ```
 
-For a user that has aToken and varToken balance != 0, then when aTokenGauge and varToken gauge receive the reward, then the user also have some reward. 
+For a user that has aToken and varToken balance != 0, then when aTokenGauge and varToken gauge receive the reward, then the user also have some reward.
 
-The user can receive the reward by calling the getReward function. 
+The user can receive the reward by calling the getReward function.
 
 https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/RewardBase.sol#L78-L100
 
@@ -163,20 +165,18 @@ https://github.com/zerolend/governance/blob/main/contracts/voter/gauge/RewardBas
     } 
 ```
 
-So if the reward token is zero then the contract will transfer the zero token to ZeroVestedNFT contract to mint a NFT token for the user. But notice that when minting the NFT token, the _hasPenalty is true. 
+So if the reward token is zero then the contract will transfer the zero token to ZeroVestedNFT contract to mint a NFT token for the user. But notice that when minting the NFT token, the \_hasPenalty is true.
 
-The getReward is permissionless so anyone can call the getReward for another account. 
+The getReward is permissionless so anyone can call the getReward for another account.
 
-## Vulnerability Details
+### Vulnerability Details
 
-So if the zero rewards of a user is transfered to the ZeroVestedNFT, when claim after the LinearDuration time, the user still suffer the penalty for claimming. 
+So if the zero rewards of a user is transfered to the ZeroVestedNFT, when claim after the LinearDuration time, the user still suffer the penalty for claimming.
 
-The penalty amount is 50% of the pending reward. 
-The rootcause is because the penalty calculation does not take into account the linearDuration. 
-So the user always suffer the penalty that is 50% of the reward amount even the claim time is > unlockDate + LinearDuration 
+The penalty amount is 50% of the pending reward. The rootcause is because the penalty calculation does not take into account the linearDuration. So the user always suffer the penalty that is 50% of the reward amount even the claim time is > unlockDate + LinearDuration
 
-The _penalty is
-https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L207-L212 
+The \_penalty is https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L207-L212
+
 ```solidity
 /// @inheritdoc IVestedZeroNFT
     function penalty(uint256 tokenId) public view returns (uint256) {
@@ -188,19 +188,18 @@ https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT
 
 ```
 
+## Impacts
 
-# Impacts
-# About the severity assessment
+## About the severity assessment
 
-So the bug allow griefing attack that don't bring benefit to the hacker that cause damage to users. 
-So the Severity is Medium with Category: Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+So the bug allow griefing attack that don't bring benefit to the hacker that cause damage to users. So the Severity is Medium with Category: Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
-The bug root cause is that the penalty of ZeroVestedNFT amount calculation does not take into account the LinearDuration and unlockedDate. 
+The bug root cause is that the penalty of ZeroVestedNFT amount calculation does not take into account the LinearDuration and unlockedDate.
 
+## Proof of Concept
 
-# Proof of Concept
+Test code POC:
 
-Test code POC: 
 ```typescript
 it("Griefing attack to cause rewards of users to be locked", async function () {
     
@@ -296,18 +295,15 @@ it("Griefing attack to cause rewards of users to be locked", async function () {
   });
 ```
 
-In the above POC, to execute the attack, the hacker call the getReward for user1 and token is zero. 
-By doing so, the reward of user1 is locked with penalty. 
-
+In the above POC, to execute the attack, the hacker call the getReward for user1 and token is zero. By doing so, the reward of user1 is locked with penalty.
 
 ```typescript
 await aTokenGauge.connect(attacker).getReward(user1.address, zero);
 ```
 
-When user1 claim after LinearDuration is 3 months, user1 suffer the penalty and get only 50% of the reward. 
+When user1 claim after LinearDuration is 3 months, user1 suffer the penalty and get only 50% of the reward.
 
-Test log: 
-Full Test Log: https://drive.google.com/file/d/1xvXr5S4uS3m34nZgfiKVEprcTk7sEJAY/view?usp=sharing
+Test log: Full Test Log: https://drive.google.com/file/d/1xvXr5S4uS3m34nZgfiKVEprcTk7sEJAY/view?usp=sharing
 
 ```
 Create the pre-condition setup for the griefing attack
@@ -371,52 +367,51 @@ The unclaimed amount of the tokenID 0n
 
 ```
 
-Test Log explanation: 
+Test Log explanation:
 
-So Pre-condition: User1 has aToken balance != 0 and the rewards of user1 and zero token is != 0. 
+So Pre-condition: User1 has aToken balance != 0 and the rewards of user1 and zero token is != 0.
 
-In this POC, the reward amount of user 1 is: 20667989410000 
+In this POC, the reward amount of user 1 is: 20667989410000
 
-Now after the time 7776001 that is the time passed the LinearDuration of the tokenNFT of ZeroVestedNFT, the user1 claim the token, user1 still suffer the penalty amount. 
+Now after the time 7776001 that is the time passed the LinearDuration of the tokenNFT of ZeroVestedNFT, the user1 claim the token, user1 still suffer the penalty amount.
 
-After claim, the user1 get zero token amout: 10333994705000 
+After claim, the user1 get zero token amout: 10333994705000
 
-This amount is = 20667989410000 /2 so means that the zero token amount = 50% of the reward. 
+This amount is = 20667989410000 /2 so means that the zero token amount = 50% of the reward.
 
+To run the POC,
 
+Step 1: First clone the governance repository:
 
-To run the POC, 
-
-Step 1: 
-First clone the governance repository: 
 ```
 git clone https://github.com/zerolend/governance.git
 ```
 
-Step2: Apply Git patch file 
+Step2: Apply Git patch file
 
-Bug4_diff.patch link: 
+Bug4\_diff.patch link:
 
-https://drive.google.com/file/d/1tISgj7aXz0_Gy3f8MHheL0FxsTDcJ7sG/view?usp=sharing 
+https://drive.google.com/file/d/1tISgj7aXz0\_Gy3f8MHheL0FxsTDcJ7sG/view?usp=sharing
 
 Apply the Patch by Git command using Git bash shell
+
 ```bash
 git apply Bug4_diff.patch
 ```
 
-Step 3: Input .env variables 
+Step 3: Input .env variables
 
-cd to folder governance, To run the test, you need to 
-1. rename .env.example to .env 
-2. put the test Private_key to the variable 
+cd to folder governance, To run the test, you need to
+
+1. rename .env.example to .env
+2. put the test Private\_key to the variable
 
 ```
    WALLET_PRIVATE_KEY= 
    NODE_ENV == "test" 
 ```
 
-Step 4: Install and run test 
-Run command 
+Step 4: Install and run test Run command
 
 ```
 yarn install 

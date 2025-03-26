@@ -1,7 +1,6 @@
+# 25882 - \[SC - Insight] Freezing of funds from the Default Deposit Cont...
 
-# Freezing of funds from the Default Deposit Contract that requires malicious actions from the DeGate Operator.
-
-Submitted on Nov 20th 2023 at 22:25:24 UTC by @infosec_us_team for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
+Submitted on Nov 20th 2023 at 22:25:24 UTC by @infosec\_us\_team for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
 Report ID: #25882
 
@@ -12,13 +11,14 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x9C07A72177c5A05410cA338823e790876E79D73B#code
 
 Impacts:
-- Permanent freezing of funds from the Default Deposit Contract that requires malicious actions from the DeGate Operator.
+
+* Permanent freezing of funds from the Default Deposit Contract that requires malicious actions from the DeGate Operator.
 
 ## Description
 
 ## Background
 
-DeGate's guarantee self custody of their assets with the Exodus Mode and escaping censorship via forced withdrawals. 
+DeGate's guarantee self custody of their assets with the Exodus Mode and escaping censorship via forced withdrawals.
 
 The request must be served within a defined time period. If this does not happen, the system will halt regular operation and permit trustless withdrawal of funds.
 
@@ -35,9 +35,11 @@ In the "Permanent Fix" section of this report we'll share how adding 2 lines of 
 ## Attack vector
 
 In `ExchangeV3.sol` the `forceWithdraw(...)` function accepts an arbitrary `accountID` and will store the **forceWithdraw** request in:
+
 ```javascript
 S.pendingForcedWithdrawals[accountID][tokenID]
 ```
+
 The next time the function `forceWithdraw(...)` is called with the same `accountID` and `tokenID` will revert if the pending request has not been processed by the operator.
 
 Here's how this can be abused:
@@ -49,7 +51,9 @@ Here's how this can be abused:
 **Step 3-** The operator can now wait 14 days, and after that, include the pending forced withdraw in a block and submit it to L1 to prevent the exchange from entering a Exodus Mode.
 
 **Step 4-** Because the address of the owner for that `accountID` (the victim's address) is different from the address that initiated the pending forced withdraw (operator's address) the pending forced withdraw will be invalidated and removed from the storage:
-> Snippet of code extracted from *WithdrawTransaction.sol*, function `process(...)`, used in *ExchangeV3.sol* to process withdrawals.
+
+> Snippet of code extracted from _WithdrawTransaction.sol_, function `process(...)`, used in _ExchangeV3.sol_ to process withdrawals.
+
 ```javascript
 // withdrawType = 2: onchain valid forced withdrawals (owner and accountID match),
 if (withdrawal.withdrawalType == 2) {
@@ -76,13 +80,14 @@ DeGate's documentation explains that the reason any `accountID` is accepted, and
 
 There's an elegant and simple solution to know if `msg.sender` is the owner of the `accountID` or the Agent of the owner, leading to always generating valid `forceWithdraw` pending requests, and permanently stopping this function from being front-run.
 
-In the extraordinary event where a user its been censored and he wants to send a request to exit the exchange in a trustless, unstoppable manner, he can submit a *forcedWithdrawal* request with MerkleProof *(similar to what users already have to do in the `withdrawFromMerkleTree(...)` function)*, and `ExchangeV3.sol` will calculate the MerkleRoot using `msg.sender` as the value for the `merkleProof.accountLeaf.owner` variable.
+In the extraordinary event where a user its been censored and he wants to send a request to exit the exchange in a trustless, unstoppable manner, he can submit a _forcedWithdrawal_ request with MerkleProof _(similar to what users already have to do in the `withdrawFromMerkleTree(...)` function)_, and `ExchangeV3.sol` will calculate the MerkleRoot using `msg.sender` as the value for the `merkleProof.accountLeaf.owner` variable.
 
 Now, the only way the `forcedWithdrawal(...)` transaction can succeed, is if `msg.sender` is equal to the `owner` of the `accountID` or the Agent of the account.
 
 There's no way to maliciously bypass this check.
 
 This is an example in pseudo code for the sake of simplicity (we share the full code for the production-ready solution later on):
+
 ```solidity
 // Given a merkleProof "ExchangeData.MerkleProof calldata merkleProof;"
 // Replace the "owner" field in the merkle proof with the address of the msg.sender
@@ -115,9 +120,10 @@ return (calculatedRoot == merkleRoot);
 
 This can only succeed if the caller (`msg.sender`) passed the correct `accountID`.
 
-
 Now - examples aside - here's the final implementation for a `forceWithdraw(...)` function that is 100% trustless and censorship resistant:
+
 > In `ExchangeV3.sol`:
+
 ```solidity
 // Updated the name from "forceWithdraw(...)" to "forceWithdrawFromMerkleTree(...)"
 function forceWithdrawFromMerkleTree(
@@ -145,6 +151,7 @@ function forceWithdrawFromMerkleTree(
 ```
 
 > In the `ExchangeWithdrawals.sol` library:
+
 ```solidity
 function forceWithdrawFromMerkleTree(
     ExchangeData.State storage S,
@@ -207,11 +214,10 @@ function forceWithdrawFromMerkleTree(
 }
 ```
 
-
-
 ## Proof of concept
-A proof of concept demonstrating how a forced withdrawal requested from an incorrect owner will be ignored, is in the `testExchangeDepositWithdraw.ts` test file.
-Here's the test:
+
+A proof of concept demonstrating how a forced withdrawal requested from an incorrect owner will be ignored, is in the `testExchangeDepositWithdraw.ts` test file. Here's the test:
+
 ```javascript
 it("Forced withdrawal (incorrect owner)", async () => {
   await createExchange();

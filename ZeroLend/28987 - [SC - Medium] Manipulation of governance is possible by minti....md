@@ -1,5 +1,4 @@
-
-# Manipulation of governance is possible by minting to self
+# 28987 - \[SC - Medium] Manipulation of governance is possible by minti...
 
 Submitted on Mar 4th 2024 at 04:01:59 UTC by @dontonka for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,32 +11,37 @@ Report severity: Medium
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
+
+* Manipulation of governance voting result deviating from voted outcome and resulting in a direct change from intended effect of original results
 
 ## Description
+
 ## Brief/Intro
+
 VestedZeroNFT::mint is `accessible to anyone`, so anyone can mint a VestedNFT in the moment. This seems to be against the expected behavior as noted as follow by the `IVestedZeroNFT` interface and seems to warrant `Critical` vulnerability for the vote manipulation exploit this could allow.
+
 ```
 Mints a vesting nft for a user. This is a privileged function meant to only be called by a contract or a deployer
 ```
 
 ## Vulnerability Details
-As indicated, it's possible to mint to self and with no duration (linearDuration = 0 and cliffDuration = 0), which mean already all claimable, and then the attacker can transfer the NFT to the `StakingBonus contract` in order to boost his voting power right away. 
+
+As indicated, it's possible to mint to self and with no duration (linearDuration = 0 and cliffDuration = 0), which mean already all claimable, and then the attacker can transfer the NFT to the `StakingBonus contract` in order to boost his voting power right away.
 
 ## Impact Details
+
 Manipulation of governance is possible by minting to self a VestedNFT with no duration.
 
 ## References
+
 https://github.com/zerolend/governance/blob/main/contracts/vesting/VestedZeroNFT.sol#L63-L100
-
-
 
 ## Proof of Concept
 
-Add the following changes in `StakingBonus.test.ts` and run `npm test` command.
-The test proove the following:
-1) Can mint to self with no duration
-2) Boost in voting power confirmed
+Add the following changes in `StakingBonus.test.ts` and run `npm test` command. The test proove the following:
+
+1. Can mint to self with no duration
+2. Boost in voting power confirmed
 
 ```diff
      beforeEach(async () => {
@@ -67,7 +71,6 @@ The test proove the following:
        expect(await vest.lastTokenId()).to.equal(1);
      });
 ```
-
 
 ```
 -    it("should give a user a bonus if the bonus contract is well funded", async function () {

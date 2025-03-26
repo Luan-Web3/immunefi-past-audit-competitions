@@ -1,7 +1,6 @@
+# 30711 - \[SC - Low] The result of the AggregatorVInterface is not v...
 
-# The result of the AggregatorV3Interface is not validated for stale prices
-
-Submitted on May 5th 2024 at 14:39:56 UTC by @infosec_us_team for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
+Submitted on May 5th 2024 at 14:39:56 UTC by @infosec\_us\_team for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
 Report ID: #30711
 
@@ -12,11 +11,14 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardsDistributor.sol
 
 Impacts:
-- Protocol insolvency
+
+* Protocol insolvency
 
 ## Description
+
 ## Vulnerability Details
-The *RewardsDistributor* (`alchemix-v2-dao/src/RewardsDistributor.sol`) calculates the amount to compound based on the **alcxEthPrice**.
+
+The _RewardsDistributor_ (`alchemix-v2-dao/src/RewardsDistributor.sol`) calculates the amount to compound based on the **alcxEthPrice**.
 
 ```
 function amountToCompound(uint256 _alcxAmount) public view returns (uint256, uint256[] memory) {
@@ -38,29 +40,32 @@ function amountToCompound(uint256 _alcxAmount) public view returns (uint256, uin
     return (amount, normalizedWeights);
 }
 ```
+
 > Code snippet from https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardsDistributor.sol#L116-L133
 
 The variable "staleThreshold" inside the function `amountToCompound(..)` was hard-coded to 60 days to make running foundry tests that go forward in time easier. Still, if the smart contract is deployed with the hard-coded value, it will accept outdated prices for up to 60 days.
 
-> If there is a problem with chainlink starting a new round and finding consensus on the new value for the oracle (e.g. chainlink nodes abandon the oracle, chain congestion, vulnerability/attacks on the chainlink system) the ***RewardsDistributor* will continue using an outdated price for 60 days** (if oracles are unable to submit no new round is started).
+> If there is a problem with chainlink starting a new round and finding consensus on the new value for the oracle (e.g. chainlink nodes abandon the oracle, chain congestion, vulnerability/attacks on the chainlink system) the _**RewardsDistributor**_**&#x20;will continue using an outdated price for 60 days** (if oracles are unable to submit no new round is started).
 
-The *RewardsDistributor* is not a test file and is meant to be deployed.
+The _RewardsDistributor_ is not a test file and is meant to be deployed.
 
 We must audit all in-scope smart contracts as "ready to be deployed if no bugs are found", therefore, we have to report this as a bug.
 
 ### Recommendation
 
-**1-** Update the "*staleThreshold*" to 24 hours.
+**1-** Update the "_staleThreshold_" to 24 hours.
 
-**2-** Instead of hardcoding the "*staleThreshold*"  inside a function, make it a global variable that an admin can update by executing a permissioned function.
-> This allows the Alchemix team to develop a *RewardsDistributor* that is easy to run time-based tests on and can be safely deployed without any modification, removing the risk of forgetting to update "x value" inside the "function y" inside the "smart contract z" before deployment.
+**2-** Instead of hardcoding the "_staleThreshold_" inside a function, make it a global variable that an admin can update by executing a permissioned function.
+
+> This allows the Alchemix team to develop a _RewardsDistributor_ that is easy to run time-based tests on and can be safely deployed without any modification, removing the risk of forgetting to update "x value" inside the "function y" inside the "smart contract z" before deployment.
 
 ## Impact Details
+
 Using stale prices results in wrong calculations for the amount to compound, which can lead to loss of funds and insolvency.
 
 ## Severity
-The report is technically valid and bugs that affect the solvency of the protocol are of critical severity. Still, the prerequisite decreases the severity of this finding to medium.
 
+The report is technically valid and bugs that affect the solvency of the protocol are of critical severity. Still, the prerequisite decreases the severity of this finding to medium.
 
 ## Proof of Concept
 
@@ -69,6 +74,7 @@ The finding is straightforward to understand, but the boost's policy requires cr
 In the shell run: `chisel`
 
 Then paste this function and press enter:
+
 ```javascript
 
 function amountToCompound() public view returns (bool) {
@@ -89,5 +95,4 @@ function amountToCompound() public view returns (bool) {
 }
 ```
 
-Now call it by typing this and pressing enter:
-`amountToCompound() `
+Now call it by typing this and pressing enter: `amountToCompound()`

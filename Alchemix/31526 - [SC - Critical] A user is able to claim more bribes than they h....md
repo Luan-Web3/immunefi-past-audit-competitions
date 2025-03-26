@@ -1,5 +1,4 @@
-
-# A user is able to claim more bribes than they have earned
+# 31526 - \[SC - Critical] A user is able to claim more bribes than they h...
 
 Submitted on May 21st 2024 at 02:09:30 UTC by @hulkvision for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,18 +11,24 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
-- A user is be able to claim more bribes than they have earned
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+* A user is be able to claim more bribes than they have earned
 
 ## Description
+
 ## Brief/Intro
-A user is able to claim more bribes than they have earned by  claiming bribes for epochs they have not voted in. 
+
+A user is able to claim more bribes than they have earned by claiming bribes for epochs they have not voted in.
+
 ## Vulnerability Details
-A user can claim bribes in next epoch for epochs they have voted in and once they have claimed bribes for the previous epoch they should  not be able to claim bribes again without voting or poke. 
+
+A user can claim bribes in next epoch for epochs they have voted in and once they have claimed bribes for the previous epoch they should not be able to claim bribes again without voting or poke.
 
 The issue is when user claims the bribe reward for an epoch instead of balance of user getting reset, the balance of user remains unchanged and this allows user to claim bribe reward even for epochs they have not voted in.
 
 In `Bribe.sol`
+
 ```solidity
 function getRewardForOwner(uint256 tokenId, address[] memory tokens) external lock { 
         require(msg.sender == voter, "not voter");
@@ -44,28 +49,30 @@ function getRewardForOwner(uint256 tokenId, address[] memory tokens) external lo
         }
     }
 ```
+
 > Steps for Attack
+
 * User A and User B(BlackHat) create two tokenId with same amount and maxLock enabled.
 * In Epoch 1 Both User A and User B(BlackHat) votes by calling `vote` function in `Voter.sol` thus becoming eligible for claiming bribes in epoch 2.
-* In Epoch 2 Both User A and User B claims bribe and only user A votes in 
-  epoch 2 so only User A should become eligible for claiming bribe in epoch 3 .
+* In Epoch 2 Both User A and User B claims bribe and only user A votes in epoch 2 so only User A should become eligible for claiming bribe in epoch 3 .
 * In Epoch 3 User B claims bribe by calling `claimBribes` from `Voter.sol` here user B should not be able to claim bribe in epoch 3 because user B has already claimed bribe for voting in Epoch 1 in Epoch 2 and did not voted again in Epoch 3 but user B was able to claim bribe because of the vulnerability.
 
 ## Impact Details
-* One of the assumed invariant set by Team has been broken 
->A user should never be able to claim more bribes than they have earned
 
-* BlackHat can also prevent some users from claiming their share of bribe by  calling `claimBribes` before them and stealing their share of bribes.
+* One of the assumed invariant set by Team has been broken
+
+> A user should never be able to claim more bribes than they have earned
+
+* BlackHat can also prevent some users from claiming their share of bribe by calling `claimBribes` before them and stealing their share of bribes.
 
 ## References
+
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L283-300
 
-
-
 ## Proof of Concept
-* Add this test to `src/test/Voting.t.sol` and run with 
-`forge test --mt testPOCVoteOnceAndClaimBribes() --rpc-url $RPC_URL -vvvv
-`
+
+* Add this test to `src/test/Voting.t.sol` and run with `forge test --mt testPOCVoteOnceAndClaimBribes() --rpc-url $RPC_URL -vvvv`
+
 ```
 function testPOCVoteOnceAndClaimBribes() public {
         uint256 tokenId1 = createVeAlcx(admin, TOKEN_1, MAXTIME, true); // this user will be inconsistent in voting and claiming

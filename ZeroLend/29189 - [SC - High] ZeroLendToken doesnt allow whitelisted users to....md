@@ -1,5 +1,4 @@
-
-# ZeroLendToken doesn't allow whitelisted users to transfer
+# 29189 - \[SC - High] ZeroLendToken doesnt allow whitelisted users to...
 
 Submitted on Mar 10th 2024 at 01:34:08 UTC by @jovi for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,16 +11,20 @@ Report severity: High
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Temporary freezing of funds for at least 1 hour
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Temporary freezing of funds for at least 1 hour
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
 ## Description
+
 ## Brief/Intro
+
 The ZeroLendToken doesn't allow whitelisted users to transfer its ZERO tokens.
 
 ## Vulnerability Details
-When transferring erc20 tokens, the update internal function is called in order to change the balances held by both accounts involved. 
-The ZeroLendToken contract overrides this function implementation to ensure a couple of requirements are met before executing the virtual update function, as can be seen in the following code snippet:
+
+When transferring erc20 tokens, the update internal function is called in order to change the balances held by both accounts involved. The ZeroLendToken contract overrides this function implementation to ensure a couple of requirements are met before executing the virtual update function, as can be seen in the following code snippet:
+
 ```solidity
 function _update(
         address from,
@@ -34,8 +37,8 @@ function _update(
     }
 ```
 
-The issue lies at the second require statement, as it reverts if the from argument is whitelisted. This will make whitelisted users' transfers always revert.
-If the intent is to allow whitelisted users to be able to transfer while the contract is paused, the requirement statement should be implemented in such a way that does not block whitelisted users' calls.
+The issue lies at the second require statement, as it reverts if the from argument is whitelisted. This will make whitelisted users' transfers always revert. If the intent is to allow whitelisted users to be able to transfer while the contract is paused, the requirement statement should be implemented in such a way that does not block whitelisted users' calls.
+
 ```solidity
 function _update(
         address from,
@@ -49,16 +52,19 @@ function _update(
     ...
     }
 ```
+
 ## Impact Details
+
 Whitelisted users are never able to transfer their tokens.
+
 ## References
-update internal function implementation at the ZeroLendToken contract:
-[governance/contracts/ZeroLendToken.sol at a30d8bb825306dfae1ec5a5a47658df57fd1189b · zerolend/governance (github.com)](https://github.com/zerolend/governance/blob/a30d8bb825306dfae1ec5a5a47658df57fd1189b/contracts/ZeroLendToken.sol#L56C4-L64C6)
 
-
+update internal function implementation at the ZeroLendToken contract: [governance/contracts/ZeroLendToken.sol at a30d8bb825306dfae1ec5a5a47658df57fd1189b · zerolend/governance (github.com)](https://github.com/zerolend/governance/blob/a30d8bb825306dfae1ec5a5a47658df57fd1189b/contracts/ZeroLendToken.sol#L56C4-L64C6)
 
 ## Proof of concept
+
 Paste the following code snippet inside the test folder:
+
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
@@ -116,6 +122,7 @@ contract StakingBonusTest is StdInvariant, Test {
 Set up the ZeroLendToken. Whitelist a user. Give him some a balance. Try to transfer from him. Watch it fail.
 
 Run the test with the following command:
+
 ```shell
 forge test --match-test test_pocZeroLendToken -vvv
 ```

@@ -1,5 +1,4 @@
-
-# zeroLendToken is bricked to use for whitelisted users
+# 29145 - \[SC - High] zeroLendToken is bricked to use for whitelisted...
 
 Submitted on Mar 8th 2024 at 16:04:07 UTC by @oxumarkhatab for [Boost | ZeroLend](https://immunefi.com/bounty/zerolend-boost/)
 
@@ -12,15 +11,16 @@ Report severity: High
 Target: https://github.com/zerolend/governance
 
 Impacts:
-- Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
+
+* Griefing (e.g. no profit motive for an attacker, but damage to the users or the protocol)
 
 ## Description
-## Brief/Intro
-The protocol intends to only allow whitelisted users to use the zeroLend Token.
-While its current implementation successfully stops the blacklisted address,
-it altogether stops the whitelisted users to transfer their tokens or anything with the token that includes _update method to be called in its underlying execution.
 
-however, counter-intuitively,  the non-whitelisted people are allowed to interact with the token due to a logical flaw in the code.
+## Brief/Intro
+
+The protocol intends to only allow whitelisted users to use the zeroLend Token. While its current implementation successfully stops the blacklisted address, it altogether stops the whitelisted users to transfer their tokens or anything with the token that includes \_update method to be called in its underlying execution.
+
+however, counter-intuitively, the non-whitelisted people are allowed to interact with the token due to a logical flaw in the code.
 
 This will make users feel a loss of control of their NFTs.
 
@@ -30,9 +30,7 @@ Loss of protocol because there won't be enough activity on the platform and user
 
 ## Vulnerability Details
 
-The zeroLend Token is going to be the incentive mechanism for people contributing to the zeroLend ecosystem.
-It has this custom functionality of blacklisting and whitelisting addresses.
-When a person is whitelisted , and they behave maliciously , they are put into blacklist using 
+The zeroLend Token is going to be the incentive mechanism for people contributing to the zeroLend ecosystem. It has this custom functionality of blacklisting and whitelisting addresses. When a person is whitelisted , and they behave maliciously , they are put into blacklist using
 
 ```
 function toggleBlacklist(
@@ -42,7 +40,8 @@ function toggleBlacklist(
         blacklisted[who] = what;
     }
 ```
-And can become whitelisted using 
+
+And can become whitelisted using
 
 ```
    function toggleWhitelist(
@@ -60,15 +59,14 @@ Upon some kind of hack or some incident , the protocol also has the functionalit
         paused = what;
     }
 ```
-But where do we enforce these checks ?
-Before understanding that , let's understand stucture of code :
+
+But where do we enforce these checks ? Before understanding that , let's understand stucture of code :
 
 The protocol's zeroLendToken is an ERC20Permit standard token from openzeppelin that inherits from ERC20 .
 
-Which contains all the standard ERC20 functions .
-Among them most popular are _mint,_burn and transfer.
+Which contains all the standard ERC20 functions . Among them most popular are \_mint,\_burn and transfer.
 
-Now whenever a user does something with their tokens , inside the implementation of OZ ERC20 ,wer have an internal _update method that does update the internal mappings 
+Now whenever a user does something with their tokens , inside the implementation of OZ ERC20 ,wer have an internal \_update method that does update the internal mappings
 
 where it is used ?
 
@@ -91,10 +89,10 @@ where it is used ?
     }
 ```
 
-So you see update is used in the core functions , so anyone that is trying to send , mint or burn ERC20 Tokens, it has to go through _update method
+So you see update is used in the core functions , so anyone that is trying to send , mint or burn ERC20 Tokens, it has to go through \_update method
 
-what does _update does ? it just updates the internal accounting 
-based on passed parametrs
+what does \_update does ? it just updates the internal accounting based on passed parametrs
+
 ```
 function _update(address from, address to, uint256 value) internal virtual {
         if (from == address(0)) {
@@ -126,9 +124,10 @@ function _update(address from, address to, uint256 value) internal virtual {
         emit Transfer(from, to, value);
     }
 ```
-While you maybe familiar with _update of ERC20 , zeroLendToken does something cool.
 
-It overrides the parent's implementation (ERC20 _update) , add custom logic , and also uses the sweet battle-tested implementation of the parent ERC20 contract from OZ.
+While you maybe familiar with \_update of ERC20 , zeroLendToken does something cool.
+
+It overrides the parent's implementation (ERC20 \_update) , add custom logic , and also uses the sweet battle-tested implementation of the parent ERC20 contract from OZ.
 
 ```solidity
 
@@ -143,6 +142,7 @@ It overrides the parent's implementation (ERC20 _update) , add custom logic , an
     }
 
 ```
+
 It implements three checks.
 
 1. Addresses that are interacting with zeroLendToken are not blacklisted?
@@ -150,18 +150,16 @@ It implements three checks.
 `require(!blacklisted[from] && !blacklisted[to], "blacklisted");`
 
 2. Contract operation should not be paused
-- hence the first part of the second require 
 
-` require(!paused && , "paused");`
+* hence the first part of the second require
+
+`require(!paused && , "paused");`
 
 3. The person who is using the token is whitelisted
 
-`require( !whitelisted[from], "paused");`
-2 & 3 are combined as 
-` require(!paused && !whitelisted[from], "paused");  `
+`require( !whitelisted[from], "paused");` 2 & 3 are combined as `require(!paused && !whitelisted[from], "paused");`
 
-However, note the mistake here, instead of checking `whitelisted[from]` and letting the require pass , the protocol checks invalid negation ..
-`whitelisted[from]` , 
+However, note the mistake here, instead of checking `whitelisted[from]` and letting the require pass , the protocol checks invalid negation .. `whitelisted[from]` ,
 
 which means whitelisted users will not be able to make transactions as the source of the transaction .
 
@@ -171,22 +169,21 @@ This breaks the logic of the protocol to only allow the whitelisted users to use
 
 This will cause some serious issues if the attacker is creative.
 
-Although you would argue that i've not illustrated the impact will have , 
-but breaking the protocol logic can be itself an impact and Ryker will know it's impact more than we do because he would connect the dots looking forward to what disaster could this lead to.
+Although you would argue that i've not illustrated the impact will have , but breaking the protocol logic can be itself an impact and Ryker will know it's impact more than we do because he would connect the dots looking forward to what disaster could this lead to.
 
 ## Impact Details
-- Loss of user activity and functioning for protocol
-- Loss of NFTs for whitelisted users
-- UnAuthorized access of non-whitelisted addresses to the protocol
+
+* Loss of user activity and functioning for protocol
+* Loss of NFTs for whitelisted users
+* UnAuthorized access of non-whitelisted addresses to the protocol
 
 ## References
+
 see Poc for details
 
-
-
 ## Proof of Concept
-Here's a sample PoC that can be used to visualize the bricking of the token.
 
+Here's a sample PoC that can be used to visualize the bricking of the token.
 
 ```solidity
 

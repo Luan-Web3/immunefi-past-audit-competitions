@@ -1,7 +1,6 @@
+# Boost \_ Folks Finance 34158 - \[Smart Contract - Low] NodeManagersupportsInterface returns false for typeIERCinterfaceId
 
-# `NodeManager.supportsInterface` returns false for `type(IERC165).interfaceId`
-
-Submitted on Tue Aug 06 2024 03:48:31 GMT-0400 (Atlantic Standard Time) by @Ironside_Sec for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
+Submitted on Tue Aug 06 2024 03:48:31 GMT-0400 (Atlantic Standard Time) by @Ironside\_Sec for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
 Report ID: #34158
 
@@ -12,11 +11,14 @@ Report severity: Low
 Target: https://testnet.snowtrace.io/address/0xA758c321DF6Cd949A8E074B22362a4366DB1b725
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
-NodeManager supports only node manager interface but not erc 165. 
+
+NodeManager supports only node manager interface but not erc 165.
 
 ```diff
 NodeManager.sol
@@ -29,11 +31,10 @@ NodeManager.sol
 ```
 
 ## Vulnerability Details
-`NodeManager.supportsInterface` returns true if it is queried supports node manager interface, but returns false if queried erc165_Supported. All the support interface implemented contracts on Ethereum should support erc165 and if any extra interfaces like erc721, node manager available then they should be supported too.
 
-Look at the examples in the GitHub search on every contract implementing `.supportsInterface()`, they all have erc165 allowed and they also implement super.supportsInterface in || way to allow other supported interfaces (ex: erc165 in this case).
-https://github.com/search?q=path%3A*.sol+.supportsInterface&type=code
+`NodeManager.supportsInterface` returns true if it is queried supports node manager interface, but returns false if queried erc165\_Supported. All the support interface implemented contracts on Ethereum should support erc165 and if any extra interfaces like erc721, node manager available then they should be supported too.
 
+Look at the examples in the GitHub search on every contract implementing `.supportsInterface()`, they all have erc165 allowed and they also implement super.supportsInterface in || way to allow other supported interfaces (ex: erc165 in this case). https://github.com/search?q=path%3A\*.sol+.supportsInterface\&type=code
 
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/oracle/modules/NodeManager.sol#L52
 
@@ -67,25 +68,25 @@ Ran 1 test for test/Foundry.t.sol:PoC
 ```
 
 ## Impact Details
+
 No loss of funds, but anyone calling support interface might first call if it is erc165 compatabile, and it returns false in this case, so false might seem they will no further call if it supports node manager interface. It should return true for both erc165 and node manager interfaces
 
 ## References
+
 https://github.com/Folks-Finance/folks-finance-xchain-contracts/blob/fb92deccd27359ea4f0cf0bc41394c86448c7abb/contracts/oracle/modules/NodeManager.sol#L52
 
-https://github.com/search?q=path%3A*.sol+.supportsInterface&type=code
+https://github.com/search?q=path%3A\*.sol+.supportsInterface\&type=code
 
-
-        
 ## Proof of concept
+
 ## Proof of Concept
 
+for POC to work,
 
-
-for POC to work, 
-1. on `https://github.com/Folks-Finance/folks-finance-xchain-contracts` directory, do `forge i foundry-rs/forge-std --no-commit`, 
-2. then   add `ds-test/=node_modules/ds-test/` to `remappings.txt`, 
+1. on `https://github.com/Folks-Finance/folks-finance-xchain-contracts` directory, do `forge i foundry-rs/forge-std --no-commit`,
+2. then add `ds-test/=node_modules/ds-test/` to `remappings.txt`,
 3. then create a file `Foundry.t.sol` on test/ dirctory.
-4. Then run the poc with `forge t --mt testIssue -f https://rpc.ankr.com/avalanche_fuji   -vvvv`
+4. Then run the poc with `forge t --mt testIssue -f https://rpc.ankr.com/avalanche_fuji -vvvv`
 
 ```solidity
 // SPDX-License-Identifier: UNLICENSED

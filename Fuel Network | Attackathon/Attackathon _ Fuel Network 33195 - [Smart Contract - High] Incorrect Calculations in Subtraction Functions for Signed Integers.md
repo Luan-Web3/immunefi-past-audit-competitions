@@ -1,5 +1,6 @@
+# Attackathon \_ Fuel Network 33195 - \[Smart Contract - High] Incorrect Calculations in Subtraction Fun
 
-# Incorrect Calculations in Subtraction Functions for Signed Integers
+## Incorrect Calculations in Subtraction Functions for Signed Integers
 
 Submitted on Sat Jul 13 2024 22:57:56 GMT-0400 (Atlantic Standard Time) by @Blockian for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,19 +13,23 @@ Report severity: High
 Target: https://github.com/FuelLabs/sway-libs/tree/0f47d33d6e5da25f782fc117d4be15b7b12d291b
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
-- Incorrect math
 
-## Description
-# Fuel Network bug report
-## Incorrect Calculations in Subtraction Functions for Signed Integers
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+* Incorrect math
+
 ### Description
-The current implementation of the subtraction function in the `sway-libs` for signed integers is incorrect.
-This can lead to erroneous calculations, potentially causing critical vulnerabilities in projects built on the Fuel platform.
 
-## Root Cause
-The way the signed numbers work in sway is by taking the indent of the unsigned counterparts and anything above it is positive while anything below is negative, so for example:
-The u8 range is `0-255` and the indent is `128` so 128 becomes 0 and `5 == 133`, `-5 == 123` and so on.
+## Fuel Network bug report
+
+### Incorrect Calculations in Subtraction Functions for Signed Integers
+
+#### Description
+
+The current implementation of the subtraction function in the `sway-libs` for signed integers is incorrect. This can lead to erroneous calculations, potentially causing critical vulnerabilities in projects built on the Fuel platform.
+
+### Root Cause
+
+The way the signed numbers work in sway is by taking the indent of the unsigned counterparts and anything above it is positive while anything below is negative, so for example: The u8 range is `0-255` and the indent is `128` so 128 becomes 0 and `5 == 133`, `-5 == 123` and so on.
 
 So to generalize, for every `x` the I8 underlying value will be `x + 128`.
 
@@ -37,11 +42,13 @@ The mechanism for handling signed integers in Sway involves using an offset (ind
 In general terms, for any signed integer `x`, the underlying value is calculated as `x + indent`.
 
 A naive subtraction function might be written as:
+
 ```rs
 sub(a, b) => a - b => (a + indent) - (b + indent) => a - b
 ```
 
 This approach loses the indent offset. Therefore, the correct general function should be:
+
 ```rs
 sub(a, b) => a.underlying - b.underlyting + indent
 ```
@@ -49,6 +56,7 @@ sub(a, b) => a.underlying - b.underlyting + indent
 However, due to overflow and underflow issues, the operations need to be ordered correctly. This is what the Sway function attempts, but it still falls short. Ultimately, every calculation should follow the form `a.underlying - b.underlying + indent`, albeit with different order of operations.
 
 Examining the Sway implementation (using `I8` as an example, applicable to all signed integers):
+
 ```rs
 impl core::ops::Subtract for I8 { // should be of the form a.underlying - b.underlyting + 128
     /// Subtract a I8 from a I8. Panics of overflow.
@@ -84,29 +92,32 @@ impl core::ops::Subtract for I8 { // should be of the form a.underlying - b.unde
 }
 ```
 
-### Incorrect Calculations Identified
+#### Incorrect Calculations Identified
+
 1. When self.`underlying >= indent && other.underlying < indent`, the calculation is `a.underlying + b.underlying - 128`.
 2. When `self.underlying < indent && other.underlying < indent`, if `self.underlying < other.underlying`, the calculation is `b.underlying - a.underlying - 128`.
 3. When `self.underlying < indent && other.underlying < indent` and `self.underlying >= other.underlying`, the calculation is `a.underlying + b.underlying - 128`.
 
-## Impact
-This issue affects every implementation of signed integers in the Fuel ecosystem.
-Any project utilizing these implementations will encounter incorrect calculations.
+### Impact
+
+This issue affects every implementation of signed integers in the Fuel ecosystem. Any project utilizing these implementations will encounter incorrect calculations.
 
 In the crypto space, even minor errors, like off by one, can lead to substantial financial losses, underscoring the critical nature of this bug.
 
-## Proposed fix
+### Proposed fix
+
 Correct the erroneous branches in the subtraction functions to ensure they follow the format `a.underlying - b.underlying + indent`.
 
-        
-## Proof of concept
-# Proof of Concept
-Two proofs of concept are provided.
-The first is a simple demonstration to illustrate the issue, while the second is a more comprehensive example covering all possible branches for all signed integers.
+### Proof of concept
+
+## Proof of Concept
+
+Two proofs of concept are provided. The first is a simple demonstration to illustrate the issue, while the second is a more comprehensive example covering all possible branches for all signed integers.
 
 Run the POC's with `forc test`
 
 Simple Test:
+
 ```rs
 contract;
 
@@ -133,6 +144,7 @@ fn test_sub() {
 ```
 
 Long Test:
+
 ```rs
 contract;
 

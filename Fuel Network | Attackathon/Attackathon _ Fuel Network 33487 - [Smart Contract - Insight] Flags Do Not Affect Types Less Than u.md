@@ -1,5 +1,6 @@
+# Attackathon \_ Fuel Network 33487 - \[Smart Contract - Insight] Flags Do Not Affect Types Less Than u
 
-# Flags Do Not Affect Types Less Than u64
+## Flags Do Not Affect Types Less Than u64
 
 Submitted on Sun Jul 21 2024 20:43:48 GMT-0400 (Atlantic Standard Time) by @Blockian for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,17 +13,22 @@ Report severity: Insight
 Target: https://github.com/FuelLabs/sway/tree/v0.61.2
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
 
-## Description
-# Fuel Network bug report
-## Flags Do Not Affect Types Less Than u64
+* Contract fails to deliver promised returns, but doesn't lose value
+
 ### Description
+
+## Fuel Network bug report
+
+### Flags Do Not Affect Types Less Than u64
+
+#### Description
+
 Types smaller than `u64` (`u32`, `u16`, and `u8`) are not influenced by user-set flags, leading to unintended behavior.
 
-## Root Cause
-Since non-64-bit values are compiled to `u64` under-the-hood, the ALU does not detect overflows.
-Therefore, every mathematical operation should manually perform overflow checks.
+### Root Cause
+
+Since non-64-bit values are compiled to `u64` under-the-hood, the ALU does not detect overflows. Therefore, every mathematical operation should manually perform overflow checks.
 
 For instance, the add implementation includes such checks:
 
@@ -46,16 +52,18 @@ impl Add for u32 {
 
 Flags exist to indicate whether an overflow is allowed, such as the `disable_panic_on_overflow` function. However, since `disable_panic_on_overflow` disables panics caused by the ALU, it does not disable the panics triggered by types that manually check for overflows.
 
-## Impact
-This issue affects the `u32`, `u16`, and `u8` types in the Fuel ecosystem.
-Any project utilizing these types may experience unintended behavior in their contracts.
+### Impact
 
-## Proposed fix
+This issue affects the `u32`, `u16`, and `u8` types in the Fuel ecosystem. Any project utilizing these types may experience unintended behavior in their contracts.
+
+### Proposed fix
+
 Incorporate flag checks in mathematical operations involving `u32`, `u16`, and `u8` types.
 
-        
-## Proof of concept
-# Proof of Concept
+### Proof of concept
+
+## Proof of Concept
+
 Run the POC with `forc test`
 
 ```rs

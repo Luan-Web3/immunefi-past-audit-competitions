@@ -1,5 +1,4 @@
-
-# Silent Stack overflow on variables between cross-contract calls
+# Attackathon \_ Fuel Network 33519 - \[Smart Contract - Critical] Silent Stack overflow on variables be
 
 Submitted on Mon Jul 22 2024 07:57:32 GMT-0400 (Atlantic Standard Time) by @Minato7namikazi for [Attackathon | Fuel Network](https://immunefi.com/bounty/fuel-network-attackathon/)
 
@@ -12,16 +11,18 @@ Report severity: Critical
 Target: https://github.com/FuelLabs/sway/tree/v0.61.2
 
 Impacts:
-- Compiler bug
+
+* Compiler bug
 
 ## Description
+
 ## Brief/Intro
 
-There is Silent Stack overflow on variables between cross-contract calls can happen 
+There is Silent Stack overflow on variables between cross-contract calls can happen
 
 ## Vulnerability Details
 
-In large codebases and within complex functions that have many cross-contract calls u256 variables can overflow and cause critical damages 
+In large codebases and within complex functions that have many cross-contract calls u256 variables can overflow and cause critical damages
 
 Using log , I found that happens more than once:
 
@@ -31,22 +32,20 @@ before: variable: 6000000000000000000000000000000000 (u256)
 after: variable: 294731856024973518640372915683249701534862079315
 ```
 
-
 ## Impact Details
 
-- When a stack overflow occurs silently, it can overwrite adjacent memory locations without raising an error. In the context of cross-contract calls, this could lead to corrupted state variables or parameters being passed between contracts. 
-
-- Corrupted data could lead to significant financial losses. Incorrect balances, misrouted transactions, faulty trade executions could result in substantial $$$ damage.
-
+* When a stack overflow occurs silently, it can overwrite adjacent memory locations without raising an error. In the context of cross-contract calls, this could lead to corrupted state variables or parameters being passed between contracts.
+* Corrupted data could lead to significant financial losses. Incorrect balances, misrouted transactions, faulty trade executions could result in substantial \$$$ damage.
 
 ## Regarding the PoC
 
-this happened while playing with large sway codebase for an exchange project .. i'm literally submitting this at the last minute of the attackathon  : D  .. 
-so this report will be continued with another minimized PoC in the comments section
-        
+this happened while playing with large sway codebase for an exchange project .. i'm literally submitting this at the last minute of the attackathon : D .. so this report will be continued with another minimized PoC in the comments section
+
 ## Proof of concept
+
 #### `https://github.com/minato7namikazi/ruscet-contracts`
- Compile and run the `PositionRouter.test.ts`
+
+Compile and run the `PositionRouter.test.ts`
 
 ```
     it("increasePosition acceptablePrice short", async () => {

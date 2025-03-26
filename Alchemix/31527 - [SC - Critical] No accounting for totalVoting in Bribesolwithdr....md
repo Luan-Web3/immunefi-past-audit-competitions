@@ -1,5 +1,4 @@
-
-# No accounting for totalVoting in `Bribe.sol::withdraw` function leads to loss of Yield
+# 31527 - \[SC - Critical] No accounting for totalVoting in Bribesolwithdr...
 
 Submitted on May 21st 2024 at 02:17:27 UTC by @gladiator111 for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,14 +11,19 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Bribe.sol
 
 Impacts:
-- Permanent freezing of unclaimed yield
+
+* Permanent freezing of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 `Bribe.sol::withdraw` doesn't decrease `totalVoting` which can be exploited by a malicious user to permanently decrease yield.
 
 ## Vulnerability Details
+
 In the function, `Bribe.sol::withdraw`,`totalVoting` is not decreased and checkpointed as expected. The Withdraw function is called when a user withdraws their vote. It should decrease totalVoting but it is not.
+
 ```solidity
     //Doesn't decrease TotalVoting
     function withdraw(uint256 amount, uint256 tokenId) external {
@@ -34,17 +38,23 @@ In the function, `Bribe.sol::withdraw`,`totalVoting` is not decreased and checkp
         emit Withdraw(msg.sender, tokenId, amount);
     }
 ```
+
 This can be exploited by malicious user, as the user can call poke repeatedly (as it doesn't have same Epoch constraints) to indefinitely increase totalSupply. When totalVoting is increased the earned yield will also decrease as follows
+
 ```solidity
 reward += (cp.balanceOf * tokenRewardsPerEpoch[token][_lastEpochStart]) / _priorSupply;   //_priorSupply is totalVoting in the epoch
 ```
-Users will earn far less yield. The more times the `poke` function is called, the less the yield will become.
-`Note - It doesn't even need a malicious user as some users will call poke after voting which will decrease yield`
+
+Users will earn far less yield. The more times the `poke` function is called, the less the yield will become. `Note - It doesn't even need a malicious user as some users will call poke after voting which will decrease yield`
+
 ## Impact Details
+
 The Yield will be permanently frozen/lost.
 
 ## Suggestions/ Recommendations
+
 modify the function as follows
+
 ```diff
     function withdraw(uint256 amount, uint256 tokenId) external {
         require(msg.sender == voter);
@@ -60,16 +70,19 @@ modify the function as follows
         emit Withdraw(msg.sender, tokenId, amount);
     }
 ```
+
 ## References
+
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/f1007439ad3a32e412468c4c42f62f676822dc1f/src/Bribe.sol#L319-329
 
-
-
 ## Proof of Concept
+
 Paste the following in Voting.t.sol and run using
+
 ```bash
 forge test --match-test testYieldLoss -vvvv --fork-url $FORK_URL
 ```
+
 ```solidity
 function testYieldLoss() public {
         uint256 tokenId1 = createVeAlcx(admin, TOKEN_1, MAXTIME, false);

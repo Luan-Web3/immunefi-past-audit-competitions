@@ -1,5 +1,4 @@
-
-# Insecure Token Allowance Management in PufferDepositor Contract
+# 29110 - \[SC - Insight] Insecure Token Allowance Management in PufferDe...
 
 Submitted on Mar 7th 2024 at 07:45:54 UTC by @cheatcode for [Boost | Puffer Finance](https://immunefi.com/bounty/pufferfinance-boost/)
 
@@ -12,36 +11,42 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x7276925e42f9c4054afa2fad80fa79520c453d6a
 
 Impacts:
-- Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
+
+* Direct theft of any user funds, whether at-rest or in-motion, other than unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 The `PufferDepositor` contract fails to properly manage token allowances for swap service routers (like 1Inch or SushiSwap) after executing token swap operations. This can lead to potential security risks and unnecessary resource wastage on the blockchain.
 
 ## Vulnerability Details
+
 **Steps to Reproduce**:
+
 1. Deploy the `PufferDepositor` contract.
 2. Call one of the swap functions (e.g., `swapAndDeposit` or `swapAndDepositWithPermit`) with a specific token and amount to be swapped.
 3. Observe the contract increasing the token's allowance for the swap router to the amount intended to be swapped.
 4. Verify that the swap operation completes successfully.
 5. Check the remaining token allowance granted to the swap router after the swap operation.
 
-**Expected Behavior**:
-After the swap operation, the token allowance granted to the swap router should be reset to zero or a minimal safe value to prevent potential security risks and unnecessary state changes on the blockchain.
+**Expected Behavior**: After the swap operation, the token allowance granted to the swap router should be reset to zero or a minimal safe value to prevent potential security risks and unnecessary state changes on the blockchain.
 
-**Actual Behavior**:
-The `PufferDepositor` contract does not check or reset the token allowance after the swap operation. The swap router retains a high allowance, even though the swap operation has been completed and may not require such a high allowance for subsequent operations.
+**Actual Behavior**: The `PufferDepositor` contract does not check or reset the token allowance after the swap operation. The swap router retains a high allowance, even though the swap operation has been completed and may not require such a high allowance for subsequent operations.
 
 ## Impact Details
+
 An unnecessarily high allowance for the swap router poses a security risk. If the swap router's address is compromised, an attacker could potentially drain tokens from users who have set high allowances.
 
 ## Mitigation
+
 Add logic to check and reset the token allowance after the swap operation has completed. This can be done by following these steps:
 
 1. After the swap operation is completed, check the remaining allowance granted to the swap router using the ERC20 token contract's `allowance` function.
 2. If the remaining allowance is higher than needed (ideally, it should be zero or a minimal necessary amount after the swap), reset the allowance to a minimal level using the ERC20 token contract's `approve` function.
 
 **Recommended Code Change**:
+
 ```solidity
 // Assuming the swap has been executed at this point
 
@@ -55,13 +60,13 @@ if (remainingAllowance > 0) {
 ```
 
 ## References
+
 Add any relevant links to documentation or code
-
-
 
 ## Proof of Concept
 
 ### poc.py
+
 ```python
 class ERC20Token:
     def __init__(self, name, symbol, total_supply):
@@ -158,8 +163,8 @@ In this script, we define three classes:
 1. `ERC20Token`: A simplified representation of an ERC20 token contract, with methods for approving and transferring tokens.
 2. `SwapRouter`: A mock swap router that simulates a swap operation with a 20% swap fee.
 3. `PufferDepositor`: A mock implementation of the `PufferDepositor` contract, with two methods:
-   - `swap_and_deposit`: Demonstrates the issue by not resetting the allowance after the swap operation.
-   - `swap_and_deposit_fixed`: Demonstrates the proposed fix by resetting the allowance after the swap operation.
+   * `swap_and_deposit`: Demonstrates the issue by not resetting the allowance after the swap operation.
+   * `swap_and_deposit_fixed`: Demonstrates the proposed fix by resetting the allowance after the swap operation.
 
 When you run this script, the output will be:
 

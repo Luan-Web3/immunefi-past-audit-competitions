@@ -1,5 +1,4 @@
-
-# # `RevenueHandler.checkpoint` allows users to claim rewards in the current block causing attacker can claim rewards repeatedly  - 
+# 31242 - \[SC - Critical] RevenueHandlercheckpoint allows users to claim ...
 
 Submitted on May 15th 2024 at 19:01:43 UTC by @yttriumzz for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,13 +11,14 @@ Report severity: Critical
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RevenueHandler.sol
 
 Impacts:
-- Theft of unclaimed yield
+
+* Theft of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
 
-The `RevenueHandler` contract receives the revenue from Alchemix protocol. One part of the revenue
-is sent to the treasury. The rest is distributed to users that have $veToken. Each $veToken can claim rewards once per epoch. Anyone can call the `RevenueHandler.checkpoint` interface to refresh the `currentEpoch`. However, the `checkpoint` interface allows the `currentEpoch` to be updated to the timestamp of the current block, allowing attackers to use `VotingEscrow.merge` to repeatedly claim rewards.
+The `RevenueHandler` contract receives the revenue from Alchemix protocol. One part of the revenue is sent to the treasury. The rest is distributed to users that have $veToken. Each $veToken can claim rewards once per epoch. Anyone can call the `RevenueHandler.checkpoint` interface to refresh the `currentEpoch`. However, the `checkpoint` interface allows the `currentEpoch` to be updated to the timestamp of the current block, allowing attackers to use `VotingEscrow.merge` to repeatedly claim rewards.
 
 ## Vulnerability Details
 
@@ -78,7 +78,6 @@ Users can claim rewards repeatedly
 ## References
 
 None
-
 
 ## Proof of Concept
 
@@ -187,4 +186,3 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 458.15ms (442.17ms 
 
 Ran 1 test suite in 2.09s (458.15ms CPU time): 1 tests passed, 0 failed, 0 skipped (1 total tests)
 ```
-

@@ -1,7 +1,6 @@
+# 26502 - \[SC - Insight] DeGate Exodus mode forcing study
 
-# DeGate Exodus mode forcing study
-
-Submitted on Dec 4th 2023 at 05:09:53 UTC by @Merkle_Bonsai for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
+Submitted on Dec 4th 2023 at 05:09:53 UTC by @Merkle\_Bonsai for [Boost | DeGate](https://immunefi.com/bounty/boosteddegatebugbounty/)
 
 Report ID: #26502
 
@@ -12,22 +11,25 @@ Report severity: Insight
 Target: https://etherscan.io/address/0x9C07A72177c5A05410cA338823e790876E79D73B#code
 
 Impacts:
-- Study report
+
+* Study report
 
 ## Description
+
 This report is made by Berg's proposal to share the study with DeGate.
 
----
+***
 
-Exodus/withdrawal mode of DeGate is specific state that can be permissionlessly toggled if Operator is not executing his responsibility for at least 15 days. Only code-based way to trigger it is to mess up with `forceWithdraw` function.
-It is maxxed-permissionless:
-- any ETH address may request {address, tokenID} pair for any registered token via `forceWithdraw`.
-- any ETH address - not only initial requester - may report to the contract that specific {address, tokenID} pair has timestamp associated too old via `notifyForcedRequestTooOld`
+Exodus/withdrawal mode of DeGate is specific state that can be permissionlessly toggled if Operator is not executing his responsibility for at least 15 days. Only code-based way to trigger it is to mess up with `forceWithdraw` function. It is maxxed-permissionless:
 
----
+* any ETH address may request {address, tokenID} pair for any registered token via `forceWithdraw`.
+* any ETH address - not only initial requester - may report to the contract that specific {address, tokenID} pair has timestamp associated too old via `notifyForcedRequestTooOld`
+
+***
+
 However, it is needed to be additionally noted that `S.pendingForcedWithdrawals[accountID][tokenID]` memory address location may be predicted, and since there is a memory area (`struct State: Token[] normalTokens;`) that is possible to be fully filled with values, the actual attack complexity on searching the `keccak256(h(accountID) . tokenID)` can be lowered from 2^256 to 2^224 (as 2^32 memory area can theoretically be fully filled with values). This attack is 100% impractical, especially with quite small economic win for attacker, so it’s just good to note that it is good that other structures are mappings, not arrays, and only small memory range is allocatable.
 
----
+***
 
 Every {address, tokenID} pair is processed via specific kind of transaction inside `WithdrawTransaction.sol` withdraw transaction processor. Transaction processor is executing `deposit`, `withdraw` and `account update` transactions only, as all other transactions are handled solely in ZK, which acts as a guarantee of honest interactions between users. It may not execute some transactions, but if he does, they are ZK-backed honest.
 
@@ -38,6 +40,7 @@ However, this does not affect the flow, as worst thing that can possibly happen 
 This is also backed by specific order of transactions processing, when all the `deposits` are done before `withdraw`, that makes emergent state “block processor is trying to withdraw more than is deposited” impossible - balance is positive in every moment of time. I have to note it as simple yet very smart design decision.
 
 Since token registration is permissionless, any token can be used for `deposits` and `withdraws`, and `submitBlocks` may be broken via e.g. deposit of contract like this:
+
 ```
 contract ERC20 {
     function balanceOf(...) public { revert(); }
@@ -53,14 +56,16 @@ Block processing can be possibly broken in 2 areas: Solidity block processor and
 Both areas should be directly related to specific withdrawal transaction, as otherwise it can be thrown away from block by Operator without any consequences impactful for protocol.
 
 ZK circuit transaction can be made non-executable by multiple ways:
-- impossible equation: division by zero or making `uint248` variable store more than it can
-- failing `require`s
+
+* impossible equation: division by zero or making `uint248` variable store more than it can
+* failing `require`s
 
 I wasn’t able to discover any ways to broke the circuit. What has been tried as input combinations:
-- existing/non-existing account/max possible account (maxUint32) as sometimes borderline values can be impactful
-- existing/non-existing token (non-existing means before any deposit happens, so ZK is not aware about it, only registration in contract happened)
-- withdrawal type 2/3
-- full/zero/non-matching amount
+
+* existing/non-existing account/max possible account (maxUint32) as sometimes borderline values can be impactful
+* existing/non-existing token (non-existing means before any deposit happens, so ZK is not aware about it, only registration in contract happened)
+* withdrawal type 2/3
+* full/zero/non-matching amount
 
 All scenarios are working fine, as ZK is able to process not yet registered users and tokens sanely. Only scenario that was not tested was system accounts processing (as far as I know, at least accounts 1 and 2, as account 0 is not triggerable via `forceWithdraw`), that is private state, as this calls may have unexpected behavior.
 
@@ -68,11 +73,12 @@ Since modification of ZK circuit is probably the last thing DeGate would want to
 
 Solidity part is also generally secure. Since `distributeWithdrawal` is calling `transferTokens` that is able to process even failing transactions, it is impossible to break withdrawal process.
 
-Operator is theoretically able to run a birthday paradox attack like described in famous 0x52 report: https://github.com/sherlock-audit/2023-07-kyber-swap-judging/issues/90, but currently it is too expensive and may only allow operator to steal assets in several years from now.  However, as the second preimage collision is searched here in case of Operator as an attacker, assumption “especially when combined with validUntil” is invalid - and nobody but Operator may be an attacker in this scenario, as Operator is only one who can access this function call.
+Operator is theoretically able to run a birthday paradox attack like described in famous 0x52 report: https://github.com/sherlock-audit/2023-07-kyber-swap-judging/issues/90, but currently it is too expensive and may only allow operator to steal assets in several years from now. However, as the second preimage collision is searched here in case of Operator as an attacker, assumption “especially when combined with validUntil” is invalid - and nobody but Operator may be an attacker in this scenario, as Operator is only one who can access this function call.
 
 Additionally, Operator is able to mess up with transactions a bit. `maxFee` and `validUntil` are passed via `auxData` , so Operator can theoretically stash withdrawal operation and execute it later, but this has no practical impact, as `validUntil` is protected on ZK level (so ZK checks that `validUntil` is correct for inner timestamp). ZK is only guaranteed to be synced within +-7 days, so `validUntil` can be not very accurate both on ZK level and aux data level, but it does not seem that Operator can get any significant win from doing it.
 
 I initially assumed that it is possible to withdraw everything in shutdown mode because of presence of this check:
+
 ```
 if (withdrawal.withdrawalType == 2) {
                     require(withdrawal.from == forcedWithdrawal.owner, "INCONSISENT_OWNER");
@@ -91,15 +97,16 @@ Specifically, I need to make a accent on `mapping(uint32 => uint248) tokenIdToDe
 E.g. if any specific account can hold up to `maxUint248`, but total deposited value is larger than `maxUint248`(as ZK is not verifying the total deposited amount, only per-account), which is currently protected by `tokenIdToDepositBalance`, exodus mode can be triggered by sequentially withdrawing multiple users to one specific target account some broken asset, that will make `S.amountWithdrawable[to][tokenID] = S.amountWithdrawable[to][tokenID].add(amount)` overflow (as `amountWithdrawable` stores `uint248`) at some moment of time, making specific `forceWithdraw` request impossible to execute, allowing attacker to make contract enter the exodus mode.
 
 However, `tokenIdToDepositBalance` usage looks solid; any flow that causes deposit or withdraw is processed before the withdraw may happen, ensuring that this edge case may not appear:
-- It is only reduced in `ExchangeWithdrawals.transferTokens` after the actual withdrawal happens, not after tokens are considered as “left ZK”, but are still on account
-- It is specifically zero-initialized in `ExchangeTokens.registerToken` as additional security check
-- It is incremented on actual `ExchangeDeposits.deposit` 
-- It is incremented on `DepositTransaction.process` for `deposit.depositType 1`
+
+* It is only reduced in `ExchangeWithdrawals.transferTokens` after the actual withdrawal happens, not after tokens are considered as “left ZK”, but are still on account
+* It is specifically zero-initialized in `ExchangeTokens.registerToken` as additional security check
+* It is incremented on actual `ExchangeDeposits.deposit`
+* It is incremented on `DepositTransaction.process` for `deposit.depositType 1`
 
 Increment seems slightly inconsistent, but reasons seems understandable and it does not look like it impacts security somehow.
 
-As I'm not proficient enough 
-I would say that research on this small area of DeGate was really interesting, as study on a mix of ZK and Solidity logic is significantly different and makes brains to think alternatively.
+As I'm not proficient enough I would say that research on this small area of DeGate was really interesting, as study on a mix of ZK and Solidity logic is significantly different and makes brains to think alternatively.
 
 ## Proof of concept
----
+
+***

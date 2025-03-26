@@ -1,5 +1,4 @@
-
-# Minter UpdatePeriod after 20 weeks causes RewardsDistributor contract to lose claimable amount
+# 31559 - \[SC - Low] Minter UpdatePeriod after weeks causes Rewards...
 
 Submitted on May 21st 2024 at 10:20:50 UTC by @copperscrewer for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,19 +11,21 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardsDistributor.sol
 
 Impacts:
-- Permanent freezing of unclaimed royalties
-- Permanent freezing of unclaimed yield
+
+* Permanent freezing of unclaimed royalties
+* Permanent freezing of unclaimed yield
 
 ## Description
+
 ## Brief/Intro
+
 The Minter is a contract that calls UpdatedPeriod which then updates rewards to claim in tokensPerWeek in Rewards Distributor
 
-In _checkpointToken
-The hard cap of 20 weeks and the invalid updation of lastTokenTime to block.timestamp, allows direct loss of rewards proportional to amount of time elapsed from the 20 weeks mark.
+In \_checkpointToken The hard cap of 20 weeks and the invalid updation of lastTokenTime to block.timestamp, allows direct loss of rewards proportional to amount of time elapsed from the 20 weeks mark.
 
 ## Vulnerability Details
-Minter UpdatePeriod after 20 weeks causes RewardsDistributor contract to lose claimable amount. The Rewards Distributor Contract has a claim function for a token id where it distributes rewards to the holder, however the rewards are only captured till 20 weeks from last updated epoch and set to the current 
-block.timestamp despite only updating 20 weeks from lastTokenTime.
+
+Minter UpdatePeriod after 20 weeks causes RewardsDistributor contract to lose claimable amount. The Rewards Distributor Contract has a claim function for a token id where it distributes rewards to the holder, however the rewards are only captured till 20 weeks from last updated epoch and set to the current block.timestamp despite only updating 20 weeks from lastTokenTime.
 
 This is in contrast to the 255 weeks limit in Voting escrow as the number of weeks are just 20 for the exploit to damage the protocol, and there are no associated complexities in carrying out the attack.
 
@@ -44,16 +45,16 @@ to block.timestamp
 
 
 ```
+
 Since the rewards are not entered correctly, the protocol permanently loses the rewards to distribute to the user.
 
 ## Impact Details
+
 The impact is that the user will permanently lose rewards, and the exploit can be as easy as 20 weeks of negligence and no added complexity to carry out the attack.
 
-
-
 ## Proof of Concept
-Copy paste the following code in Minter.t.sol and execute the following command 
-`forge test --match-test testtokensPerWeekPOC* --fork-url https://eth-mainnet.alchemyapi.io/v2/[API_KEY] -vvv`
+
+Copy paste the following code in Minter.t.sol and execute the following command `forge test --match-test testtokensPerWeekPOC* --fork-url https://eth-mainnet.alchemyapi.io/v2/[API_KEY] -vvv`
 
 ```solidity
     function testtokensPerWeekPOC() external 

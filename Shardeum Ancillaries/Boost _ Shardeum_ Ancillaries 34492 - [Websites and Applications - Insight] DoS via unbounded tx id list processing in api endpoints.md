@@ -1,5 +1,4 @@
-
-# DoS via unbounded tx id list processing in api endpoints
+# Boost \_ Shardeum\_ Ancillaries 34492 - \[Websites and Applications - Insight] DoS via unbounded tx id list processing in api endpoints
 
 Submitted on Tue Aug 13 2024 22:19:03 GMT-0400 (Atlantic Standard Time) by @Minato7namikazi for [Boost | Shardeum: Ancillaries](https://immunefi.com/bounty/shardeum-ancillaries-boost/)
 
@@ -12,18 +11,19 @@ Report severity: Insight
 Target: https://github.com/shardeum/relayer-distributor/tree/dev
 
 Impacts:
-- Taking down the application/website
-- Temporarily disabling user to access target site, such as: Locking up the victim from login, Cookie bombing, etc.
+
+* Taking down the application/website
+* Temporarily disabling user to access target site, such as: Locking up the victim from login, Cookie bombing, etc.
 
 ## Description
+
 ## In api.ts in relayer-distributor
 
 there is critical missed check in the `validateRequestData` function within the handling of the `txIdList` parameter for the `/originalTx` and `/receipt endpoints.`
 
 ## Vulnerability Details
 
-The code correctly parses the txIdList string into an array of transaction IDs.
-However, it doesn't check the length of the resulting array. This means a malicious actor could submit a very large txIdList, potentially causing a denial-of-service (DoS) attack by overwhelming the server with database queries.
+The code correctly parses the txIdList string into an array of transaction IDs. However, it doesn't check the length of the resulting array. This means a malicious actor could submit a very large txIdList, potentially causing a denial-of-service (DoS) attack by overwhelming the server with database queries.
 
 1. The code does parse the txIdList string into an array:
 
@@ -52,29 +52,27 @@ for (const txId of txIdListArr) {
 
 3. there is indeed no check on the length of txIdListArr before starting the loop.
 
+## Solution
 
-## Solution 
-
-Add a check to limit the number of transaction IDs allowed in the txIdList array. This limit should be consistent with the other limits imposed by the API like ( MAX_ORIGINAL_TXS_PER_REQUEST and MAX_RECEIPTS_PER_REQUEST )
+Add a check to limit the number of transaction IDs allowed in the txIdList array. This limit should be consistent with the other limits imposed by the API like ( MAX\_ORIGINAL\_TXS\_PER\_REQUEST and MAX\_RECEIPTS\_PER\_REQUEST )
 
 ## Impact Details
 
 Denial of Service (DoS):
-   - An attacker could send a request with an extremely large number of transaction IDs.
-   - The server would attempt to process each ID, leading to a high number of database queries.
-   - This could overwhelm the database, causing slowdowns or crashes.
-   - The affected endpoint could become unresponsive, denying service to legitimate users.
+
+* An attacker could send a request with an extremely large number of transaction IDs.
+* The server would attempt to process each ID, leading to a high number of database queries.
+* This could overwhelm the database, causing slowdowns or crashes.
+* The affected endpoint could become unresponsive, denying service to legitimate users.
 
 Resource Exhaustion:
-   - Processing a large number of IDs could consume significant CPU and memory resources.
-   - This could impact the performance of the entire server, affecting other services and users.
 
+* Processing a large number of IDs could consume significant CPU and memory resources.
+* This could impact the performance of the entire server, affecting other services and users.
 
-
-        
 ## Proof of concept
-## Minimal PoC
 
+## Minimal PoC
 
 ```
 import crypto from 'crypto';
@@ -136,14 +134,14 @@ async function runPoC() {
 runPoC();
 ```
 
-
 To run this PoC:
 
 1. Save it as a `.ts` file (e.g., `txListVulnerabilityPoC.ts`)
-2.  (`npm install -g typescript ts-node`)
+2. (`npm install -g typescript ts-node`)
 3. Run it with `ts-node txListVulnerabilityPoC.ts`
 
 This is a minimal PoC to demonstrates the difference from high level :
+
 1. A small list of 10 transaction IDs processes quickly.
 2. A large list of 1000 transaction IDs takes significantly longer to process, simulating the potential for a DoS attack.
 

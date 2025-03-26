@@ -1,5 +1,4 @@
-
-# `RewardsDistributor::amountToCompound()` - L118: The `staleThreshold` variable was accidentally left at a value suitable for testing phase only, which carries a very high risk of very stale prices being used.
+# 31555 - \[SC - Low] RewardsDistributoramountToCompound - L The stal...
 
 Submitted on May 21st 2024 at 08:32:49 UTC by @OxSCSamurai for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,15 +11,17 @@ Report severity: Low
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/RewardsDistributor.sol
 
 Impacts:
-- Contract fails to deliver promised returns, but doesn't lose value
+
+* Contract fails to deliver promised returns, but doesn't lose value
 
 ## Description
+
 ## Brief/Intro
 
 ## Summary:
 
-- Due to seemingly accidental oversight the `staleThreshold` variable was accidentally left at a value suitable for testing phase only. The original value was 30 days, but the current value is 60 days.
-- 30 days and older would normally be deemed stale prices, but since 60 days is currently used it means only 60 days and older would now be deemed stale prices, so if prices between 30 days and 60 days are used, they will be accepted as valid prices when they are actually stale prices, and the protocol/users wont be aware of the problem.
+* Due to seemingly accidental oversight the `staleThreshold` variable was accidentally left at a value suitable for testing phase only. The original value was 30 days, but the current value is 60 days.
+* 30 days and older would normally be deemed stale prices, but since 60 days is currently used it means only 60 days and older would now be deemed stale prices, so if prices between 30 days and 60 days are used, they will be accepted as valid prices when they are actually stale prices, and the protocol/users wont be aware of the problem.
 
 ## Vulnerability Details
 
@@ -30,30 +31,30 @@ Impacts:
 
 Most likely impact in scope: Contract fails to deliver promised returns, but doesn't lose value
 
-Likelihood: medium
-Impact: high
-Severity: low - medium
+Likelihood: medium Impact: high Severity: low - medium
 
 Potential impacts:
-- compounding lower/higher amount than expected versus if the price was not stale, so the user/voter would get either more or less rewards than they should have received
-- potential protocol instability due to unstable/invalid pricing
+
+* compounding lower/higher amount than expected versus if the price was not stale, so the user/voter would get either more or less rewards than they should have received
+* potential protocol instability due to unstable/invalid pricing
 
 ## References
 
 https://github.com/alchemix-finance/alchemix-v2-dao/blob/9e14da88d8db05794623d8ab5f449451a10c15ac/src/RewardsDistributor.sol#L118
-
-
 
 ## Proof of Concept
 
 ## PoC:
 
 I used the existing unmodified protocol test:
-- `Minter.t.sol::testCompoundRewards()`
-- and test run command: `make test_file_debug_test FILE=Minter TEST=testCompoundRewards`
+
+* `Minter.t.sol::testCompoundRewards()`
+* and test run command: `make test_file_debug_test FILE=Minter TEST=testCompoundRewards`
 
 Function under test:
-- I made some modifications for PoC testing purposes, to simplify the testing process, see my audit tag comments below:
+
+* I made some modifications for PoC testing purposes, to simplify the testing process, see my audit tag comments below:
+
 ```solidity
     function amountToCompound(uint256 _alcxAmount) public view returns (uint256, uint256[] memory) {
         // Increased for testing since tests go into future
@@ -76,7 +77,9 @@ Function under test:
         return (amount, normalizedWeights);
     }
 ```
+
 ### Test 1: running the test with the 60 days stale threshold active, and making sure that the `priceTimestamp` is 59 days old, as can see from above modifications:
+
 ```solidity
     │   │   │   │   ├─ emit Transfer(from: 0x0000000000000000000000000000000000000000, to: RewardPoolManager: [0x2e74DFA941b12041781A67Cc2a0326e54DE67c55], value: 1485894423105353936225 [1.485e21])
     │   │   │   │   ├─ emit Deposit(caller: RewardPoolManager: [0x2e74DFA941b12041781A67Cc2a0326e54DE67c55], owner: RewardPoolManager: [0x2e74DFA941b12041781A67Cc2a0326e54DE67c55], assets: 1485894423105353936225 [1.485e21], shares: 1485894423105353936225 [1.485e21])
@@ -96,9 +99,11 @@ Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 114.09s (95.38s CPU
 
 Ran 1 test suite in 116.65s (114.09s CPU time): 3 tests passed, 0 failed, 0 skipped (3 total tests)
 ```
-- The test completed successfully, so a very stale price of 59 days old was used, and the system accepted it, which should have been an invalid price due to extreme staleness.
+
+* The test completed successfully, so a very stale price of 59 days old was used, and the system accepted it, which should have been an invalid price due to extreme staleness.
 
 ### Test 2: now running the test with the correct 30 days stale threshold value, and keeping everything else same as for above test, should now revert as expected:
+
 ```solidity
 .
 .
@@ -160,7 +165,8 @@ Encountered 3 failing tests in src/test/Minter.t.sol:MinterTest
 Encountered a total of 3 failing tests, 0 tests succeeded
 make: *** [Makefile:74: test_file_debug_test] Error 1
 ```
-- reverted as expected because of stale price over 30 days
+
+* reverted as expected because of stale price over 30 days
 
 ### Suggested bugfix:
 

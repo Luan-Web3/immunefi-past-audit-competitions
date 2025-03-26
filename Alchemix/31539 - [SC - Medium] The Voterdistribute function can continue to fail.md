@@ -1,5 +1,4 @@
-
-# The `Voter.distribute` function can continue to fail.
+# 31539 - \[SC - Medium] The Voterdistribute function can continue to fail
 
 Submitted on May 21st 2024 at 04:16:06 UTC by @cryptoticky for [Boost | Alchemix](https://immunefi.com/bounty/alchemix-boost/)
 
@@ -12,18 +11,24 @@ Report severity: Medium
 Target: https://github.com/alchemix-finance/alchemix-v2-dao/blob/main/src/Voter.sol
 
 Impacts:
-- Protocol insolvency
-- Unbounded gas consumption
+
+* Protocol insolvency
+* Unbounded gas consumption
 
 ## Description
+
 ## Brief/Intro
+
 When calling the Voter.distribute function, the distribution for some gauges can fail for a number of reasons and the transaction would be failed.
 
 Therefore, it is not appropriate to distribute while circulating all the gauges. In addition, as the number of gauges increases, gas costs can exceed blockGasLimit in the worst case. This can cause the protocol to stop.
 
 ## Vulnerability Details
+
 ### 1. Failure due to some conditional statements
+
 #### This is not about the gauge that the attacker artificially adds. This is a problem that can occur in already existing gates
+
 ```
 /**
      * @notice Set the proposal id
@@ -64,11 +69,12 @@ Therefore, it is not appropriate to distribute while circulating all the gauges.
         emit Passthrough(msg.sender, rewardToken, _amount, receiver);
     }
 ```
+
 If proposalUpdated is false, the distribute function is failed. So the admin must call the updateProposal function before call distribution function at start time of every epoch. However, there may be situations where you should not update the proposal in some gauges Then, you will not be able to distribute all the gages because of this gauge.
 
 ### 2. Failure by operation beyond block gas limit
-Treating too many gates into one loop may exceed blockGasLimit.
 
+Treating too many gates into one loop may exceed blockGasLimit.
 
 ## Impact Details
 
@@ -81,16 +87,16 @@ Add these functions in Voter.sol
 ```
 function distribute(uint256 _start, uint256 _finish) external;
 ```
+
 ```
 function distribute(address[] memory _gauges) external;
 ```
 
-------------------------------------------------------------------
-I want you to look at the problems in this report precisely and carefully.
-This is a problem that often happens in real life.
+***
+
+I want you to look at the problems in this report precisely and carefully. This is a problem that often happens in real life.
 
 Thank you.
-
 
 ## Proof of Concept
 

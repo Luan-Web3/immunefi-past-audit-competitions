@@ -1,5 +1,4 @@
-
-# Contract fails to mitigate potential critical state where anyone can call BridgeRouterHub::receiveMessage() directly
+# Boost \_ Folks Finance 34029 - \[Smart Contract - Medium] Contract fails to mitigate potential critical state where anyone can call BridgeRouterHubreceiveMessage directly
 
 Submitted on Sun Aug 04 2024 10:14:52 GMT-0400 (Atlantic Standard Time) by @Obin for [Boost | Folks Finance](https://immunefi.com/bounty/folksfinance-boost/)
 
@@ -12,24 +11,27 @@ Report severity: Medium
 Target: https://testnet.snowtrace.io/address/0xa9491a1f4f058832e5742b76eE3f1F1fD7bb6837
 
 Impacts:
-- Contract fails to mitigate a potential Critical situation where anyone will be able to call BridgeRouterHub::receiveMessage() "directly".
+
+* Contract fails to mitigate a potential Critical situation where anyone will be able to call BridgeRouterHub::receiveMessage() "directly".
 
 ## Description
-## Brief/Intro
-The BridgeRouter.sol file is the base contract for BridgeRouterHub.sol and BridgerouterSpoke.sol. BridgeRouterHub contains sensitive functions hence its function calls are restricted. Eg: only pre-inputed IBridgeAdapter contracts / interfaces (by the `MANAGER_ROLE` via `addAdapter` function)would be able to call BridgeRouterHub::receiveMessage(). This is the protocols intended security architecture.
-However, a potential issue can arise where anyone (any malicious Smart contract) will be able to call this sensitive funcion `BridgeRouterHub::receiveMessage()` which is a gateway for many other senitive executions. The smatr contrat is meant to mitigate itself from possibly reaching this state. Unfortunately it doesnt. 
 
+## Brief/Intro
+
+The BridgeRouter.sol file is the base contract for BridgeRouterHub.sol and BridgerouterSpoke.sol. BridgeRouterHub contains sensitive functions hence its function calls are restricted. Eg: only pre-inputed IBridgeAdapter contracts / interfaces (by the `MANAGER_ROLE` via `addAdapter` function)would be able to call BridgeRouterHub::receiveMessage(). This is the protocols intended security architecture. However, a potential issue can arise where anyone (any malicious Smart contract) will be able to call this sensitive funcion `BridgeRouterHub::receiveMessage()` which is a gateway for many other senitive executions. The smatr contrat is meant to mitigate itself from possibly reaching this state. Unfortunately it doesnt.
 
 ## Impact Details
+
 A really wide range of impacts.
 
-
 ## Note
-1. This vulnerbility is not categorized as critical due to protocol `MANAGER_ROLE` error required to achieve critical impact. 
+
+1. This vulnerbility is not categorized as critical due to protocol `MANAGER_ROLE` error required to achieve critical impact.
 2. That pointed out, its still a huge error for Smart contract to potentially allow this. Hence a High
-3. Note that the range of potential attacks to be carrired out via this one bug is numerous as atttacker can take any of the actions define in the  `enum Action`. 
+3. Note that the range of potential attacks to be carrired out via this one bug is numerous as atttacker can take any of the actions define in the `enum Action`.
 
 ## Mitigation
+
 ```diff
 +   error adapterIndexMustNotBeZero();
     function addAdapter(uint16 adapterId, IBridgeAdapter adapter) external onlyRole(MANAGER_ROLE) {
@@ -46,13 +48,17 @@ A really wide range of impacts.
 ```
 
 ## References
+
 Add any relevant links to documentation or code
 
-        
 ## Proof of concept
+
 ## Proof of Concept
+
 ## POC illustration (An overly simplified version of the BridgeRouter used for foundry testing)
+
 ### Alteration in BridgeRouter.sol (for simplicity)
+
 ```diff
 diff --git a/Diff.sol b/Diff.sol
 index a8ea541..862431b 100644
@@ -115,6 +121,7 @@ index a8ea541..862431b 100644
 ```
 
 ### POC Foundry
+
 ```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
