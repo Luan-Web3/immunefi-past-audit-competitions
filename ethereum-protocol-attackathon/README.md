@@ -1,4 +1,4 @@
-# Ethereum Protocol | Attackathon
+# Ethereum Protocol Attackathon
 
 ## Reports by Severity
 
