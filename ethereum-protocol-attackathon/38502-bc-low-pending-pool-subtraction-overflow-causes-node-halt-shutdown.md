@@ -100,7 +100,7 @@ https://github.com/paradigmxyz/reth/blob/v1.1.4/crates/transaction-pool/src/pool
 
 ## Link to Proof of Concept
 
-https://gist.github.com/knagaitsev/c4e91f828f2e32c33987dc481cafbf73
+[https://gist.github.com/blobism/a9d2179cad09d0950931a4c522afcabb](https://gist.github.com/blobism/a9d2179cad09d0950931a4c522afcabb)
 
 ## Proof of Concept
 

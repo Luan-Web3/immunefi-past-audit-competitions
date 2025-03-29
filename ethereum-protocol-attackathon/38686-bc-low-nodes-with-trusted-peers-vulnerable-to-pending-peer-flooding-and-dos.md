@@ -135,7 +135,7 @@ https://github.com/paradigmxyz/reth/blob/v1.1.5/crates/net/network/src/peers.rs
 
 ## Link to Proof of Concept
 
-[https://gist.github.com/blobism/1b4ce6ffc9136b0305fb2df4b6fca158](https://gist.github.com/blobism/1b4ce6ffc9136b0305fb2df4b6fca158)
+[https://gist.github.com/blobism/867808c4fd6793b26bbd596d02e2306d](https://gist.github.com/blobism/867808c4fd6793b26bbd596d02e2306d)
 
 ## Proof of Concept
 
