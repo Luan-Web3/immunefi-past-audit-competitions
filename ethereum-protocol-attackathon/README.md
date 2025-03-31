@@ -1,3 +1,7 @@
+---
+hidden: true
+---
+
 # Ethereum Protocol Attackathon
 
 ## Reports by Severity
