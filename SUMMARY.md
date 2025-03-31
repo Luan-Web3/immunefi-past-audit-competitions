@@ -991,7 +991,7 @@
   * [#37583 \[SC-Low\] Incorrect For Annotation Parsing](ethereum-protocol-attackathon/37583-sc-low-incorrect-for-annotation-parsing.md)
   * [#37582 \[SC-Low\] Incorrect HexString Parsing Leads To Compilation Error Or Type Confusion](ethereum-protocol-attackathon/37582-sc-low-incorrect-hexstring-parsing-leads-to-compilation-error-or-type-confusion.md)
   * [#38894 \[BC-Low\] Missing expiration check for Pong and Neighbors packets and not refreshing the endpoint proof](ethereum-protocol-attackathon/38894-bc-low-missing-expiration-check-for-pong-and-neighbors-packets-and-not-refreshing-the-endpoint.md)
-  * [37568 bc insight missing specification logic](ethereum-protocol-attackathon/37568-bc-insight-missing-specification-logic.md)
+  * [37568 \[BC-Insight\] missing specification logic](ethereum-protocol-attackathon/37568-bc-insight-missing-specification-logic.md)
   * [#38855 \[SC-Low\] Evaluation order is not respected in \`log\` function](ethereum-protocol-attackathon/38855-sc-low-evaluation-order-is-not-respected-in-log-function.md)
   * [#37483 \[BC-Insight\] There is a trace discrepancy for Nethermind when handling EOF from PUSH opcode](ethereum-protocol-attackathon/37483-bc-insight-there-is-a-trace-discrepancy-for-nethermind-when-handling-eof-from-push-opcode.md)
   * [#38169 \[SC-Insight\] Deferred Evaluation Of \`Default\_Return\_Value\` May Skip Side Effect Execution](ethereum-protocol-attackathon/38169-sc-insight-deferred-evaluation-of-default_return_value-may-skip-side-effect-execution.md)
